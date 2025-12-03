@@ -545,17 +545,15 @@ export function SessionsCalendar({ sessions }: SessionsCalendarProps) {
               {/* Mentor Info */}
               {selectedSession.mentor_name && (
                 <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                  {selectedSession.mentor_avatar && (
-                    <img
-                      src={selectedSession.mentor_avatar || "/images/user/user-01.jpg"}
-                      alt={selectedSession.mentor_name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement
-                        target.src = "/images/user/user-01.jpg"
-                      }}
-                    />
-                  )}
+                  <img
+                    src={selectedSession.mentor_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedSession.mentor_name || 'User')}&background=3B82F6&color=fff&size=128`}
+                    alt={selectedSession.mentor_name}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedSession.mentor_name || 'User')}&background=3B82F6&color=fff&size=128`
+                    }}
+                  />
                   <div>
                     <div className="flex items-center gap-2">
                       <Users className="w-5 h-5 text-gray-400" />

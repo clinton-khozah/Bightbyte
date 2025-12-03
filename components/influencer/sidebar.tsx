@@ -20,7 +20,7 @@ import {
   Briefcase,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 
 const influencerRoutes = [
   {

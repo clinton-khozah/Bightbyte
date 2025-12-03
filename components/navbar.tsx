@@ -14,10 +14,10 @@ export function Navbar() {
 
   // Custom nav items for tutoring/mentoring platform
   const navItems = [
-    { name: 'Find Tutors', url: '/ad-spaces', icon: BookOpen },
-    { name: 'Mentors', url: '/influencers', icon: GraduationCap },
-    { name: 'Live Sessions', url: '/affiliates', icon: FileText },
-    { name: 'Who are we', url: '/company', icon: FileText }
+    { name: 'Find Tutors', url: '/findtutors', icon: BookOpen },
+    { name: 'Mentors', url: '/mentors', icon: GraduationCap },
+    { name: 'Live Sessions', url: '/sessions', icon: FileText },
+    { name: 'Who are we', url: '/aboutus', icon: FileText }
   ]
 
   return (

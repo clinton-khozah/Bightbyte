@@ -8,6 +8,7 @@ import { loadStripe, Stripe } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
 import { StripePaymentForm } from "@/components/payment/stripe-payment-form"
 import { convertAndFormatPrice } from "@/lib/currency"
+import { fetchTutorPricing, findMatchingPricing } from "@/lib/tutor-pricing"
 
 interface Mentor {
   id: number | string
@@ -17,6 +18,12 @@ interface Mentor {
   hourly_rate: number
   rating: number
   total_reviews: number
+  specialization?: string[] | string
+  level?: string
+  education_level?: string
+  category?: string
+  sub_level?: string
+  grade_level?: string
 }
 
 interface SessionBooking {
@@ -29,27 +36,116 @@ interface SessionBooking {
   meetingLink?: string
 }
 
+interface TutorRequest {
+  id?: number
+  subject?: string
+  preferred_time?: string
+  description?: string
+  grade_level?: string
+  created_at?: string
+}
+
 interface BookingModalProps {
   mentor: Mentor | null
   isOpen: boolean
   onClose: () => void
   userLocation?: { lat: number; lng: number } | null
+  requestData?: TutorRequest | null
+  onPaymentSuccess?: (requestId?: number, meetingLink?: string) => void
 }
 
-export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingModalProps) {
+export function BookingModal({ mentor, isOpen, onClose, userLocation, requestData, onPaymentSuccess }: BookingModalProps) {
   const [currentStep, setCurrentStep] = React.useState(1)
   const [stripePromise, setStripePromise] = React.useState<Promise<Stripe | null> | null>(null)
   const [clientSecret, setClientSecret] = React.useState<string>("")
   const [isCreatingPayment, setIsCreatingPayment] = React.useState(false)
   const [convertedRate, setConvertedRate] = useState<string>("")
   const [exchangeRate, setExchangeRate] = useState<number>(1)
+  const [originalRate, setOriginalRate] = useState<number>(0)
+
+  // Helper function to parse time from preferred_time (e.g., "10:10 AM" -> "10:10")
+  const parseTimeFromPreferred = (preferredTime?: string): string => {
+    if (!preferredTime) return ""
+    
+    // Try to parse formats like "10:10 AM", "10:10 PM", "10:10"
+    const timeMatch = preferredTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i)
+    if (timeMatch) {
+      let hours = parseInt(timeMatch[1])
+      const minutes = timeMatch[2]
+      const period = timeMatch[3]?.toUpperCase()
+      
+      if (period === "PM" && hours !== 12) {
+        hours += 12
+      } else if (period === "AM" && hours === 12) {
+        hours = 0
+      }
+      
+      // Round minutes to nearest 30 (0 or 30) to match available time slots
+      const roundedMinutes = parseInt(minutes) >= 30 ? "30" : "00"
+      
+      return `${hours.toString().padStart(2, "0")}:${roundedMinutes}`
+    }
+    
+    // If already in 24-hour format, round to nearest 30 minutes
+    if (preferredTime.match(/^\d{2}:\d{2}$/)) {
+      const [hours, minutes] = preferredTime.split(":")
+      const roundedMinutes = parseInt(minutes) >= 30 ? "30" : "00"
+      return `${hours}:${roundedMinutes}`
+    }
+    
+    return ""
+  }
+  
+  // Helper function to find closest matching time slot
+  const findClosestTimeSlot = (targetTime: string, availableSlots: string[]): string => {
+    if (!targetTime || availableSlots.length === 0) return ""
+    
+    // If exact match exists, return it
+    if (availableSlots.includes(targetTime)) {
+      return targetTime
+    }
+    
+    // Find closest match
+    const [targetHours, targetMinutes] = targetTime.split(":").map(Number)
+    const targetTotalMinutes = targetHours * 60 + targetMinutes
+    
+    let closestSlot = availableSlots[0]
+    let minDiff = Infinity
+    
+    for (const slot of availableSlots) {
+      const [slotHours, slotMinutes] = slot.split(":").map(Number)
+      const slotTotalMinutes = slotHours * 60 + slotMinutes
+      const diff = Math.abs(slotTotalMinutes - targetTotalMinutes)
+      
+      if (diff < minDiff) {
+        minDiff = diff
+        closestSlot = slot
+      }
+    }
+    
+    return closestSlot
+  }
+
+  // Generate time slots (memoized since it's a pure function)
+  const generateTimeSlots = () => {
+    const slots = []
+    for (let hour = 9; hour <= 17; hour++) {
+      for (const minutes of [0, 30]) {
+        const timeString = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
+        slots.push(timeString)
+      }
+    }
+    return slots
+  }
+  
+  const timeSlots = React.useMemo(() => generateTimeSlots(), [])
 
   const [sessionData, setSessionData] = React.useState<SessionBooking>({
     date: "",
-    time: "",
+    time: requestData?.preferred_time ? parseTimeFromPreferred(requestData.preferred_time) : "",
     duration: 60,
-    topic: "",
-    notes: "",
+    topic: requestData?.subject || "",
+    notes: requestData?.description || "",
     meetingType: "google-meet",
   })
 
@@ -96,6 +192,64 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
       initializeMeetingLink()
     }
   }, [isOpen, sessionData.meetingType, sessionData.date, sessionData.time, sessionData.topic])
+
+  // Helper function to format date to YYYY-MM-DD for date input
+  const formatDateForInput = (dateString?: string): string => {
+    if (!dateString) return ""
+    try {
+      const date = new Date(dateString)
+      // Check if date is valid
+      if (isNaN(date.getTime())) return ""
+      
+      // Format as YYYY-MM-DD
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, "0")
+      const day = String(date.getDate()).padStart(2, "0")
+      
+      return `${year}-${month}-${day}`
+    } catch (error) {
+      console.error("Error formatting date:", error)
+      return ""
+    }
+  }
+
+  // Initialize session data from request when modal opens
+  React.useEffect(() => {
+    if (isOpen && requestData) {
+      let parsedTime = requestData.preferred_time ? parseTimeFromPreferred(requestData.preferred_time) : ""
+      
+      // Find closest matching time slot if parsed time doesn't match exactly
+      if (parsedTime && timeSlots.length > 0) {
+        parsedTime = findClosestTimeSlot(parsedTime, timeSlots)
+      }
+      
+      // Parse date from created_at, but use tomorrow as minimum (since bookings can't be in the past)
+      let parsedDate = ""
+      if (requestData.created_at) {
+        const requestDate = new Date(requestData.created_at)
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        
+        // Use the request date if it's in the future, otherwise use tomorrow
+        const dateToUse = requestDate > tomorrow ? requestDate : tomorrow
+        parsedDate = formatDateForInput(dateToUse.toISOString())
+      } else {
+        // Default to tomorrow if no date provided
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        parsedDate = formatDateForInput(tomorrow.toISOString())
+      }
+      
+      setSessionData({
+        date: parsedDate,
+        time: parsedTime,
+        duration: 60,
+        topic: requestData.subject || "",
+        notes: requestData.description || "",
+        meetingType: "google-meet",
+      })
+    }
+  }, [isOpen, requestData, timeSlots])
 
   // Reset state when modal closes
   React.useEffect(() => {
@@ -186,32 +340,87 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
   }
 
   useEffect(() => {
-    const convertRate = async () => {
+    // Fetch pricing from database if mentor's hourly_rate is 0 or missing
+    const fetchPricing = async () => {
       if (!mentor) return
-      const converted = await convertAndFormatPrice(mentor.hourly_rate, userLocation || null)
-      setConvertedRate(converted.formatted)
-      // Extract exchange rate for total calculation
-      const rateMatch = converted.formatted.match(/[\d,]+\.?\d*/)
-      if (rateMatch) {
-        const convertedValue = parseFloat(rateMatch[0].replace(/,/g, ''))
-        setExchangeRate(convertedValue / mentor.hourly_rate)
+
+      let hourlyRateUSD = mentor.hourly_rate && mentor.hourly_rate > 0 
+        ? mentor.hourly_rate 
+        : 0
+
+      // If hourly_rate is 0 or missing, fetch from pricing table
+      if (hourlyRateUSD === 0) {
+        try {
+          const pricingData = await fetchTutorPricing()
+          
+          // Get mentor's primary subject from specialization
+          let primarySubject = "General"
+          if (mentor.specialization && Array.isArray(mentor.specialization) && mentor.specialization.length > 0) {
+            primarySubject = mentor.specialization[0]
+          } else if (typeof mentor.specialization === "string") {
+            try {
+              const parsed = JSON.parse(mentor.specialization)
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                primarySubject = parsed[0]
+              }
+            } catch {
+              // Keep default
+            }
+          }
+
+          // Determine level from mentor data
+          const mentorLevel = (mentor as any).level || (mentor as any).education_level || "Secondary"
+          const mentorCategory = (mentor as any).category || undefined
+          const mentorSubLevel = (mentor as any).sub_level || (mentor as any).grade_level || undefined
+
+          // Find matching pricing
+          const matchedPricing = findMatchingPricing(
+            pricingData,
+            primarySubject,
+            mentorLevel,
+            mentorCategory,
+            mentorSubLevel
+          )
+
+          // Get hourly rate in USD (use matched pricing or default to $10)
+          hourlyRateUSD = matchedPricing
+            ? parseFloat(matchedPricing.hourly_rate_usd.toString())
+            : 10.0
+        } catch (error) {
+          console.error("Error fetching tutor pricing:", error)
+          hourlyRateUSD = 10.0 // Default fallback
+        }
       }
+
+      // Apply 25% discount if booking from a tutor request
+      const isFromRequest = !!requestData
+      const originalRateValue = hourlyRateUSD
+      const discountedRate = isFromRequest ? hourlyRateUSD * 0.75 : hourlyRateUSD
+
+      // Store original rate and discounted rate
+      setOriginalRate(originalRateValue)
+      setConvertedRate(`$${discountedRate.toFixed(2)}`)
+      setExchangeRate(1) // Always use 1 for USD
     }
-    convertRate()
-  }, [mentor, userLocation])
+
+    fetchPricing()
+  }, [mentor, requestData])
 
   const calculateTotal = () => {
     if (!mentor) return 0
-    const totalUSD = (mentor.hourly_rate * sessionData.duration) / 60
-    return totalUSD * exchangeRate
+    
+    // Extract USD rate from convertedRate string (e.g., "$37.50" -> 37.50)
+    // The convertedRate already contains the discounted rate if it's from a request
+    const rateMatch = convertedRate.match(/\$?([\d.]+)/)
+    const hourlyRate = rateMatch ? parseFloat(rateMatch[1]) : (mentor.hourly_rate && mentor.hourly_rate > 0 ? mentor.hourly_rate : 10.0)
+    
+    // Calculate total in USD (using discounted rate if from request)
+    const totalUSD = (hourlyRate * sessionData.duration) / 60
+    return totalUSD
   }
 
   const formatTotal = (total: number) => {
-    if (!mentor) return "$0.00"
-    if (convertedRate && exchangeRate !== 1) {
-      const symbol = convertedRate.replace(/[\d,.\s]/g, '').trim()
-      return `${symbol}${total.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`
-    }
+    // Always format in USD
     return `$${total.toFixed(2)}`
   }
 
@@ -315,6 +524,11 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
         }),
       })
 
+      // Update payment status in tutor request if requestData is provided
+      if (requestData?.id && onPaymentSuccess) {
+        onPaymentSuccess(requestData.id, finalSessionData.meetingLink)
+      }
+
       setCurrentStep(3)
     } catch (error) {
       console.error("Error in post-payment process:", error)
@@ -322,16 +536,6 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
     }
   }
 
-  const generateTimeSlots = () => {
-    const slots = []
-    for (let hour = 9; hour <= 17; hour++) {
-      for (const minutes of [0, 30]) {
-        const timeString = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`
-        slots.push(timeString)
-      }
-    }
-    return slots
-  }
 
   const getMinDate = () => {
     const tomorrow = new Date()
@@ -466,7 +670,7 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
                             required
                           >
                             <option value="">Select a time</option>
-                            {generateTimeSlots().map((time) => (
+                            {timeSlots.map((time) => (
                               <option key={time} value={time}>
                                 {time}
                               </option>
@@ -690,12 +894,12 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
                       <div className="mb-6">
                         <div className="flex items-center space-x-4 mb-4">
                           <img
-                            src={mentor.avatar}
+                            src={mentor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`}
                             alt={mentor.name}
                             className="w-16 h-16 rounded-full object-cover ring-4 ring-blue-500/20 shadow-lg"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement
-                              target.src = "/images/user/user-01.jpg"
+                              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`
                             }}
                           />
                           <div className="flex-1">
@@ -715,7 +919,22 @@ export function BookingModal({ mentor, isOpen, onClose, userLocation }: BookingM
                         <div className="space-y-4">
                           <div className="flex justify-between items-center py-2">
                             <span className="text-sm text-gray-600">Hourly Rate:</span>
-                            <span className="text-base font-semibold text-gray-900">{convertedRate || `$${mentor.hourly_rate.toFixed(2)}`}</span>
+                            <div className="flex flex-col items-end">
+                              {requestData && originalRate > 0 ? (
+                                <>
+                                  <span className="text-base font-semibold text-gray-900 line-through text-gray-400">
+                                    ${originalRate.toFixed(2)}
+                                  </span>
+                                  <span className="text-base font-semibold text-green-600">
+                                    {convertedRate} <span className="text-xs text-green-600 font-normal">(25% off)</span>
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-base font-semibold text-gray-900">
+                                  {convertedRate || (mentor?.hourly_rate ? `$${mentor.hourly_rate.toFixed(2)}` : '$0.00')}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <div className="flex justify-between items-center py-2">
                             <span className="text-sm text-gray-600">Duration:</span>

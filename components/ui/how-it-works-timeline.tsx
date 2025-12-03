@@ -52,8 +52,8 @@ const timelineData = [
 
 export function HowItWorksTimeline() {
   return (
-    <div className="w-full h-[800px] flex flex-col items-center justify-center bg-transparent overflow-hidden">
-      <div className="relative w-full max-w-4xl h-full flex items-center justify-center">
+    <div className="w-full h-[800px] flex flex-col items-center justify-center bg-transparent overflow-visible py-20">
+      <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible px-8">
         <RadialOrbitalTimeline timelineData={timelineData} />
       </div>
     </div>

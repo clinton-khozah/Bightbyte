@@ -6,7 +6,7 @@ import { Navbar } from "@/components/navbar"
 import { useTheme } from "next-themes"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Instagram, Youtube, Twitter, Globe, Users, Star, TrendingUp, Calendar, Check, Twitch, Award, Target, DollarSign, Clock, Heart, MessageSquare, Share2, Zap, Trophy, TrendingUp as TrendingUpIcon, ChevronLeft, ChevronRight } from "lucide-react"
+import { Instagram, Youtube, Twitter, Globe, Users, Star, TrendingUp, Calendar, Check, Twitch, Award, Target, DollarSign, Clock, Heart, MessageSquare, Share2, Zap, Trophy, TrendingUp as TrendingUpIcon, ChevronLeft, ChevronRight, CheckCircle2 } from "lucide-react"
 import { Footer } from "@/components/footer"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -542,8 +542,13 @@ export default function InfluencersPage() {
                     alt={influencer.name}
                       className="w-32 h-32 rounded-full object-cover mb-4 shadow-lg ring-4 ring-indigo-200 border-2 border-indigo-400"
                     />
-                    <div className="absolute -bottom-2 right-0 flex gap-1">
-                      {getBadges(influencer).map(b => <span key={b.label} className={`px-2 py-1 rounded-full text-xs font-bold ${b.color}`}>{b.label}</span>)}
+                    {influencer.verified && (
+                      <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-1 border-2 border-white shadow-xl z-10">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
+                      </div>
+                    )}
+                    <div className="absolute -bottom-2 left-0 flex gap-1">
+                      {getBadges(influencer).filter(b => b.label !== 'Verified').map(b => <span key={b.label} className={`px-2 py-1 rounded-full text-xs font-bold ${b.color}`}>{b.label}</span>)}
                     </div>
                 </div>
 

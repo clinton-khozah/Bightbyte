@@ -1,31 +1,47 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { X, Loader2, AlertCircle, CheckCircle, Calendar, Clock, DollarSign, FileText, Video } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import * as React from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  Loader2,
+  AlertCircle,
+  CheckCircle,
+  Calendar,
+  Clock,
+  DollarSign,
+  FileText,
+  Video,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface CreateSessionModalProps {
-  isOpen: boolean
-  onClose: () => void
-  mentorId: string | number
-  onSuccess?: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  mentorId: string | number;
+  onSuccess?: () => void;
 }
 
-export function CreateSessionModal({ 
-  isOpen, 
-  onClose, 
+export function CreateSessionModal({
+  isOpen,
+  onClose,
   mentorId,
-  onSuccess 
+  onSuccess,
 }: CreateSessionModalProps) {
-  const [isSubmitting, setIsSubmitting] = React.useState(false)
-  const [error, setError] = React.useState("")
-  const [success, setSuccess] = React.useState(false)
-  
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [error, setError] = React.useState("");
+  const [success, setSuccess] = React.useState(false);
+
   const [formData, setFormData] = React.useState({
     topic: "",
     date: "",
@@ -34,79 +50,84 @@ export function CreateSessionModal({
     meeting_type: "google-meet",
     amount: "",
     notes: "",
-  })
-  const [paymentLink, setPaymentLink] = React.useState<string>("")
+  });
+  const [paymentLink, setPaymentLink] = React.useState<string>("");
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const handleSelectChange = (name: string, value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    
+    e.preventDefault();
+    setError("");
+
     // Validation
     if (!formData.topic.trim()) {
-      setError("Topic is required")
-      return
+      setError("Topic is required");
+      return;
     }
     if (!formData.date) {
-      setError("Date is required")
-      return
+      setError("Date is required");
+      return;
     }
     if (!formData.time) {
-      setError("Time is required")
-      return
+      setError("Time is required");
+      return;
     }
     if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setError("Amount must be greater than 0")
-      return
+      setError("Amount must be greater than 0");
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/v1/mentors/create-session/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          mentor_id: mentorId,
-          topic: formData.topic.trim(),
-          date: formData.date,
-          time: formData.time,
-          duration: parseInt(formData.duration),
-          meeting_type: formData.meeting_type,
-          amount: parseFloat(formData.amount),
-          notes: formData.notes.trim() || null,
-        })
-      })
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/v1/mentors/create-session/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            mentor_id: mentorId,
+            topic: formData.topic.trim(),
+            date: formData.date,
+            time: formData.time,
+            duration: parseInt(formData.duration),
+            meeting_type: formData.meeting_type,
+            amount: parseFloat(formData.amount),
+            notes: formData.notes.trim() || null,
+          }),
+        }
+      );
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error || 'Failed to create session')
+        throw new Error(data.error || "Failed to create session");
       }
 
-      setSuccess(true)
-      
+      setSuccess(true);
+
       // Store payment link if provided
       if (data.payment_link) {
-        setPaymentLink(data.payment_link)
+        setPaymentLink(data.payment_link);
       }
-      
+
       // Reset form
       setFormData({
         topic: "",
@@ -116,28 +137,28 @@ export function CreateSessionModal({
         meeting_type: "google-meet",
         amount: "",
         notes: "",
-      })
+      });
 
       // Call onSuccess callback if provided
       if (onSuccess) {
-        onSuccess()
+        onSuccess();
       }
 
       // Close modal after 2 seconds
       setTimeout(() => {
-        onClose()
-        setSuccess(false)
-      }, 2000)
+        onClose();
+        setSuccess(false);
+      }, 2000);
     } catch (error: any) {
-      console.error('Error creating session:', error)
-      setError(error.message || 'Failed to create session. Please try again.')
+      console.error("Error creating session:", error);
+      setError(error.message || "Failed to create session. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
   // Set minimum date to today
-  const today = new Date().toISOString().split('T')[0]
+  const today = new Date().toISOString().split("T")[0];
 
   return (
     <AnimatePresence>
@@ -150,7 +171,9 @@ export function CreateSessionModal({
             className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto"
           >
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-              <h2 className="text-2xl font-bold text-gray-900">Create Session</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                Create Session
+              </h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -181,10 +204,15 @@ export function CreateSessionModal({
               <form onSubmit={handleSubmit} className="p-6 space-y-6">
                 {/* Session Details */}
                 <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Session Details</h3>
-                  
+                  <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">
+                    Session Details
+                  </h3>
+
                   <div>
-                    <Label htmlFor="topic" className="text-base font-semibold text-gray-900 mb-2 block">
+                    <Label
+                      htmlFor="topic"
+                      className="text-base font-semibold text-gray-900 mb-2 block"
+                    >
                       Topic <span className="text-red-500">*</span>
                     </Label>
                     <Input
@@ -201,7 +229,10 @@ export function CreateSessionModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="date" className="text-base font-semibold text-gray-900 mb-2 block">
+                      <Label
+                        htmlFor="date"
+                        className="text-base font-semibold text-gray-900 mb-2 block"
+                      >
                         <Calendar className="inline h-4 w-4 mr-1" />
                         Date <span className="text-red-500">*</span>
                       </Label>
@@ -219,7 +250,10 @@ export function CreateSessionModal({
                     </div>
 
                     <div>
-                      <Label htmlFor="time" className="text-base font-semibold text-gray-900 mb-2 block">
+                      <Label
+                        htmlFor="time"
+                        className="text-base font-semibold text-gray-900 mb-2 block"
+                      >
                         <Clock className="inline h-4 w-4 mr-1" />
                         Time <span className="text-red-500">*</span>
                       </Label>
@@ -238,12 +272,18 @@ export function CreateSessionModal({
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label htmlFor="duration" className="text-base font-semibold text-gray-900 mb-2 block">
-                        Duration (minutes) <span className="text-red-500">*</span>
+                      <Label
+                        htmlFor="duration"
+                        className="text-base font-semibold text-gray-900 mb-2 block"
+                      >
+                        Duration (minutes){" "}
+                        <span className="text-red-500">*</span>
                       </Label>
                       <Select
                         value={formData.duration}
-                        onValueChange={(value) => handleSelectChange("duration", value)}
+                        onValueChange={(value) =>
+                          handleSelectChange("duration", value)
+                        }
                         disabled={isSubmitting}
                       >
                         <SelectTrigger className="w-full">
@@ -259,7 +299,10 @@ export function CreateSessionModal({
                     </div>
 
                     <div>
-                      <Label htmlFor="amount" className="text-base font-semibold text-gray-900 mb-2 block">
+                      <Label
+                        htmlFor="amount"
+                        className="text-base font-semibold text-gray-900 mb-2 block"
+                      >
                         <DollarSign className="inline h-4 w-4 mr-1" />
                         Amount (R) <span className="text-red-500">*</span>
                       </Label>
@@ -286,14 +329,19 @@ export function CreateSessionModal({
                     <Video className="inline h-5 w-5 mr-2" />
                     Meeting Details
                   </h3>
-                  
+
                   <div>
-                    <Label htmlFor="meeting_type" className="text-base font-semibold text-gray-900 mb-2 block">
+                    <Label
+                      htmlFor="meeting_type"
+                      className="text-base font-semibold text-gray-900 mb-2 block"
+                    >
                       Meeting Type <span className="text-red-500">*</span>
                     </Label>
                     <Select
                       value={formData.meeting_type}
-                      onValueChange={(value) => handleSelectChange("meeting_type", value)}
+                      onValueChange={(value) =>
+                        handleSelectChange("meeting_type", value)
+                      }
                       disabled={isSubmitting}
                     >
                       <SelectTrigger className="w-full">
@@ -307,14 +355,18 @@ export function CreateSessionModal({
                       </SelectContent>
                     </Select>
                     <p className="text-xs text-gray-500 mt-1">
-                      A meeting link will be generated automatically. A payment link will be created for students.
+                      A meeting link will be generated automatically. A payment
+                      link will be created for students.
                     </p>
                   </div>
                 </div>
 
                 {/* Additional Notes */}
                 <div>
-                  <Label htmlFor="notes" className="text-base font-semibold text-gray-900 mb-2 block">
+                  <Label
+                    htmlFor="notes"
+                    className="text-base font-semibold text-gray-900 mb-2 block"
+                  >
                     <FileText className="inline h-4 w-4 mr-1" />
                     Additional Notes (optional)
                   </Label>
@@ -367,6 +419,5 @@ export function CreateSessionModal({
         </div>
       )}
     </AnimatePresence>
-  )
+  );
 }
-

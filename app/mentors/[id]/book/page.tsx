@@ -605,12 +605,12 @@ export default function BookSessionPage() {
               <div className="mb-8">
                 <div className="flex items-center space-x-5 mb-6">
                   <img
-                    src={mentor.avatar}
+                    src={mentor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`}
                     alt={mentor.name}
                     className="w-20 h-20 rounded-full object-cover ring-4 ring-blue-500/20 shadow-lg"
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
-                      target.src = "/images/user/user-01.jpg"
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`
                     }}
                   />
                   <div className="flex-1">

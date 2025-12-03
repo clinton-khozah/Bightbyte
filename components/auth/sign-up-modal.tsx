@@ -23,7 +23,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
     confirmPassword: "",
     fullName: "",
     role: "" as string,
-    userType: "" as "student" | "mentor" | "tutor" | "user",
+    userType: "" as "student" | "mentor" | "tutor",
   })
   const [showVerification, setShowVerification] = React.useState(false)
   const [error, setError] = React.useState("")
@@ -133,8 +133,8 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
       console.log("Supabase Google authentication successful:", data.user)
 
       // Determine which table to use based on user type
-      // Mentor, Tutor, or Other (user) should go to mentors table
-      const isMentor = formData.userType === 'mentor' || formData.userType === 'tutor' || formData.userType === 'user'
+      // Mentor or Tutor should go to mentors table
+      const isMentor = formData.userType === 'mentor' || formData.userType === 'tutor'
       const tableName = isMentor ? 'mentors' : 'students'
 
       // Check if user already exists
@@ -293,8 +293,8 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
         return
       }
 
-        // Check if user is a mentor/tutor/other
-        if (formData.userType === 'mentor' || formData.userType === 'tutor' || formData.userType === 'user') {
+        // Check if user is a mentor/tutor
+        if (formData.userType === 'mentor' || formData.userType === 'tutor') {
           // Verify mentor record exists
           const { data: mentorData } = await supabase
             .from('mentors')
@@ -315,7 +315,7 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
     } catch (error) {
       console.error('Error during verification redirect:', error)
         // Fallback redirect
-        if (formData.userType === 'mentor' || formData.userType === 'tutor' || formData.userType === 'user') {
+        if (formData.userType === 'mentor' || formData.userType === 'tutor') {
           window.location.href = '/dashboard'
         } else {
           window.location.href = '/dashboard/learner'
@@ -464,30 +464,6 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
                           <span className={`font-medium text-sm ${formData.userType === 'tutor' ? 'text-blue-600' : 'text-gray-700'}`}>
                             Tutor
                           </span>
-                        </div>
-                      </div>
-
-                      <div
-                        className={`relative flex items-center p-2 rounded-lg border-2 cursor-pointer transition-all h-10 ${
-                          formData.userType === 'user'
-                            ? 'border-blue-600 bg-blue-50'
-                            : 'border-gray-300 bg-white hover:border-blue-400'
-                        }`}
-                        onClick={() => setFormData({ ...formData, userType: 'user' })}
-                      >
-                        <div className="flex items-center space-x-2">
-                          <div
-                            className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                              formData.userType === 'user' ? 'border-blue-600' : 'border-gray-300'
-                            }`}
-                          >
-                            {formData.userType === 'user' && (
-                              <div className="w-2 h-2 rounded-full bg-blue-600" />
-                            )}
-                          </div>
-                          <span className={`font-medium text-sm ${formData.userType === 'user' ? 'text-blue-600' : 'text-gray-700'}`}>
-                            Other
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -555,13 +531,25 @@ export function SignUpModal({ isOpen, onClose }: SignUpModalProps) {
                   />
                   <label htmlFor="terms" className="text-sm text-gray-700">
                     I agree to the{" "}
-                    <button type="button" className="text-blue-600 hover:text-blue-700">
+                    <a 
+                      href="/resources#terms" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       Terms of Service
-                    </button>
+                    </a>
                     {" "}and{" "}
-                    <button type="button" className="text-blue-600 hover:text-blue-700">
+                    <a 
+                      href="/resources#privacy" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 underline"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       Privacy Policy
-                    </button>
+                    </a>
                   </label>
                 </div>
 

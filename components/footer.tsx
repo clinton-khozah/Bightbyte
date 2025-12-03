@@ -2,15 +2,19 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Button } from "@/components/ui/button"
-import { Facebook, Instagram, Linkedin, Twitter, Sparkles, ArrowRight } from "lucide-react"
-import { AnimatedContent } from "@/components/animated-content"
-import { AnimatedInput } from "@/components/animated-input"
-import { AnimatedButton } from "@/components/animated-button"
-import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
+import { Globe } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { languages, useTranslation } from "@/contexts/TranslationContext"
+import { TranslatableText } from "@/components/translatable-text"
 
 export function Footer() {
+  const { language, setLanguage } = useTranslation()
+
+  const handleLanguageChange = (lang: string) => {
+    setLanguage(lang)
+    // Force a re-render by updating the language state
+    // The TranslationProvider will handle the state update
+  }
 
   return (
     <footer className="bg-blue-200 border-t border-blue-400 w-full mt-auto">
@@ -30,28 +34,41 @@ export function Footer() {
                 Brightbyt
               </div>
             </div>
-            <p className="text-sm text-gray-600 font-['Verdana',sans-serif] leading-relaxed font-medium">
+            <TranslatableText 
+              as="p" 
+              className="text-sm text-gray-600 font-['Verdana',sans-serif] leading-relaxed font-medium"
+            >
               Connecting students with expert tutors and mentors worldwide. Your journey to academic excellence starts here.
-            </p>
+            </TranslatableText>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2">Quick Links</h3>
+            <TranslatableText 
+              as="h3" 
+              className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2"
+            >
+              Quick Links
+            </TranslatableText>
             <ul className="space-y-3">
               <li>
-                <Link href="/ad-spaces" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Find Tutors
+                <Link href="/findtutors" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Find Tutors</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/company" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Who are we
+                <Link href="/aboutus" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Who are we</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/affiliates" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Live Sessions
+                <Link href="/sessions" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Live Sessions</TranslatableText>
+                </Link>
+              </li>
+              <li>
+                <Link href="/start-earning" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Become a Mentor & Start Earning</TranslatableText>
                 </Link>
               </li>
             </ul>
@@ -59,21 +76,26 @@ export function Footer() {
 
           {/* Resources */}
           <div>
-            <h3 className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2">Resources</h3>
+            <TranslatableText 
+              as="h3" 
+              className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2"
+            >
+              Resources
+            </TranslatableText>
             <ul className="space-y-3">
               <li>
-                <Link href="/blog" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Blog
+                <Link href="/resources#blog" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Blog</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/faq" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  FAQ
+                <Link href="/resources#faq" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>FAQ</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/support" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Support
+                <Link href="/resources#support" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Support</TranslatableText>
                 </Link>
               </li>
             </ul>
@@ -81,21 +103,26 @@ export function Footer() {
 
           {/* Legal */}
           <div>
-            <h3 className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2">Legal</h3>
+            <TranslatableText 
+              as="h3" 
+              className="text-gray-900 font-bold mb-4 text-lg font-['Verdana',sans-serif] border-b border-blue-300 pb-2"
+            >
+              Legal
+            </TranslatableText>
             <ul className="space-y-3">
               <li>
-                <Link href="/privacy" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Privacy Policy
+                <Link href="/resources#privacy" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Privacy Policy</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Terms of Service
+                <Link href="/resources#terms" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Terms of Service</TranslatableText>
                 </Link>
               </li>
               <li>
-                <Link href="/cookies" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
-                  Cookie Policy
+                <Link href="/resources#cookies" className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block">
+                  <TranslatableText>Cookie Policy</TranslatableText>
                 </Link>
               </li>
             </ul>
@@ -106,27 +133,63 @@ export function Footer() {
         <div className="mt-12 pt-8 border-t border-blue-300">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <p className="text-sm text-gray-700 font-['Verdana',sans-serif] font-medium">
-              © {new Date().getFullYear()} Brightbyt. All rights reserved.
+              © {new Date().getFullYear()} Brightbyt. <TranslatableText>All rights reserved.</TranslatableText>
             </p>
-            <div className="flex space-x-6">
-              <Link href="#" className="text-gray-700 hover:text-blue-700 transition-colors">
-                <span className="sr-only">Facebook</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-gray-700 hover:text-blue-700 transition-colors">
-                <span className="sr-only">Twitter</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" />
-                </svg>
-              </Link>
-              <Link href="#" className="text-gray-700 hover:text-blue-700 transition-colors">
-                <span className="sr-only">LinkedIn</span>
-                <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-.88-.06-1.601-1-1.601-1 0-1.16.781-1.16 1.601v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                </svg>
-              </Link>
+            <div className="flex items-center gap-6">
+              {/* Language Selector */}
+              <div className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-gray-700" />
+                <Select value={language} onValueChange={handleLanguageChange}>
+                  <SelectTrigger className="w-[180px] bg-white border-blue-300 text-gray-900 font-['Verdana',sans-serif]">
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[300px]">
+                    {languages.map((lang) => (
+                      <SelectItem key={lang.code} value={lang.code} className="font-['Verdana',sans-serif]">
+                        <div className="flex items-center justify-between w-full">
+                          <span>{lang.nativeName}</span>
+                          <span className="text-xs text-gray-500 ml-2">({lang.name})</span>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex space-x-6">
+                <Link 
+                  href="https://www.facebook.com/profile.php?id=61584098290434" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:text-blue-700 transition-colors"
+                >
+                  <span className="sr-only">Facebook</span>
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" />
+                  </svg>
+                </Link>
+                <Link 
+                  href="https://www.instagram.com/bryght_byte/#" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:text-blue-700 transition-colors"
+                >
+                  <span className="sr-only">Instagram</span>
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                  </svg>
+                </Link>
+                <Link 
+                  href="https://www.tiktok.com/@bright_byt" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-gray-700 hover:text-blue-700 transition-colors"
+                >
+                  <span className="sr-only">TikTok</span>
+                  <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+                  </svg>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -134,4 +197,3 @@ export function Footer() {
     </footer>
   )
 }
-

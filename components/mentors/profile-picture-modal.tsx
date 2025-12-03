@@ -83,7 +83,7 @@ export function ProfilePictureModal({ isOpen, onClose, imageUrl, mentorName }: P
                   className="relative"
                 >
                   <img
-                    src={imageUrl || '/images/user/user-01.jpg'}
+                    src={imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentorName)}&background=3B82F6&color=fff&size=128`}
                     alt={mentorName}
                     className={`rounded-full object-cover border-4 border-white shadow-2xl ${
                       isZoomed ? 'cursor-zoom-out' : 'cursor-zoom-in'
@@ -96,7 +96,7 @@ export function ProfilePictureModal({ isOpen, onClose, imageUrl, mentorName }: P
                     onClick={() => setIsZoomed(!isZoomed)}
                     onError={(e) => {
                       const target = e.target as HTMLImageElement
-                      target.src = '/images/user/user-01.jpg'
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(mentorName)}&background=3B82F6&color=fff&size=128`
                     }}
                   />
                 </motion.div>

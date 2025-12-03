@@ -145,7 +145,7 @@ export function SessionCard({
             >
               <div className="relative">
                 <img
-                  src={session.mentor_avatar || '/images/user/user-01.jpg'}
+                  src={session.mentor_avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.mentor_name || 'User')}&background=3B82F6&color=fff&size=128`}
                   alt={session.mentor_name}
                   className={`w-16 h-16 rounded-full object-cover border-2 ${
                     isUpcoming && isAvailableSession 
@@ -154,7 +154,7 @@ export function SessionCard({
                   }`}
                   onError={(e) => {
                     const target = e.target as HTMLImageElement
-                    target.src = '/images/user/user-01.jpg'
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(session.mentor_name || 'User')}&background=3B82F6&color=fff&size=128`
                   }}
                 />
                 {isUpcoming && isAvailableSession && (

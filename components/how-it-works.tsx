@@ -3,8 +3,19 @@
 import React from "react"
 import { motion } from "framer-motion"
 import { Meteors } from "./ui/meteors"
-import { HowItWorksTimeline } from "./ui/how-it-works-timeline"
-import { TutorCards } from "./tutor-cards"
+import dynamic from "next/dynamic"
+
+// Dynamically import HowItWorksTimeline to avoid SSR issues
+const HowItWorksTimeline = dynamic(
+  () => import("./ui/how-it-works-timeline").then((mod) => ({ default: mod.HowItWorksTimeline })),
+  { ssr: false }
+)
+
+// Dynamically import TutorCards to avoid SSR issues
+const TutorCards = dynamic(
+  () => import("./tutor-cards").then((mod) => ({ default: mod.TutorCards })),
+  { ssr: false }
+)
 
 interface HowItWorksProps {
   searchQuery?: string
@@ -17,6 +28,31 @@ export function HowItWorks({ searchQuery = "", selectedCategory = null }: HowItW
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-transparent" />
       <Meteors number={20} className="absolute inset-0" />
       <div className="container mx-auto px-4 pt-0 pb-4 sm:px-6 lg:px-8 bg-transparent font-['Calibri',sans-serif] relative">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          viewport={{ once: true }}
+          className="text-center mb-8"
+        >
+          <motion.h2
+            className="text-3xl md:text-4xl font-bold mb-4 text-white font-['Verdana',sans-serif] drop-shadow-lg"
+            initial={{ opacity: 0, y: -20 }}
+            whileInView={{
+              opacity: 1,
+              y: 0,
+              transition: {
+                type: "spring",
+                stiffness: 50,
+                damping: 15,
+                mass: 1,
+              },
+            }}
+            viewport={{ once: true }}
+          >
+            Our High Ratings Tutors
+          </motion.h2>
+        </motion.div>
         <TutorCards searchQuery={searchQuery} selectedCategory={selectedCategory} />
 
         <motion.div

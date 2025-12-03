@@ -1,4 +1,4 @@
-import type { Config } from "tailwindcss"
+import type { Config } from "tailwindcss";
 
 const config = {
   darkMode: ["class"],
@@ -154,6 +154,10 @@ const config = {
           "0%, 100%": { transform: "scale(0.8)" },
           "50%": { transform: "scale(1.3)" },
         },
+        "border-rotate": {
+          "0%": { transform: "rotate(0deg)" },
+          "100%": { transform: "rotate(360deg)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -164,6 +168,7 @@ const config = {
         "spin-slow": "spin-slow 15s linear infinite",
         "button-glow": "button-glow 2s ease-in-out infinite",
         "card-zoom": "card-zoom 3s ease-in-out infinite",
+        "border-rotate": "border-rotate 3s linear infinite",
       },
       fontFamily: {
         sans: ["Calibri", "Segoe UI", "system-ui", "sans-serif"],
@@ -172,7 +177,6 @@ const config = {
     },
   },
   plugins: [require("tailwindcss-animate")],
-} satisfies Config
+} satisfies Config;
 
-export default config
-
+export default config;

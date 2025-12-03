@@ -15,7 +15,7 @@ import { Bot, Copy, Send, Sparkles, Wand2, Zap } from "lucide-react"
 import { generateText } from "ai"
 import { openai } from "@ai-sdk/openai"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 import { useToast } from "@/hooks/use-toast"
 
 // Define message type

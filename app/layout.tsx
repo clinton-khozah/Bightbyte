@@ -4,6 +4,8 @@ import { ChatBot } from "@/components/chat-bot"
 import { LoadingProvider } from "@/providers/loading-provider"
 import { StarsBackground } from "@/components/stars-background"
 import { ThemeProvider } from "@/components/theme-provider"
+import { TranslationProvider } from "@/contexts/TranslationContext"
+import { PageTranslator } from "@/components/page-translator"
 
 export const metadata: Metadata = {
   title: "Brightbyt",
@@ -26,13 +28,16 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
       </head>
       <body className="font-sans">
-        <ThemeProvider>
-          <LoadingProvider>
-            <StarsBackground />
-            {children}
-          </LoadingProvider>
-          <ChatBot />
-        </ThemeProvider>
+        <TranslationProvider>
+          <PageTranslator />
+          <ThemeProvider>
+            <LoadingProvider>
+              <StarsBackground />
+              {children}
+            </LoadingProvider>
+            <ChatBot />
+          </ThemeProvider>
+        </TranslationProvider>
       </body>
     </html>
   )

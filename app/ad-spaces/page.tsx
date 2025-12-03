@@ -6,10 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Video, Users, Star, Heart, MessageSquare, Calendar, Clock, Globe, CheckCircle, Filter, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { MapPin, Video, Users, Star, Heart, MessageSquare, Calendar, Clock, Globe, CheckCircle, CheckCircle2, Filter, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 import { PageContainer } from "@/components/page-container"
 import { AnimatePresence, motion } from "framer-motion"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -382,21 +382,30 @@ export default function FindTutorsPage() {
                       >
                   {/* Header */}
                   <div className="flex items-center gap-4 mb-4">
-                    <Avatar className="h-20 w-20 rounded-full border-2 border-blue-300 shadow-md ring-2 ring-blue-100 overflow-hidden flex-shrink-0">
-                      <AvatarImage 
-                        src={tutor.avatar} 
-                        alt={tutor.name}
-                        className="object-cover w-full h-full rounded-full"
-                      />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 font-semibold text-lg rounded-full flex items-center justify-center">
-                        {tutor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-20 w-20 rounded-full border-2 border-blue-300 shadow-md ring-2 ring-blue-100 overflow-hidden flex-shrink-0">
+                        <AvatarImage 
+                          src={tutor.avatar} 
+                          alt={tutor.name}
+                          className="object-cover w-full h-full rounded-full"
+                        />
+                        <AvatarFallback className="bg-gradient-to-br from-blue-100 to-blue-200 text-blue-700 font-semibold text-lg rounded-full flex items-center justify-center">
+                          {tutor.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      {tutor.verified && (
+                        <div className="absolute -bottom-1 -right-1 bg-blue-500 rounded-full p-0.5 border-2 border-white shadow-lg z-10">
+                          <CheckCircle2 className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-900">{tutor.name}</span>
                         {tutor.verified && (
-                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                          <Badge className="bg-blue-500 text-white border-blue-600 text-xs px-2 py-0.5">
+                            Verified
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-1 mt-1">

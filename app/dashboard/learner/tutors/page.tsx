@@ -30,6 +30,7 @@ import { BookingModal } from "@/components/mentors/booking-modal"
 import { ProfilePictureModal } from "@/components/mentors/profile-picture-modal"
 import { GlobeViewer } from "@/components/mentors/globe-viewer"
 import { convertAndFormatPrice } from "@/lib/currency"
+import { fetchTutorPricing, findMatchingPricing } from "@/lib/tutor-pricing"
 
 interface Mentor {
   id: number
@@ -371,20 +372,66 @@ export default function TutorsPage() {
     setFilteredMentors(filtered)
   }, [search, selectedCategory, mentors])
 
-  // Convert hourly rates to local currency when user location is available
+  // Convert hourly rates to local currency using API-based conversion
   useEffect(() => {
     const convertRates = async () => {
-      if (!userLocation || filteredMentors.length === 0) {
+      if (filteredMentors.length === 0) {
         return
       }
 
       const newRates = new Map<number, string>()
 
       try {
+        // Fetch pricing data from database
+        const pricingData = await fetchTutorPricing()
+
         // Convert rates for all filtered mentors
         await Promise.all(
           filteredMentors.map(async (mentor) => {
-            const converted = await convertAndFormatPrice(mentor.hourly_rate, userLocation)
+            let hourlyRateUSD = mentor.hourly_rate && mentor.hourly_rate > 0 
+              ? mentor.hourly_rate 
+              : 0
+
+            // If hourly_rate is 0 or missing, fetch from pricing table
+            if (hourlyRateUSD === 0) {
+              // Get mentor's primary subject from specialization
+              let primarySubject = "General"
+              if (mentor.specialization && Array.isArray(mentor.specialization) && mentor.specialization.length > 0) {
+                primarySubject = mentor.specialization[0]
+              } else if (typeof mentor.specialization === "string") {
+                try {
+                  const parsed = JSON.parse(mentor.specialization)
+                  if (Array.isArray(parsed) && parsed.length > 0) {
+                    primarySubject = parsed[0]
+                  }
+                } catch {
+                  // Keep default
+                }
+              }
+
+              // Determine level from mentor data
+              const mentorLevel = (mentor as any).level || (mentor as any).education_level || "Secondary"
+              const mentorCategory = (mentor as any).category || undefined
+              const mentorSubLevel = (mentor as any).sub_level || (mentor as any).grade_level || undefined
+
+              // Find matching pricing
+              const matchedPricing = findMatchingPricing(
+                pricingData,
+                primarySubject,
+                mentorLevel,
+                mentorCategory,
+                mentorSubLevel
+              )
+
+              // Get hourly rate in USD (use matched pricing or default to $10)
+              hourlyRateUSD = matchedPricing
+                ? parseFloat(matchedPricing.hourly_rate_usd.toString())
+                : 10.0
+            }
+
+            // Convert to local currency using API-based conversion
+            // Works even without userLocation (defaults to USD)
+            const converted = await convertAndFormatPrice(hourlyRateUSD, userLocation)
             newRates.set(mentor.id, converted.formatted)
           })
         )
@@ -799,7 +846,9 @@ export default function TutorsPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-lg font-bold text-blue-600">
-                        {currencyRates.get(mentor.id) || `$${mentor.hourly_rate.toFixed(2)}`}
+                        {currencyRates.get(mentor.id) || (mentor.hourly_rate && mentor.hourly_rate > 0 
+                          ? `$${mentor.hourly_rate.toFixed(2)}` 
+                          : 'Loading...')}
                       </div>
                       <div className="text-xs text-gray-500">
                         /hour
@@ -957,7 +1006,7 @@ export default function TutorsPage() {
             setIsProfilePictureModalOpen(false)
             setProfilePictureMentor(null)
           }}
-          imageUrl={profilePictureMentor.avatar || '/images/user/user-01.jpg'}
+          imageUrl={profilePictureMentor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profilePictureMentor.name)}&background=3B82F6&color=fff&size=128`}
           mentorName={profilePictureMentor.name}
         />
       )}

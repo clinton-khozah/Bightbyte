@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from "next/image";
+import { SignInModal } from "@/components/auth/sign-in-modal";
+import { SignUpModal } from "@/components/auth/sign-up-modal";
 
 interface TimelineItem {
   id: number;
@@ -25,13 +27,20 @@ interface RadialOrbitalTimelineProps {
 export default function RadialOrbitalTimeline({
   timelineData,
 }: RadialOrbitalTimelineProps) {
-  const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>({});
+  const [expandedItems, setExpandedItems] = useState<Record<number, boolean>>(
+    {}
+  );
   const [viewMode, setViewMode] = useState<"orbital">("orbital");
   const [rotationAngle, setRotationAngle] = useState<number>(0);
   const [autoRotate, setAutoRotate] = useState<boolean>(false);
   const [pulseEffect, setPulseEffect] = useState<Record<number, boolean>>({});
-  const [centerOffset, setCenterOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [centerOffset, setCenterOffset] = useState<{ x: number; y: number }>({
+    x: 0,
+    y: 0,
+  });
   const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
+  const [isSignInOpen, setIsSignInOpen] = useState(false);
+  const [isSignUpOpen, setIsSignUpOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
@@ -98,7 +107,7 @@ export default function RadialOrbitalTimeline({
 
   const calculateNodePosition = (index: number, total: number) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 200;
+    const radius = 250;
     const radian = (angle * Math.PI) / 180;
 
     const x = radius * Math.cos(radian) + centerOffset.x;
@@ -139,11 +148,11 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full h-[70vh] flex flex-col items-center overflow-hidden"
+      className="w-full h-[70vh] min-h-[600px] flex flex-col items-center justify-center overflow-visible p-8"
       ref={containerRef}
       onClick={handleContainerClick}
     >
-      <div className="relative w-full max-w-4xl h-full flex items-center justify-center">
+      <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible">
         <div
           className="absolute w-full h-full flex items-center justify-center"
           ref={orbitRef}
@@ -152,19 +161,19 @@ export default function RadialOrbitalTimeline({
             transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
           }}
         >
-          <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-blue-400 to-blue-600 flex items-center justify-center z-10 shadow-lg">
-            <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+          <div className="absolute w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 via-blue-400 to-blue-600 flex items-center justify-center z-10 shadow-lg">
+            <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
               <Image
                 src="/images/logo1.png"
                 alt="Brightbyt Logo"
-                width={40}
-                height={40}
+                width={56}
+                height={56}
                 className="object-contain"
               />
             </div>
           </div>
 
-          <div className="absolute w-96 h-96 rounded-full border-2 border-blue-200"></div>
+          <div className="absolute w-[500px] h-[500px] rounded-full border-[3px] border-blue-200"></div>
 
           {timelineData.map((item, index) => {
             const position = calculateNodePosition(index, timelineData.length);
@@ -205,7 +214,7 @@ export default function RadialOrbitalTimeline({
 
                 <div
                   className={`
-                  w-14 h-14 rounded-full flex items-center justify-center
+                  w-20 h-20 rounded-full flex items-center justify-center
                   ${
                     isExpanded
                       ? "bg-blue-600 text-white"
@@ -213,7 +222,7 @@ export default function RadialOrbitalTimeline({
                       ? "bg-blue-100 text-blue-600"
                       : "bg-white text-blue-600"
                   }
-                  border-2 
+                  border-[3px] 
                   ${
                     isExpanded
                       ? "border-blue-600 shadow-lg shadow-blue-200"
@@ -225,12 +234,12 @@ export default function RadialOrbitalTimeline({
                   ${isExpanded ? "scale-150" : ""}
                 `}
                 >
-                  <Icon size={24} />
+                  <Icon size={28} />
                 </div>
 
                 <div
                   className={`
-                  absolute top-16 whitespace-nowrap
+                  absolute top-24 whitespace-nowrap
                   text-base font-semibold tracking-wider
                   transition-all duration-300
                   ${isExpanded ? "text-white scale-125" : "text-white"}
@@ -240,7 +249,7 @@ export default function RadialOrbitalTimeline({
                 </div>
                 <div
                   className={`
-                  absolute top-28 whitespace-nowrap
+                  absolute top-36 whitespace-nowrap
                   text-sm font-medium tracking-wider
                   transition-all duration-300
                   ${isExpanded ? "text-white scale-110" : "text-white/80"}
@@ -274,7 +283,18 @@ export default function RadialOrbitalTimeline({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm text-gray-700">
-                      <p>{item.content}</p>
+                      <p className="mb-4">{item.content}</p>
+                      {item.id === 1 && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsSignInOpen(true);
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                        >
+                          Sign In
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 )}
@@ -283,6 +303,22 @@ export default function RadialOrbitalTimeline({
           })}
         </div>
       </div>
+
+      {/* Sign In Modal */}
+      <SignInModal
+        isOpen={isSignInOpen}
+        onClose={() => setIsSignInOpen(false)}
+        onSignUp={() => {
+          setIsSignInOpen(false);
+          setIsSignUpOpen(true);
+        }}
+      />
+
+      {/* Sign Up Modal */}
+      <SignUpModal
+        isOpen={isSignUpOpen}
+        onClose={() => setIsSignUpOpen(false)}
+      />
     </div>
   );
-} 
+}

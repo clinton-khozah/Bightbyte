@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react"
 import { motion } from "framer-motion"
 import Link from "next/link"
 import Image from "next/image"
+import { usePathname } from "next/navigation"
 import { LucideIcon, LogIn } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -22,9 +23,17 @@ interface NavBarProps {
 }
 
 export function NavBar({ items, className, onSignIn, onSignUp, rightContent }: NavBarProps) {
-  const [activeTab, setActiveTab] = useState(items[0].name)
+  const pathname = usePathname()
   const [isMobile, setIsMobile] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+
+  // Determine active tab based on current pathname
+  const getActiveTab = () => {
+    const activeItem = items.find(item => pathname === item.url || pathname.startsWith(item.url + '/'))
+    return activeItem ? activeItem.name : null
+  }
+  
+  const activeTab = getActiveTab()
 
   useEffect(() => {
     const handleResize = () => {
@@ -80,10 +89,10 @@ export function NavBar({ items, className, onSignIn, onSignUp, rightContent }: N
               <Link
                 key={item.name}
                 href={item.url}
-                onClick={() => setActiveTab(item.name)}
                 className={cn(
                   "relative cursor-pointer text-lg font-medium text-gray-700 transition-colors px-3",
                   "hover:text-blue-600",
+                  activeTab === item.name && "text-blue-600",
                   "relative group"
                 )}
               >
@@ -127,14 +136,14 @@ export function NavBar({ items, className, onSignIn, onSignUp, rightContent }: N
             <LogIn size={14} />
             Sign In
           </button>
-          <Link
-            href="/signup"
+          <button
+            onClick={onSignUp}
             className={cn(
               "px-4 py-2 rounded-md text-xs font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 transition-all shadow-md hover:shadow-lg"
             )}
           >
             Get Started
-          </Link>
+          </button>
         </div>
       </div>
     </div>

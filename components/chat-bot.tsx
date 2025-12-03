@@ -8,7 +8,7 @@ import Image from "next/image"
 export function ChatBot() {
   // WhatsApp link - update with your actual WhatsApp number
   // Format: https://wa.me/PHONENUMBER (include country code, no + or spaces)
-  const whatsappLink = "https://wa.me/1234567890" // Replace with your WhatsApp number
+  const whatsappLink = "https://wa.me/27723592849" // WhatsApp number: +27723592849
 
   return (
     <div className="fixed bottom-6 right-6 z-50">

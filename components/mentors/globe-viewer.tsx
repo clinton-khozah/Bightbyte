@@ -13,9 +13,6 @@ const TileLayer = dynamic(() => import('react-leaflet').then(mod => mod.TileLaye
 const Marker = dynamic(() => import('react-leaflet').then(mod => mod.Marker), { ssr: false })
 const Popup = dynamic(() => import('react-leaflet').then(mod => mod.Popup), { ssr: false })
 
-// Import Leaflet CSS
-import 'leaflet/dist/leaflet.css'
-
 interface Mentor {
   id: number
   name: string
@@ -131,6 +128,16 @@ export function GlobeViewer({ isOpen, onClose, userLocation, mentors, onMentorCl
   // Load Leaflet on client side
   useEffect(() => {
     if (typeof window !== 'undefined' && isOpen) {
+      // Load Leaflet CSS dynamically via link tag
+      if (!document.querySelector('link[href*="leaflet"]')) {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
+        link.crossOrigin = '';
+        document.head.appendChild(link);
+      }
+      
       import('leaflet').then(leaflet => {
         setL(leaflet.default)
         // Small delay to ensure DOM is ready

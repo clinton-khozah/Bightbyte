@@ -13,9 +13,10 @@ interface SignInModalProps {
   isOpen: boolean
   onClose: () => void
   onSignUp: () => void
+  onSuccess?: () => void // Optional callback to prevent redirect
 }
 
-export function SignInModal({ isOpen, onClose, onSignUp }: SignInModalProps) {
+export function SignInModal({ isOpen, onClose, onSignUp, onSuccess }: SignInModalProps) {
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState("")
@@ -42,6 +43,16 @@ export function SignInModal({ isOpen, onClose, onSignUp }: SignInModalProps) {
         .select('id, email')
         .eq('id', authData.user?.id)
         .maybeSingle()
+
+      // If onSuccess callback is provided, call it instead of redirecting (for booking flow)
+      if (onSuccess) {
+        console.log('Login successful, calling onSuccess callback')
+        onClose()
+        setTimeout(() => {
+          onSuccess()
+        }, 100)
+        return
+      }
 
       // If user is a mentor/tutor, redirect to tutor dashboard
       if (mentorData && !mentorError) {
@@ -124,6 +135,16 @@ export function SignInModal({ isOpen, onClose, onSignUp }: SignInModalProps) {
       }
 
       console.log("Supabase Google authentication successful:", data.user)
+
+      // If onSuccess callback is provided, call it instead of redirecting (for booking flow)
+      if (onSuccess) {
+        console.log('Google login successful, calling onSuccess callback')
+        onClose()
+        setTimeout(() => {
+          onSuccess()
+        }, 100)
+        return
+      }
 
       // Check if user exists in mentors or students table
       const { data: mentorData, error: mentorError } = await supabase

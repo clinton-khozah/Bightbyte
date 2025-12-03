@@ -3,77 +3,78 @@
 import React, { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Card, CardContent } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 import { cn } from "@/lib/utils"
 import { ChevronLeft, ChevronRight, Star } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 interface Testimonial {
-  id: number
+  id: string
   name: string
   role: string
   company: string
   content: string
   avatar: string
   rating: number
+  mentor_name?: string
 }
 
-const testimonials: Testimonial[] = [
-  {
-    id: 1,
-    name: "Sarah Johnson",
-    role: "Marketing Director",
-    company: "TechCorp",
-    content: "The platform has transformed how we handle our advertising. The ROI tracking is incredible, and the audience targeting is spot-on.",
-    avatar: "https://source.unsplash.com/featured/100x100?portrait=1",
-    rating: 5
-  },
-  {
-    id: 2,
-    name: "Michael Chen",
-    role: "Digital Strategist",
-    company: "GrowthLabs",
-    content: "As an advertiser, I love how easy it is to find and book premium ad spaces. The analytics dashboard is a game-changer.",
-    avatar: "https://source.unsplash.com/featured/100x100?portrait=2",
-    rating: 5
-  },
-  {
-    id: 3,
-    name: "Emma Davis",
-    role: "Content Creator",
-    company: "CreativeHub",
-    content: "The platform made monetizing my content so much easier. The payment process is smooth, and the support team is always helpful.",
-    avatar: "https://source.unsplash.com/featured/100x100?portrait=3",
-    rating: 5
-  },
-  {
-    id: 4,
-    name: "James Wilson",
-    role: "Publisher",
-    company: "MediaGroup",
-    content: "We've seen a 40% increase in ad revenue since joining. The platform's optimization tools are incredibly effective.",
-    avatar: "https://source.unsplash.com/featured/100x100?portrait=4",
-    rating: 5
-  },
-  {
-    id: 5,
-    name: "Lisa Anderson",
-    role: "Brand Manager",
-    company: "FashionForward",
-    content: "The targeting capabilities are impressive. We're reaching our ideal audience more effectively than ever before.",
-    avatar: "https://source.unsplash.com/featured/100x100?portrait=5",
-    rating: 5
-  }
-]
-
 export function TestimonialCarousel() {
+  const [testimonials, setTestimonials] = useState<Testimonial[]>([])
+  const [loading, setLoading] = useState(true)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [direction, setDirection] = useState(0)
   const [isAutoPlaying, setIsAutoPlaying] = useState(true)
 
+  // Fetch testimonials from API
+  useEffect(() => {
+    const fetchTestimonials = async () => {
+      try {
+        setLoading(true)
+        const response = await fetch('http://127.0.0.1:8000/api/v1/mentors/testimonials/list/', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const data = await response.json()
+
+        if (data.success && data.testimonials) {
+          // Map API data to component format
+          const mappedTestimonials: Testimonial[] = data.testimonials.map((testimonial: any) => ({
+            id: testimonial.id,
+            name: testimonial.student_name,
+            role: testimonial.student_role || '',
+            company: testimonial.student_company || '',
+            content: testimonial.content,
+            avatar: testimonial.avatar_url || `https://source.unsplash.com/featured/100x100?portrait=${testimonial.id}`,
+            rating: testimonial.rating || 5,
+            mentor_name: testimonial.mentor_name || ''
+          }))
+          setTestimonials(mappedTestimonials)
+        } else {
+          console.error('Failed to fetch testimonials:', data.message)
+          setTestimonials([])
+        }
+      } catch (error) {
+        console.error('Error fetching testimonials:', error)
+        setTestimonials([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchTestimonials()
+  }, [])
+
   // Auto-play functionality
   useEffect(() => {
-    if (!isAutoPlaying) return
+    if (!isAutoPlaying || testimonials.length === 0) return
     
     const interval = setInterval(() => {
       setDirection(1)
@@ -81,27 +82,39 @@ export function TestimonialCarousel() {
     }, 5000)
     
     return () => clearInterval(interval)
-  }, [isAutoPlaying])
+  }, [isAutoPlaying, testimonials.length])
 
   // Handle navigation
   const handlePrevious = () => {
+    if (testimonials.length === 0) return
     setIsAutoPlaying(false)
     setDirection(-1)
     setCurrentIndex((prevIndex) => (prevIndex - 1 + testimonials.length) % testimonials.length)
   }
 
   const handleNext = () => {
+    if (testimonials.length === 0) return
     setIsAutoPlaying(false)
     setDirection(1)
     setCurrentIndex((prevIndex) => (prevIndex + 1) % testimonials.length)
   }
 
-  // Calculate visible testimonials (current + next/previous)
-  const visibleTestimonials = [
-    testimonials[(currentIndex - 1 + testimonials.length) % testimonials.length],
-    testimonials[currentIndex],
-    testimonials[(currentIndex + 1) % testimonials.length]
-  ]
+  // Show loading or empty state
+  if (loading) {
+    return (
+      <div className="relative w-full py-10 flex justify-center items-center">
+        <div className="text-gray-400">Loading testimonials...</div>
+      </div>
+    )
+  }
+
+  if (testimonials.length === 0) {
+    return (
+      <div className="relative w-full py-10 flex justify-center items-center">
+        <div className="text-gray-400">No testimonials available yet.</div>
+      </div>
+    )
+  }
 
   return (
     <div className="relative w-full py-10">
@@ -151,10 +164,24 @@ export function TestimonialCarousel() {
                     <div className="flex-grow">
                       <div className="flex flex-wrap items-center gap-2 mb-3">
                         <h3 className="text-xl font-bold text-white">{testimonials[currentIndex].name}</h3>
-                        <span className="text-gray-400">•</span>
-                        <p className="text-gray-300">{testimonials[currentIndex].role}</p>
-                        <span className="text-gray-400">•</span>
-                        <p className="text-gray-300">{testimonials[currentIndex].company}</p>
+                        {testimonials[currentIndex].role && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <p className="text-gray-300">{testimonials[currentIndex].role}</p>
+                          </>
+                        )}
+                        {testimonials[currentIndex].company && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <p className="text-gray-300">{testimonials[currentIndex].company}</p>
+                          </>
+                        )}
+                        {testimonials[currentIndex].mentor_name && (
+                          <>
+                            <span className="text-gray-400">•</span>
+                            <p className="text-blue-400 font-medium">About {testimonials[currentIndex].mentor_name}</p>
+                          </>
+                        )}
                       </div>
                       <div className="flex gap-1 mb-4">
                         {[...Array(5)].map((_, i) => (

@@ -568,12 +568,12 @@ export default function MentorsPage() {
                         className="cursor-pointer hover:opacity-80 transition-opacity"
                       >
                         <img
-                          src={mentor.avatar || '/images/user/user-01.jpg'}
+                          src={mentor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`}
                           alt={mentor.name}
                           className="w-14 h-14 rounded-full object-cover border-2 border-blue-200 hover:border-blue-400 transition-colors"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement
-                            target.src = '/images/user/user-01.jpg'
+                            target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(mentor.name)}&background=3B82F6&color=fff&size=128`
                           }}
                         />
                       </button>
@@ -746,7 +746,7 @@ export default function MentorsPage() {
             setIsProfilePictureModalOpen(false)
             setProfilePictureMentor(null)
           }}
-          imageUrl={profilePictureMentor.avatar || '/images/user/user-01.jpg'}
+          imageUrl={profilePictureMentor.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(profilePictureMentor.name)}&background=3B82F6&color=fff&size=128`}
           mentorName={profilePictureMentor.name}
         />
       )}

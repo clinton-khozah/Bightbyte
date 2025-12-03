@@ -37,8 +37,19 @@ import { supabase } from "@/lib/supabase"
 import { UserProfilePopup } from "./user-profile-popup"
 import { LogoutConfirmationModal } from "./logout-confirmation-modal"
 import { MessagesModal } from "./messages-modal"
-import { CreateSessionModal } from "./create-session-modal"
-import { MentorSettingsModal } from "./mentor-settings-modal"
+import dynamic from "next/dynamic"
+
+// Dynamically import CreateSessionModal to avoid SSR issues for learners
+const CreateSessionModal = dynamic(
+  () => import("./create-session-modal").then((mod) => ({ default: mod.CreateSessionModal })),
+  { ssr: false }
+)
+
+// Dynamically import MentorSettingsModal to avoid SSR issues for learners
+const MentorSettingsModal = dynamic(
+  () => import("./mentor-settings-modal").then((mod) => ({ default: mod.MentorSettingsModal })),
+  { ssr: false }
+)
 
 interface SidebarLink {
   icon: any
