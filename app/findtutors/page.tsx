@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Video, Users, Star, Heart, MessageSquare, Calendar, Clock, Globe, CheckCircle, CheckCircle2, Filter, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { MapPin, Video, Users, Star, Calendar, Clock, Globe, CheckCircle, CheckCircle2, Filter, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
@@ -579,20 +579,6 @@ export default function FindTutorsPage() {
 
                   {/* Actions */}
                   <div className="flex gap-2 mt-auto">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:bg-red-50 text-gray-500 hover:text-red-500"
-                    >
-                      <Heart className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="hover:bg-blue-50 text-gray-500 hover:text-blue-500"
-                    >
-                      <MessageSquare className="h-5 w-5" />
-                    </Button>
                     <Button
                       className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                       onClick={() => handleViewDetails(tutor)}

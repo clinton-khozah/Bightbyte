@@ -111,6 +111,14 @@ const TutorRequestPopup = dynamic(
   { ssr: false }
 );
 
+const ScratchCardGame = dynamic(
+  () =>
+    import("@/components/dashboard/scratch-card-game").then((mod) => ({
+      default: mod.ScratchCardGame,
+    })),
+  { ssr: false }
+);
+
 // Stats will be computed inside the component based on tutorRequests
 
 const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
@@ -262,6 +270,7 @@ export default function LearnerDashboard() {
       { hourlyRateUSD: number; hourlyRateLocal: string; currencySymbol: string }
     >
   >({});
+  const [isScratchCardOpen, setIsScratchCardOpen] = React.useState(false);
   const router = useRouter();
 
   const handleCloseRequest = (requestId: number) => {
@@ -553,6 +562,44 @@ export default function LearnerDashboard() {
 
     fetchUserData();
   }, [router]);
+
+  // Check if user has played scratch card today
+  React.useEffect(() => {
+    if (!userData?.id || loading) return;
+
+    const checkScratchCardEligibility = async () => {
+      if (!userData?.id || loading) return;
+
+      try {
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD format
+
+        const { data, error } = await supabase
+          .from("scratch_card_plays")
+          .select("play_date")
+          .eq("user_id", userData.id)
+          .eq("play_date", today)
+          .maybeSingle();
+
+        if (error && error.code !== "PGRST116") {
+          // PGRST116 is "not found" error
+          console.error("Error checking scratch card eligibility:", error);
+          return;
+        }
+
+        // If no play found for today, show the scratch card modal
+        if (!data) {
+          // Small delay to let the page load first
+          setTimeout(() => {
+            setIsScratchCardOpen(true);
+          }, 1000);
+        }
+      } catch (error) {
+        console.error("Error checking scratch card eligibility:", error);
+      }
+    };
+
+    checkScratchCardEligibility();
+  }, [userData?.id, loading]);
 
   // Auto-detect user location on page load for currency conversion
   React.useEffect(() => {
@@ -1703,9 +1750,36 @@ export default function LearnerDashboard() {
                   const discountedRateUSD = hourlyRateUSD * 0.75;
 
                   // Convert to local currency using API-based conversion
+                  // Use userLocation if available, otherwise try to detect from browser
+                  let locationToUse = userLocation;
+
+                  // If userLocation is not set, try to get it from geolocation
+                  if (!locationToUse && navigator.geolocation) {
+                    try {
+                      const position = await new Promise<GeolocationPosition>(
+                        (resolve, reject) => {
+                          navigator.geolocation.getCurrentPosition(
+                            resolve,
+                            reject,
+                            { timeout: 5000 }
+                          );
+                        }
+                      );
+                      locationToUse = {
+                        lat: position.coords.latitude,
+                        lng: position.coords.longitude,
+                      };
+                    } catch (error) {
+                      console.warn(
+                        "Could not get user location for currency conversion:",
+                        error
+                      );
+                    }
+                  }
+
                   const convertedPrice = await convertAndFormatPrice(
                     discountedRateUSD,
-                    userLocation
+                    locationToUse
                   );
 
                   pricingMap[request.id] = {
@@ -1766,6 +1840,44 @@ export default function LearnerDashboard() {
       fetchTutorRequests();
     }
   }, [userData]);
+
+  // Reconvert pricing when userLocation changes (if pricing already exists)
+  React.useEffect(() => {
+    if (!userLocation || Object.keys(requestPricing).length === 0) return;
+
+    const reconvertPricing = async () => {
+      try {
+        const pricingMap: Record<
+          number,
+          {
+            hourlyRateUSD: number;
+            hourlyRateLocal: string;
+            currencySymbol: string;
+          }
+        > = {};
+
+        // Reconvert existing USD amounts with new location
+        await Promise.all(
+          Object.entries(requestPricing).map(async ([requestId, pricing]) => {
+            const convertedPrice = await convertAndFormatPrice(
+              pricing.hourlyRateUSD,
+              userLocation
+            );
+            pricingMap[parseInt(requestId)] = {
+              hourlyRateUSD: pricing.hourlyRateUSD,
+              hourlyRateLocal: convertedPrice.formatted,
+              currencySymbol: convertedPrice.symbol,
+            };
+          })
+        );
+        setRequestPricing(pricingMap);
+      } catch (error) {
+        console.error("Error reconverting pricing:", error);
+      }
+    };
+
+    reconvertPricing();
+  }, [userLocation]);
 
   // Fetch tasks for the learner
   React.useEffect(() => {
@@ -4705,6 +4817,15 @@ export default function LearnerDashboard() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Scratch Card Game Modal */}
+      {userData?.id && (
+        <ScratchCardGame
+          isOpen={isScratchCardOpen}
+          onClose={() => setIsScratchCardOpen(false)}
+          userId={userData.id}
+        />
+      )}
     </DashboardLayout>
   );
 }

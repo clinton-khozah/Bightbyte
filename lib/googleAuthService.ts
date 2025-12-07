@@ -151,19 +151,19 @@ class GoogleAuthService {
               console.log("Google prompt notification:", notification);
 
               if (notification.isNotDisplayed()) {
-                console.log("Prompt not displayed, using fallback popup...");
-                // Fallback to popup
-                this.showGooglePopup(isSignUp, resolve, reject);
+                const reason = notification.getNotDisplayedReason();
+                console.log("Prompt not displayed, reason:", reason);
+                // Check if suppressed by user or any other reason, fallback to popup
+                if (reason === "suppressed_by_user" || reason === "browser_not_supported" || reason === "invalid_client") {
+                  console.log("Prompt suppressed, using fallback popup...");
+                  this.showGooglePopup(isSignUp, resolve, reject);
+                } else {
+                  // For other reasons, still try popup as fallback
+                  console.log("Prompt not displayed, using fallback popup...");
+                  this.showGooglePopup(isSignUp, resolve, reject);
+                }
               } else if (notification.isSkippedMoment()) {
                 console.log("Prompt skipped, using fallback popup...");
-                // Fallback to popup
-                this.showGooglePopup(isSignUp, resolve, reject);
-              } else if (
-                notification.getDisplayedReason() === "suppressed_by_user"
-              ) {
-                console.log(
-                  "Prompt suppressed by user, using fallback popup..."
-                );
                 // Fallback to popup
                 this.showGooglePopup(isSignUp, resolve, reject);
               } else if (notification.isDismissedMoment()) {
@@ -171,9 +171,8 @@ class GoogleAuthService {
                   "Prompt dismissed, checking if credential was returned..."
                 );
                 // The prompt was dismissed, but we need to check if a credential was returned
-                if (
-                  notification.getDismissedReason() === "credential_returned"
-                ) {
+                const dismissedReason = notification.getDismissedReason();
+                if (dismissedReason === "credential_returned") {
                   console.log(
                     "Credential was returned, but callback should have been called"
                   );

@@ -527,10 +527,7 @@ export function UserProfilePopup({
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center"
         >
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 text-white animate-spin" />
-            <p className="text-white text-sm">Updating profile...</p>
-          </div>
+          <Loader2 className="h-8 w-8 text-white animate-spin" />
         </motion.div>
       )}
 
@@ -604,10 +601,10 @@ export function UserProfilePopup({
               top: "50%",
               left: "50%",
               width: "90%",
-              maxWidth: "72rem",
-              maxHeight: "90vh",
+              maxWidth: "42rem",
+              maxHeight: "85vh",
             }}
-            className="overflow-y-auto bg-white border border-gray-200 rounded-xl p-8 z-50 shadow-2xl"
+            className="overflow-y-auto bg-white border border-gray-200 rounded-xl p-5 z-50 shadow-2xl"
           >
             {/* Header Actions */}
             <div className="absolute top-4 right-4 flex items-center gap-2">
@@ -633,7 +630,6 @@ export function UserProfilePopup({
             {!profileData ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                <p className="ml-3 text-gray-600">Loading profile...</p>
               </div>
             ) : (
               <>
@@ -642,8 +638,8 @@ export function UserProfilePopup({
                   const status = getVerificationStatus();
                   return (
                     <>
-                      <div className="text-center mb-4">
-                        <div className="relative w-24 h-24 mx-auto mb-4">
+                      <div className="text-center mb-3">
+                        <div className="relative w-16 h-16 mx-auto mb-3">
                           {profileData?.avatar_url ? (
                             <img
                               src={profileData.avatar_url}
@@ -961,22 +957,31 @@ export function UserProfilePopup({
                         {/* Left Column */}
                         <div className="space-y-3">
                           {/* Email */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Mail size={14} className="text-blue-500" />
-                              <h3 className="text-xs font-medium text-gray-700">
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Mail
+                                size={12}
+                                className="text-blue-500 flex-shrink-0"
+                              />
+                              <h3 className="text-xs font-medium text-gray-700 truncate">
                                 Email
                               </h3>
                             </div>
-                            <p className="text-gray-600 text-xs mt-1">
+                            <p
+                              className="text-gray-600 text-xs truncate"
+                              title={profileData?.email}
+                            >
                               {profileData?.email}
                             </p>
                           </div>
 
                           {/* Phone Number */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Phone size={14} className="text-green-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Phone
+                                size={12}
+                                className="text-green-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 Phone
                               </h3>
@@ -1002,9 +1007,12 @@ export function UserProfilePopup({
                           </div>
 
                           {/* Country */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <MapPin size={14} className="text-red-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MapPin
+                                size={12}
+                                className="text-red-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 Country
                               </h3>
@@ -1030,9 +1038,12 @@ export function UserProfilePopup({
                           </div>
 
                           {/* City */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <MapPin size={14} className="text-orange-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <MapPin
+                                size={12}
+                                className="text-orange-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 City
                               </h3>
@@ -1091,11 +1102,14 @@ export function UserProfilePopup({
                           )}
 
                           {/* Current Level */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <BookOpen size={14} className="text-cyan-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <BookOpen
+                                size={12}
+                                className="text-cyan-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
-                                Current Level
+                                Level
                               </h3>
                             </div>
                             {isEditing ? (
@@ -1125,9 +1139,12 @@ export function UserProfilePopup({
                           </div>
 
                           {/* Member Since */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Calendar size={14} className="text-yellow-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Calendar
+                                size={12}
+                                className="text-yellow-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 Member Since
                               </h3>
@@ -1194,11 +1211,14 @@ export function UserProfilePopup({
                           )}
 
                           {/* Languages Spoken */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Languages size={14} className="text-teal-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Languages
+                                size={12}
+                                className="text-teal-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
-                                Languages Spoken
+                                Languages
                               </h3>
                             </div>
                             {isEditing ? (
@@ -1230,9 +1250,12 @@ export function UserProfilePopup({
                           </div>
 
                           {/* Interests */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Target size={14} className="text-rose-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Target
+                                size={12}
+                                className="text-rose-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 Interests
                               </h3>
@@ -1349,9 +1372,12 @@ export function UserProfilePopup({
                           )}
 
                           {/* Last Updated */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Calendar size={14} className="text-purple-500" />
+                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <Calendar
+                                size={12}
+                                className="text-purple-500 flex-shrink-0"
+                              />
                               <h3 className="text-xs font-medium text-gray-700">
                                 Last Updated
                               </h3>

@@ -612,20 +612,23 @@ export default function DashboardPage() {
               request.grade_level // sub_level
             );
 
-            const hourlyRateUSD = matchedPricing
+            let hourlyRateUSD = matchedPricing
               ? parseFloat(matchedPricing.hourly_rate_usd.toString())
               : 10.0;
+
+            // Apply 25% discount for tutor requests
+            const discountedRateUSD = hourlyRateUSD * 0.75;
 
             // Convert to local currency (using mentor's country or default to USD)
             const mentorCountry = mentorData?.country || "United States";
             const hourlyRateLocal = convertUSDToLocal(
-              hourlyRateUSD,
+              discountedRateUSD,
               mentorCountry
             );
             const currencyInfo = getCurrencyForCountry(mentorCountry);
 
             pricingMap[request.id] = {
-              hourlyRateUSD,
+              hourlyRateUSD: discountedRateUSD,
               hourlyRateLocal: `${currencyInfo.symbol}${hourlyRateLocal.toFixed(
                 2
               )}`,

@@ -63,9 +63,9 @@ const values = [
 ]
 
 const statsInitial = [
-  { label: "Active Mentors", value: 0, suffix: "", icon: UserCheck, key: "mentors" },
-  { label: "Countries", value: 5, suffix: "", icon: MapPin, key: "countries" },
-  { label: "Success Rate", value: 98, suffix: "%", icon: BarChart3, key: "success" }
+  { label: "Active Mentors", value: 0, suffix: "", icon: Users, key: "mentors" },
+  { label: "Countries", value: 5, suffix: "", icon: Globe, key: "countries" },
+  { label: "Success Rate", value: 98, suffix: "%", icon: CheckCircle, key: "success" }
 ]
 
 // Full text content for text-to-speech

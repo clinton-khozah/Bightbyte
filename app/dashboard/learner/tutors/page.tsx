@@ -630,12 +630,12 @@ export default function TutorsPage() {
           
           <div className="mb-8">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-1 h-12 bg-gradient-to-b from-blue-600 to-purple-600 rounded-full"></div>
+              <div className="w-1 h-12 bg-gradient-to-b from-blue-600 to-blue-700 rounded-full"></div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-900 to-purple-900 bg-clip-text text-transparent mb-2">
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-blue-800 to-blue-900 bg-clip-text text-transparent mb-2">
                   Find Tutors, Lecturers & Therapists
                 </h1>
-                <div className="h-1 w-20 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full"></div>
+                <div className="h-1 w-20 bg-gradient-to-r from-blue-600 to-blue-700 rounded-full"></div>
               </div>
             </div>
             <p className="text-lg text-gray-600 ml-4 leading-relaxed max-w-2xl">
@@ -657,7 +657,7 @@ export default function TutorsPage() {
                   variant={isActive ? "default" : "outline"}
                   className={`flex items-center gap-2 px-6 py-3 rounded-lg transition-all ${
                     isActive
-                      ? "bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md hover:shadow-lg"
+                      ? "bg-blue-600 text-white shadow-md hover:shadow-lg hover:bg-blue-700"
                       : "bg-white border-2 border-gray-200 hover:border-blue-300 text-gray-700 hover:bg-blue-50"
                   }`}
                 >
@@ -674,7 +674,7 @@ export default function TutorsPage() {
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
             <div className="flex flex-col sm:flex-row gap-4">
               <div className="flex-1 relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
+                <div className="absolute inset-0 bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity -z-10"></div>
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 group-focus-within:text-blue-600 transition-colors" />
                 <Input
                   type="search"
@@ -687,7 +687,7 @@ export default function TutorsPage() {
               <Button
                 onClick={getCurrentLocation}
                 disabled={isFindingNearby}
-                className="h-14 px-8 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold flex items-center gap-2 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="h-14 px-8 bg-blue-600 hover:bg-blue-700 text-white font-semibold flex items-center gap-2 rounded-lg shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isFindingNearby ? (
                   <>
@@ -714,7 +714,7 @@ export default function TutorsPage() {
 
           {/* Results Count */}
           <div className="mt-6 flex items-center gap-3">
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg border border-blue-100">
+            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-100">
               <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-semibold text-gray-700">
                 {filteredMentors.length} {filteredMentors.length === 1 ? 'mentor' : 'mentors'} found
@@ -739,7 +739,7 @@ export default function TutorsPage() {
             {(search || userLocation) && (
               <Button
                 onClick={() => setIsGlobeViewerOpen(true)}
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium px-6 py-3 rounded-lg flex items-center gap-2 mx-auto"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-3 rounded-lg flex items-center gap-2 mx-auto"
               >
                 <Navigation className="w-5 h-5" />
                 Explore on Globe
@@ -831,7 +831,7 @@ export default function TutorsPage() {
                           {mentor.title}
                         </p>
                         {categoryInfo && (
-                          <Badge variant="secondary" className="mt-1 text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          <Badge variant="secondary" className="mt-1 text-xs bg-blue-50 text-blue-700 border-blue-200">
                             {categoryInfo.icon && <categoryInfo.icon className="w-3 h-3 mr-1" />}
                             {categoryInfo.label}
                           </Badge>

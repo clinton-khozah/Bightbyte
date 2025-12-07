@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import { Navbar } from "@/components/navbar"
 import { useTheme } from "next-themes"
 import { Input } from "@/components/ui/input"
@@ -555,9 +554,8 @@ export default function InfluencersPage() {
   // Badge logic
   const getBadges = (inf: any) => {
     const badges = []
-    if (inf.rating >= 4.5) badges.push({ label: 'Top Mentor', color: 'bg-yellow-400 text-yellow-900 animate-bounce' })
-    if (inf.verified) badges.push({ label: 'Verified', color: 'bg-blue-500 text-white animate-pulse' })
-    if (inf.rating >= 4.0 && inf.rating < 4.5) badges.push({ label: 'Trending', color: 'bg-pink-500 text-white animate-pulse' })
+    if (inf.verified) badges.push({ label: 'Verified', color: 'bg-blue-500 text-white' })
+    if (inf.rating >= 4.0 && inf.rating < 4.5) badges.push({ label: 'Trending', color: 'bg-pink-500 text-white' })
     return badges
   }
   
@@ -619,16 +617,10 @@ export default function InfluencersPage() {
               )}
 
               <div className="flex-1 overflow-hidden relative">
-                <motion.div
+                <div
                   className="flex gap-8"
-                  animate={{
-                    x: `-${currentIndex * (100 / cardsPerView)}%`
-                  }}
-                  transition={{
-                    type: "spring",
-                    stiffness: 300,
-                    damping: 30,
-                    mass: 0.8
+                  style={{
+                    transform: `translateX(-${currentIndex * (100 / cardsPerView)}%)`
                   }}
                 >
                   {filteredInfluencers.map((influencer, index) => (
@@ -662,8 +654,8 @@ export default function InfluencersPage() {
                     <h3 className={`font-bold text-xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{influencer.name}</h3>
                   {(influencer.achievements?.length ?? 0) > 0 && (
                       <div className="flex gap-1">
-                        <Award size={18} className="text-yellow-400 animate-bounce" />
-                        <Trophy size={18} className="text-yellow-400 animate-bounce" />
+                        <Award size={18} className="text-yellow-400" />
+                        <Trophy size={18} className="text-yellow-400" />
                     </div>
                   )}
                 </div>
@@ -734,7 +726,7 @@ export default function InfluencersPage() {
                       </div>
                     </div>
                   ))}
-                </motion.div>
+                </div>
               </div>
 
               {/* Right Arrow */}
