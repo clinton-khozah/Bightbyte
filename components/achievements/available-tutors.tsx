@@ -10,13 +10,13 @@ import {
   Star, 
   CheckCircle2, 
   Eye,
-  Loader2,
   Users,
   BookOpen,
   GraduationCap,
   Heart,
   Sparkles
 } from "lucide-react"
+import { LoadingLogo } from "@/components/loading-logo"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -234,7 +234,7 @@ export function AvailableTutors({
       {/* Mentors Grid */}
       {mentorsLoading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <LoadingLogo size={32} />
         </div>
       ) : filteredMentors.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-lg border border-gray-200">

@@ -10,7 +10,6 @@ import {
   Clock,
   Edit2,
   Check,
-  Loader2,
   Phone,
   MapPin,
   User,
@@ -25,6 +24,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { VerificationPopup } from "./verification-popup";
 import { LogoutConfirmationModal } from "./logout-confirmation-modal";
 import { supabase } from "@/lib/supabase";
+import { LoadingLogo } from "@/components/loading-logo";
+import Image from "next/image";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 interface UserProfilePopupProps {
   isOpen: boolean;
@@ -522,18 +524,20 @@ export function UserProfilePopup({
       {/* Loading Overlay */}
       {isLoading && (
         <motion.div
+          key="loading-overlay"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] flex items-center justify-center"
         >
-          <Loader2 className="h-8 w-8 text-white animate-spin" />
+          <LoadingLogo size={32} />
         </motion.div>
       )}
 
       {/* Success Popup */}
       {showSuccess && (
         <motion.div
+          key="success-popup"
           initial={{ opacity: 0, y: -20, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -20, scale: 0.95 }}
@@ -581,843 +585,921 @@ export function UserProfilePopup({
 
       {/* Profile Popup */}
       {isOpen && (
-        <>
-          {/* Backdrop */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.7 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50"
-          />
+        <React.Fragment key="profile-popup">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              key="profile-backdrop"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onClose}
+              className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            />
 
-          {/* Popup Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }}
-            animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
-            exit={{ opacity: 0, scale: 0.95, x: "-50%", y: "-50%" }}
-            style={{
-              position: "fixed",
-              top: "50%",
-              left: "50%",
-              width: "90%",
-              maxWidth: "42rem",
-              maxHeight: "85vh",
-            }}
-            className="overflow-y-auto bg-white border border-gray-200 rounded-xl p-5 z-50 shadow-2xl"
-          >
-            {/* Header Actions */}
-            <div className="absolute top-4 right-4 flex items-center gap-2">
-              {/* Logout Button */}
-              <button
-                onClick={() => setIsLogoutModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
-                title="Logout"
+            {/* Popup Card */}
+            <motion.div
+              key="profile-card"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="relative w-full max-w-md max-h-[90vh] overflow-hidden z-50"
+            >
+              <div
+                className="relative p-[3px] rounded-xl animate-border-rotate"
+                style={{
+                  background:
+                    "conic-gradient(from 0deg, #3b82f6, #2563eb, #1d4ed8, #1e40af, #3b82f6)",
+                }}
               >
-                <LogOut size={16} />
-                <span>Logout</span>
-              </button>
-              {/* Close Button */}
-              <button
-                onClick={onClose}
-                className="text-gray-500 hover:text-gray-700 transition-colors p-1 hover:bg-gray-100 rounded"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Loading State */}
-            {!profileData ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-              </div>
-            ) : (
-              <>
-                {/* Profile Content */}
-                {(() => {
-                  const status = getVerificationStatus();
-                  return (
-                    <>
-                      <div className="text-center mb-3">
-                        <div className="relative w-16 h-16 mx-auto mb-3">
-                          {profileData?.avatar_url ? (
-                            <img
-                              src={profileData.avatar_url}
-                              alt={profileData.full_name || "User"}
-                              className="w-full h-full rounded-full object-cover border-4 border-gray-200"
-                            />
-                          ) : (
-                            <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center border-4 border-blue-200">
-                              <span className="text-3xl font-medium text-white">
-                                {(profileData?.full_name ||
-                                  "U")[0].toUpperCase()}
-                              </span>
-                            </div>
-                          )}
-                          <div
-                            className={`absolute bottom-1 right-1 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-gray-200 shadow-sm ${
-                              status.clickable
-                                ? "cursor-pointer hover:bg-gray-50 transition-colors"
-                                : ""
-                            }`}
-                            onClick={() => {
-                              if (status.clickable) {
-                                onClose();
-                                setIsVerificationOpen(true);
-                              }
-                            }}
-                          >
-                            <status.icon size={12} className={status.color} />
-                            <span
-                              className={`text-xs font-medium ${status.color}`}
-                            >
-                              {status.text}
-                            </span>
-                          </div>
+                <Card className="bg-white shadow-2xl border-2 border-blue-200 rounded-xl overflow-hidden relative z-10 max-h-[90vh] flex flex-col">
+                  <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-500 text-white pb-2 pt-3 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1">
+                          <Image
+                            src="/images/logo1.png"
+                            alt="BrightByt Logo"
+                            width={24}
+                            height={24}
+                            className="object-contain"
+                          />
                         </div>
-                        <div className="flex items-center justify-center gap-2">
-                          {isEditing ? (
-                            <input
-                              type="text"
-                              value={formData.full_name}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  full_name: e.target.value,
-                                })
-                              }
-                              className="text-xl font-bold text-gray-900 bg-white border border-gray-300 px-2 py-1 rounded text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              placeholder={profileData?.full_name || "User"}
-                            />
-                          ) : (
-                            <h2 className="text-xl font-bold text-gray-900">
-                              {profileData?.full_name || "User"}
-                            </h2>
-                          )}
-                          <button
-                            onClick={() => setIsEditing(!isEditing)}
-                            className="p-1 rounded-full hover:bg-gray-100 transition-colors"
-                          >
-                            <Edit2 className="h-4 w-4 text-gray-500" />
-                          </button>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
-                          <span className="px-2 py-0.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-medium rounded-full">
-                            {profileData?.user_type === "tutor"
-                              ? "Tutor"
-                              : profileData?.user_type === "mentor"
-                              ? "Mentor"
-                              : profileData?.user_type === "student"
-                              ? "Student"
-                              : profileData?.user_type
-                                  ?.charAt(0)
-                                  .toUpperCase() +
-                                  profileData?.user_type?.slice(1) || "User"}
-                          </span>
-                          {/* Professional Title for Mentors/Tutors */}
-                          {(profileData?.user_type === "tutor" ||
-                            profileData?.user_type === "mentor") &&
-                            profileData?.title && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
-                                {profileData.title}
-                              </span>
-                            )}
-                          {/* Availability for Mentors/Tutors */}
-                          {(profileData?.user_type === "tutor" ||
-                            profileData?.user_type === "mentor") &&
-                            profileData?.availability && (
-                              <span
-                                className={`px-2 py-0.5 text-xs font-medium rounded-full border ${
-                                  profileData.availability === "Available now"
-                                    ? "bg-green-100 text-green-700 border-green-200"
-                                    : "bg-gray-100 text-gray-700 border-gray-200"
-                                }`}
-                              >
-                                {profileData.availability}
-                              </span>
-                            )}
-                        </div>
-
-                        {/* About Section */}
-                        <div className="bg-gray-50 rounded-lg p-4 mx-auto max-w-md border border-gray-200">
-                          {isEditing ? (
-                            <textarea
-                              value={formData.bio}
-                              onChange={(e) =>
-                                setFormData({
-                                  ...formData,
-                                  bio: e.target.value,
-                                })
-                              }
-                              className="w-full bg-white text-gray-900 px-3 py-2 rounded text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              rows={3}
-                              placeholder={
-                                profileData?.bio || "Add your bio here..."
-                              }
-                            />
-                          ) : (
-                            <p className="text-gray-600 text-sm leading-relaxed italic">
-                              {profileData?.bio || "No bio provided"}
-                            </p>
-                          )}
-                        </div>
+                        <CardTitle className="text-sm font-bold">
+                          My Profile
+                        </CardTitle>
                       </div>
+                      <div className="flex items-center gap-2">
+                        {/* Logout Button */}
+                        <button
+                          onClick={() => setIsLogoutModalOpen(true)}
+                          className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-white hover:bg-white/20 rounded-lg transition-colors"
+                          title="Logout"
+                        >
+                          <LogOut size={14} />
+                          <span>Logout</span>
+                        </button>
+                        {/* Close Button */}
+                        <button
+                          onClick={onClose}
+                          className="text-white hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                          aria-label="Close"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  </CardHeader>
 
-                      {/* Mentor/Tutor Specific Fields */}
-                      {(profileData?.user_type === "tutor" ||
-                        profileData?.user_type === "mentor") && (
-                        <div className="mb-6 space-y-3">
-                          {/* Hourly Rate */}
-                          {profileData?.hourly_rate !== undefined &&
-                            profileData?.hourly_rate !== null && (
-                              <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h3 className="text-xs font-semibold text-gray-700 mb-1">
-                                      Hourly Rate
-                                    </h3>
-                                    {isEditing ? (
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-lg font-bold text-green-700">
-                                          $
-                                        </span>
-                                        <input
-                                          type="number"
-                                          step="0.01"
-                                          min="0"
-                                          value={formData.hourly_rate}
-                                          onChange={(e) =>
-                                            setFormData({
-                                              ...formData,
-                                              hourly_rate:
-                                                parseFloat(e.target.value) || 0,
-                                            })
-                                          }
-                                          className="text-2xl font-bold text-green-700 bg-white border border-green-300 rounded px-2 py-1 w-32 focus:border-green-500 focus:ring-1 focus:ring-green-500"
-                                          placeholder="0.00"
-                                        />
+                  <CardContent className="p-4 overflow-y-auto flex-1">
+                    {/* Loading State */}
+                    {!profileData ? (
+                      <div className="flex items-center justify-center py-12">
+                        <LoadingLogo size={32} />
+                      </div>
+                    ) : (
+                      <>
+                        {/* Profile Content */}
+                        {(() => {
+                          const status = getVerificationStatus();
+                          return (
+                            <>
+                              <div className="text-center mb-4">
+                                <div className="relative w-14 h-14 mx-auto mb-2">
+                                  {profileData?.avatar_url ? (
+                                    <img
+                                      src={profileData.avatar_url}
+                                      alt={profileData.full_name || "User"}
+                                      className="w-full h-full rounded-full object-cover border-4 border-gray-200"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-400 to-purple-400 flex items-center justify-center border-4 border-blue-200">
+                                      <span className="text-3xl font-medium text-white">
+                                        {(profileData?.full_name ||
+                                          "U")[0].toUpperCase()}
+                                      </span>
+                                    </div>
+                                  )}
+                                  <div
+                                    className={`absolute bottom-1 right-1 flex items-center gap-1 bg-white px-2 py-0.5 rounded-full border border-gray-200 shadow-sm ${
+                                      status.clickable
+                                        ? "cursor-pointer hover:bg-gray-50 transition-colors"
+                                        : ""
+                                    }`}
+                                    onClick={() => {
+                                      if (status.clickable) {
+                                        onClose();
+                                        setIsVerificationOpen(true);
+                                      }
+                                    }}
+                                  >
+                                    <status.icon
+                                      size={12}
+                                      className={status.color}
+                                    />
+                                    <span
+                                      className={`text-xs font-medium ${status.color}`}
+                                    >
+                                      {status.text}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-center gap-2">
+                                  {isEditing ? (
+                                    <input
+                                      type="text"
+                                      value={formData.full_name}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          full_name: e.target.value,
+                                        })
+                                      }
+                                      className="text-xl font-bold text-gray-900 bg-white border border-gray-300 px-2 py-1 rounded text-center focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                      placeholder={
+                                        profileData?.full_name || "User"
+                                      }
+                                    />
+                                  ) : (
+                                    <h2 className="text-lg font-bold text-gray-900">
+                                      {profileData?.full_name || "User"}
+                                    </h2>
+                                  )}
+                                  <button
+                                    onClick={() => setIsEditing(!isEditing)}
+                                    className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                                  >
+                                    <Edit2 className="h-4 w-4 text-gray-500" />
+                                  </button>
+                                </div>
+                                <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
+                                  <span className="px-2 py-0.5 bg-gradient-to-r from-blue-600 to-blue-500 text-white text-xs font-medium rounded-full">
+                                    {profileData?.user_type === "tutor"
+                                      ? "Tutor"
+                                      : profileData?.user_type === "mentor"
+                                      ? "Mentor"
+                                      : profileData?.user_type === "student"
+                                      ? "Student"
+                                      : profileData?.user_type
+                                          ?.charAt(0)
+                                          .toUpperCase() +
+                                          profileData?.user_type?.slice(1) ||
+                                        "User"}
+                                  </span>
+                                  {/* Professional Title for Mentors/Tutors */}
+                                  {(profileData?.user_type === "tutor" ||
+                                    profileData?.user_type === "mentor") &&
+                                    profileData?.title && (
+                                      <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded-full border border-blue-200">
+                                        {profileData.title}
+                                      </span>
+                                    )}
+                                  {/* Availability for Mentors/Tutors */}
+                                  {(profileData?.user_type === "tutor" ||
+                                    profileData?.user_type === "mentor") &&
+                                    profileData?.availability && (
+                                      <span
+                                        className={`px-2 py-0.5 text-xs font-medium rounded-full border ${
+                                          profileData.availability ===
+                                          "Available now"
+                                            ? "bg-green-100 text-green-700 border-green-200"
+                                            : "bg-gray-100 text-gray-700 border-gray-200"
+                                        }`}
+                                      >
+                                        {profileData.availability}
+                                      </span>
+                                    )}
+                                </div>
+
+                                {/* About Section */}
+                                <div className="bg-gray-50 rounded-lg p-2.5 mx-auto max-w-md border border-gray-200">
+                                  {isEditing ? (
+                                    <textarea
+                                      value={formData.bio}
+                                      onChange={(e) =>
+                                        setFormData({
+                                          ...formData,
+                                          bio: e.target.value,
+                                        })
+                                      }
+                                      className="w-full bg-white text-gray-900 px-3 py-2 rounded text-sm border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                      rows={3}
+                                      placeholder={
+                                        profileData?.bio ||
+                                        "Add your bio here..."
+                                      }
+                                    />
+                                  ) : (
+                                    <p className="text-gray-600 text-sm leading-relaxed italic">
+                                      {profileData?.bio || "No bio provided"}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Mentor/Tutor Specific Fields */}
+                              {(profileData?.user_type === "tutor" ||
+                                profileData?.user_type === "mentor") && (
+                                <div className="mb-6 space-y-3">
+                                  {/* Hourly Rate */}
+                                  {profileData?.hourly_rate !== undefined &&
+                                    profileData?.hourly_rate !== null && (
+                                      <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200">
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex-1">
+                                            <h3 className="text-xs font-semibold text-gray-700 mb-1">
+                                              Hourly Rate
+                                            </h3>
+                                            {isEditing ? (
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-lg font-bold text-green-700">
+                                                  $
+                                                </span>
+                                                <input
+                                                  type="number"
+                                                  step="0.01"
+                                                  min="0"
+                                                  value={formData.hourly_rate}
+                                                  onChange={(e) =>
+                                                    setFormData({
+                                                      ...formData,
+                                                      hourly_rate:
+                                                        parseFloat(
+                                                          e.target.value
+                                                        ) || 0,
+                                                    })
+                                                  }
+                                                  className="text-2xl font-bold text-green-700 bg-white border border-green-300 rounded px-2 py-1 w-32 focus:border-green-500 focus:ring-1 focus:ring-green-500"
+                                                  placeholder="0.00"
+                                                />
+                                              </div>
+                                            ) : (
+                                              <p className="text-2xl font-bold text-green-700">
+                                                $
+                                                {parseFloat(
+                                                  profileData.hourly_rate.toString()
+                                                ).toFixed(2)}
+                                              </p>
+                                            )}
+                                          </div>
+                                          <DollarSign className="w-8 h-8 text-green-500" />
+                                        </div>
                                       </div>
+                                    )}
+
+                                  {/* Experience */}
+                                  {profileData?.experience !== undefined &&
+                                    profileData?.experience !== null && (
+                                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                        <div className="flex items-center gap-2">
+                                          <ClockIcon
+                                            size={14}
+                                            className="text-indigo-500"
+                                          />
+                                          <h3 className="text-xs font-medium text-gray-700">
+                                            Years of Experience
+                                          </h3>
+                                        </div>
+                                        {isEditing ? (
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={formData.experience}
+                                            onChange={(e) =>
+                                              setFormData({
+                                                ...formData,
+                                                experience: e.target.value,
+                                              })
+                                            }
+                                            className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            placeholder="Enter years of experience"
+                                          />
+                                        ) : (
+                                          <p className="text-gray-600 text-xs mt-1">
+                                            {profileData.experience} years
+                                          </p>
+                                        )}
+                                      </div>
+                                    )}
+
+                                  {/* Specializations */}
+                                  {profileData?.specialization !== undefined &&
+                                    profileData?.specialization !== null && (
+                                      <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <Target
+                                            size={14}
+                                            className="text-blue-500"
+                                          />
+                                          <h3 className="text-xs font-medium text-gray-700">
+                                            Specializations
+                                          </h3>
+                                        </div>
+                                        {isEditing ? (
+                                          <input
+                                            type="text"
+                                            value={formData.specialization}
+                                            onChange={(e) =>
+                                              setFormData({
+                                                ...formData,
+                                                specialization: e.target.value,
+                                              })
+                                            }
+                                            className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                            placeholder="e.g., Python, React, AWS (comma-separated)"
+                                          />
+                                        ) : (
+                                          <div className="flex flex-wrap gap-1.5">
+                                            {(() => {
+                                              const specializations =
+                                                Array.isArray(
+                                                  profileData.specialization
+                                                )
+                                                  ? profileData.specialization
+                                                  : typeof profileData.specialization ===
+                                                    "string"
+                                                  ? (() => {
+                                                      try {
+                                                        return (
+                                                          JSON.parse(
+                                                            profileData.specialization.replace(
+                                                              /'/g,
+                                                              '"'
+                                                            )
+                                                          ) || []
+                                                        );
+                                                      } catch {
+                                                        // If JSON parse fails, try splitting by comma
+                                                        return profileData.specialization
+                                                          .replace(
+                                                            /[\[\]"]/g,
+                                                            ""
+                                                          )
+                                                          .split(",")
+                                                          .map((s: string) =>
+                                                            s.trim()
+                                                          )
+                                                          .filter(Boolean);
+                                                      }
+                                                    })()
+                                                  : [];
+                                              return specializations.length >
+                                                0 ? (
+                                                specializations.map(
+                                                  (
+                                                    spec: string,
+                                                    idx: number
+                                                  ) => (
+                                                    <span
+                                                      key={idx}
+                                                      className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded border border-blue-200"
+                                                    >
+                                                      {spec}
+                                                    </span>
+                                                  )
+                                                )
+                                              ) : (
+                                                <span className="text-gray-500 text-xs">
+                                                  No specializations specified
+                                                </span>
+                                              );
+                                            })()}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                  {/* Qualifications */}
+                                  {profileData?.qualifications && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen
+                                          size={14}
+                                          className="text-purple-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Qualifications
+                                        </h3>
+                                      </div>
+                                      {typeof profileData.qualifications ===
+                                        "string" &&
+                                      profileData.qualifications.startsWith(
+                                        "http"
+                                      ) ? (
+                                        <a
+                                          href={profileData.qualifications}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-blue-600 text-xs hover:underline mt-1 block"
+                                        >
+                                          View Qualifications Document
+                                        </a>
+                                      ) : (
+                                        <p className="text-gray-600 text-xs mt-1">
+                                          {profileData.qualifications}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* User Details Grid */}
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 mt-4">
+                                {/* Left Column */}
+                                <div className="space-y-2">
+                                  {/* Email */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Mail
+                                        size={12}
+                                        className="text-blue-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700 truncate">
+                                        Email
+                                      </h3>
+                                    </div>
+                                    <p
+                                      className="text-gray-600 text-xs truncate"
+                                      title={profileData?.email}
+                                    >
+                                      {profileData?.email}
+                                    </p>
+                                  </div>
+
+                                  {/* Phone Number */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Phone
+                                        size={12}
+                                        className="text-green-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Phone
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="tel"
+                                        value={formData.phone_number}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            phone_number: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder="+1234567890"
+                                      />
                                     ) : (
-                                      <p className="text-2xl font-bold text-green-700">
-                                        $
-                                        {parseFloat(
-                                          profileData.hourly_rate.toString()
-                                        ).toFixed(2)}
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.phone_number ||
+                                          "Not provided"}
                                       </p>
                                     )}
                                   </div>
-                                  <DollarSign className="w-8 h-8 text-green-500" />
-                                </div>
-                              </div>
-                            )}
 
-                          {/* Experience */}
-                          {profileData?.experience !== undefined &&
-                            profileData?.experience !== null && (
-                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                <div className="flex items-center gap-2">
-                                  <ClockIcon
-                                    size={14}
-                                    className="text-indigo-500"
-                                  />
-                                  <h3 className="text-xs font-medium text-gray-700">
-                                    Years of Experience
-                                  </h3>
-                                </div>
-                                {isEditing ? (
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    value={formData.experience}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        experience: e.target.value,
-                                      })
-                                    }
-                                    className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                    placeholder="Enter years of experience"
-                                  />
-                                ) : (
-                                  <p className="text-gray-600 text-xs mt-1">
-                                    {profileData.experience} years
-                                  </p>
-                                )}
-                              </div>
-                            )}
-
-                          {/* Specializations */}
-                          {profileData?.specialization !== undefined &&
-                            profileData?.specialization !== null && (
-                              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Target size={14} className="text-blue-500" />
-                                  <h3 className="text-xs font-medium text-gray-700">
-                                    Specializations
-                                  </h3>
-                                </div>
-                                {isEditing ? (
-                                  <input
-                                    type="text"
-                                    value={formData.specialization}
-                                    onChange={(e) =>
-                                      setFormData({
-                                        ...formData,
-                                        specialization: e.target.value,
-                                      })
-                                    }
-                                    className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                    placeholder="e.g., Python, React, AWS (comma-separated)"
-                                  />
-                                ) : (
-                                  <div className="flex flex-wrap gap-1.5">
-                                    {(() => {
-                                      const specializations = Array.isArray(
-                                        profileData.specialization
-                                      )
-                                        ? profileData.specialization
-                                        : typeof profileData.specialization ===
-                                          "string"
-                                        ? (() => {
-                                            try {
-                                              return (
-                                                JSON.parse(
-                                                  profileData.specialization.replace(
-                                                    /'/g,
-                                                    '"'
-                                                  )
-                                                ) || []
-                                              );
-                                            } catch {
-                                              // If JSON parse fails, try splitting by comma
-                                              return profileData.specialization
-                                                .replace(/[\[\]"]/g, "")
-                                                .split(",")
-                                                .map((s: string) => s.trim())
-                                                .filter(Boolean);
-                                            }
-                                          })()
-                                        : [];
-                                      return specializations.length > 0 ? (
-                                        specializations.map(
-                                          (spec: string, idx: number) => (
-                                            <span
-                                              key={idx}
-                                              className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded border border-blue-200"
-                                            >
-                                              {spec}
-                                            </span>
-                                          )
-                                        )
-                                      ) : (
-                                        <span className="text-gray-500 text-xs">
-                                          No specializations specified
-                                        </span>
-                                      );
-                                    })()}
+                                  {/* Country */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <MapPin
+                                        size={12}
+                                        className="text-red-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Country
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        value={formData.country}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            country: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Enter country"
+                                      />
+                                    ) : (
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.country || "Not provided"}
+                                      </p>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            )}
 
-                          {/* Qualifications */}
-                          {profileData?.qualifications && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <BookOpen
-                                  size={14}
-                                  className="text-purple-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Qualifications
-                                </h3>
+                                  {/* City */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <MapPin
+                                        size={12}
+                                        className="text-orange-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        City
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        value={formData.city}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            city: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder="Enter city"
+                                      />
+                                    ) : (
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.city || "Not provided"}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Gender */}
+                                  {profileData?.gender && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <User
+                                          size={14}
+                                          className="text-pink-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Gender
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.gender}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Date of Birth */}
+                                  {profileData?.date_of_birth && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <Calendar
+                                          size={14}
+                                          className="text-indigo-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Date of Birth
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {formatDate(profileData?.date_of_birth)}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Current Level */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <BookOpen
+                                        size={12}
+                                        className="text-cyan-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Level
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <select
+                                        value={formData.current_level}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            current_level: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                      >
+                                        <option value="">Select level</option>
+                                        <option value="beginner">
+                                          Beginner
+                                        </option>
+                                        <option value="intermediate">
+                                          Intermediate
+                                        </option>
+                                        <option value="advanced">
+                                          Advanced
+                                        </option>
+                                        <option value="expert">Expert</option>
+                                      </select>
+                                    ) : (
+                                      <p className="text-gray-600 text-xs mt-1 capitalize">
+                                        {profileData?.current_level ||
+                                          "Not specified"}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Member Since */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Calendar
+                                        size={12}
+                                        className="text-yellow-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Member Since
+                                      </h3>
+                                    </div>
+                                    <p className="text-gray-600 text-xs mt-1">
+                                      {formatDate(profileData?.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {/* Right Column */}
+                                <div className="space-y-2">
+                                  {/* Website */}
+                                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                    <div className="flex items-center gap-2">
+                                      <Globe
+                                        size={14}
+                                        className="text-blue-500"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Website
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="url"
+                                        value={formData.website}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            website: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder={
+                                          profileData?.website ||
+                                          "Add your website..."
+                                        }
+                                      />
+                                    ) : (
+                                      <a
+                                        href={profileData?.website || "#"}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-600 text-xs hover:underline mt-1 block"
+                                      >
+                                        {profileData?.website || "Not provided"}
+                                      </a>
+                                    )}
+                                  </div>
+
+                                  {/* Native Language */}
+                                  {profileData?.native_language && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <Languages
+                                          size={14}
+                                          className="text-purple-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Native Language
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.native_language}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Languages Spoken */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Languages
+                                        size={12}
+                                        className="text-teal-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Languages
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        value={formData.languages_spoken}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            languages_spoken: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder="e.g., English, Spanish, French"
+                                      />
+                                    ) : (
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {Array.isArray(
+                                          profileData?.languages_spoken
+                                        )
+                                          ? profileData?.languages_spoken.join(
+                                              ", "
+                                            )
+                                          : typeof profileData?.languages_spoken ===
+                                            "string"
+                                          ? profileData?.languages_spoken.replace(
+                                              /[\[\]"]/g,
+                                              ""
+                                            ) || "Not specified"
+                                          : "Not specified"}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Interests */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Target
+                                        size={12}
+                                        className="text-rose-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Interests
+                                      </h3>
+                                    </div>
+                                    {isEditing ? (
+                                      <input
+                                        type="text"
+                                        value={formData.interests}
+                                        onChange={(e) =>
+                                          setFormData({
+                                            ...formData,
+                                            interests: e.target.value,
+                                          })
+                                        }
+                                        className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                                        placeholder="e.g., Reading, Music, Sports"
+                                      />
+                                    ) : (
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {Array.isArray(profileData?.interests)
+                                          ? profileData?.interests.join(", ")
+                                          : typeof profileData?.interests ===
+                                            "string"
+                                          ? profileData?.interests.replace(
+                                              /[\[\]"]/g,
+                                              ""
+                                            ) || "Not specified"
+                                          : "Not specified"}
+                                      </p>
+                                    )}
+                                  </div>
+
+                                  {/* Learning Goals */}
+                                  {profileData?.learning_goals && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <Target
+                                          size={14}
+                                          className="text-amber-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Learning Goals
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.learning_goals}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Preferred Learning Style */}
+                                  {profileData?.preferred_learning_style && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <BookOpen
+                                          size={14}
+                                          className="text-violet-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Learning Style
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.preferred_learning_style}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Budget Range */}
+                                  {profileData?.budget_range && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <DollarSign
+                                          size={14}
+                                          className="text-emerald-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Budget Range
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.budget_range}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Availability Hours */}
+                                  {profileData?.availability_hours && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <ClockIcon
+                                          size={14}
+                                          className="text-sky-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Availability
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1">
+                                        {profileData?.availability_hours}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Status */}
+                                  {profileData?.status && (
+                                    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle
+                                          size={14}
+                                          className="text-green-500"
+                                        />
+                                        <h3 className="text-xs font-medium text-gray-700">
+                                          Status
+                                        </h3>
+                                      </div>
+                                      <p className="text-gray-600 text-xs mt-1 capitalize">
+                                        {profileData?.status}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Last Updated */}
+                                  <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
+                                    <div className="flex items-center gap-1.5 mb-1">
+                                      <Calendar
+                                        size={12}
+                                        className="text-purple-500 flex-shrink-0"
+                                      />
+                                      <h3 className="text-xs font-medium text-gray-700">
+                                        Last Updated
+                                      </h3>
+                                    </div>
+                                    <p className="text-gray-600 text-xs mt-1">
+                                      {formatDate(profileData?.updated_at)}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
-                              {typeof profileData.qualifications === "string" &&
-                              profileData.qualifications.startsWith("http") ? (
-                                <a
-                                  href={profileData.qualifications}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 text-xs hover:underline mt-1 block"
-                                >
-                                  View Qualifications Document
-                                </a>
-                              ) : (
-                                <p className="text-gray-600 text-xs mt-1">
-                                  {profileData.qualifications}
-                                </p>
+
+                              {/* Update Button */}
+                              {isEditing && (
+                                <div className="mt-4 flex justify-end gap-2">
+                                  <button
+                                    onClick={() => setIsEditing(false)}
+                                    className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    onClick={handleUpdateProfile}
+                                    className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors"
+                                  >
+                                    Save Changes
+                                  </button>
+                                </div>
                               )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* User Details Grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
-                        {/* Left Column */}
-                        <div className="space-y-3">
-                          {/* Email */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Mail
-                                size={12}
-                                className="text-blue-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700 truncate">
-                                Email
-                              </h3>
-                            </div>
-                            <p
-                              className="text-gray-600 text-xs truncate"
-                              title={profileData?.email}
-                            >
-                              {profileData?.email}
-                            </p>
-                          </div>
-
-                          {/* Phone Number */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Phone
-                                size={12}
-                                className="text-green-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Phone
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="tel"
-                                value={formData.phone_number}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    phone_number: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="+1234567890"
-                              />
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.phone_number || "Not provided"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Country */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <MapPin
-                                size={12}
-                                className="text-red-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Country
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={formData.country}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    country: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="Enter country"
-                              />
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.country || "Not provided"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* City */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <MapPin
-                                size={12}
-                                className="text-orange-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                City
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={formData.city}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    city: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="Enter city"
-                              />
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.city || "Not provided"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Gender */}
-                          {profileData?.gender && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <User size={14} className="text-pink-500" />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Gender
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.gender}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Date of Birth */}
-                          {profileData?.date_of_birth && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <Calendar
-                                  size={14}
-                                  className="text-indigo-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Date of Birth
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {formatDate(profileData?.date_of_birth)}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Current Level */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <BookOpen
-                                size={12}
-                                className="text-cyan-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Level
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <select
-                                value={formData.current_level}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    current_level: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                              >
-                                <option value="">Select level</option>
-                                <option value="beginner">Beginner</option>
-                                <option value="intermediate">
-                                  Intermediate
-                                </option>
-                                <option value="advanced">Advanced</option>
-                                <option value="expert">Expert</option>
-                              </select>
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1 capitalize">
-                                {profileData?.current_level || "Not specified"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Member Since */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Calendar
-                                size={12}
-                                className="text-yellow-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Member Since
-                              </h3>
-                            </div>
-                            <p className="text-gray-600 text-xs mt-1">
-                              {formatDate(profileData?.created_at)}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Right Column */}
-                        <div className="space-y-3">
-                          {/* Website */}
-                          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                            <div className="flex items-center gap-2">
-                              <Globe size={14} className="text-blue-500" />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Website
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="url"
-                                value={formData.website}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    website: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder={
-                                  profileData?.website || "Add your website..."
-                                }
-                              />
-                            ) : (
-                              <a
-                                href={profileData?.website || "#"}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 text-xs hover:underline mt-1 block"
-                              >
-                                {profileData?.website || "Not provided"}
-                              </a>
-                            )}
-                          </div>
-
-                          {/* Native Language */}
-                          {profileData?.native_language && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <Languages
-                                  size={14}
-                                  className="text-purple-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Native Language
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.native_language}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Languages Spoken */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Languages
-                                size={12}
-                                className="text-teal-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Languages
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={formData.languages_spoken}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    languages_spoken: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="e.g., English, Spanish, French"
-                              />
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1">
-                                {Array.isArray(profileData?.languages_spoken)
-                                  ? profileData?.languages_spoken.join(", ")
-                                  : typeof profileData?.languages_spoken ===
-                                    "string"
-                                  ? profileData?.languages_spoken.replace(
-                                      /[\[\]"]/g,
-                                      ""
-                                    ) || "Not specified"
-                                  : "Not specified"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Interests */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Target
-                                size={12}
-                                className="text-rose-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Interests
-                              </h3>
-                            </div>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={formData.interests}
-                                onChange={(e) =>
-                                  setFormData({
-                                    ...formData,
-                                    interests: e.target.value,
-                                  })
-                                }
-                                className="w-full bg-white text-gray-900 px-2 py-1 rounded mt-1 text-xs border border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                                placeholder="e.g., Reading, Music, Sports"
-                              />
-                            ) : (
-                              <p className="text-gray-600 text-xs mt-1">
-                                {Array.isArray(profileData?.interests)
-                                  ? profileData?.interests.join(", ")
-                                  : typeof profileData?.interests === "string"
-                                  ? profileData?.interests.replace(
-                                      /[\[\]"]/g,
-                                      ""
-                                    ) || "Not specified"
-                                  : "Not specified"}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Learning Goals */}
-                          {profileData?.learning_goals && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <Target size={14} className="text-amber-500" />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Learning Goals
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.learning_goals}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Preferred Learning Style */}
-                          {profileData?.preferred_learning_style && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <BookOpen
-                                  size={14}
-                                  className="text-violet-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Learning Style
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.preferred_learning_style}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Budget Range */}
-                          {profileData?.budget_range && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <DollarSign
-                                  size={14}
-                                  className="text-emerald-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Budget Range
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.budget_range}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Availability Hours */}
-                          {profileData?.availability_hours && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <ClockIcon size={14} className="text-sky-500" />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Availability
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1">
-                                {profileData?.availability_hours}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Status */}
-                          {profileData?.status && (
-                            <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle
-                                  size={14}
-                                  className="text-green-500"
-                                />
-                                <h3 className="text-xs font-medium text-gray-700">
-                                  Status
-                                </h3>
-                              </div>
-                              <p className="text-gray-600 text-xs mt-1 capitalize">
-                                {profileData?.status}
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Last Updated */}
-                          <div className="bg-gray-50 rounded-lg p-2 border border-gray-200 col-span-2">
-                            <div className="flex items-center gap-1.5 mb-1">
-                              <Calendar
-                                size={12}
-                                className="text-purple-500 flex-shrink-0"
-                              />
-                              <h3 className="text-xs font-medium text-gray-700">
-                                Last Updated
-                              </h3>
-                            </div>
-                            <p className="text-gray-600 text-xs mt-1">
-                              {formatDate(profileData?.updated_at)}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Update Button */}
-                      {isEditing && (
-                        <div className="mt-6 flex justify-end gap-2">
-                          <button
-                            onClick={() => setIsEditing(false)}
-                            className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            onClick={handleUpdateProfile}
-                            className="px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-sm font-medium rounded-lg hover:from-blue-600 hover:to-purple-600 transition-colors"
-                          >
-                            Save Changes
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </>
-            )}
-          </motion.div>
-        </>
+                            </>
+                          );
+                        })()}
+                      </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </motion.div>
+          </div>
+        </React.Fragment>
       )}
 
       {/* Verification Popup */}
       {profileData && (
         <VerificationPopup
+          key="verification-popup"
           isOpen={isVerificationOpen}
           onClose={() => setIsVerificationOpen(false)}
           onSubmit={handleVerificationSubmit}
@@ -1427,6 +1509,7 @@ export function UserProfilePopup({
 
       {/* Logout Confirmation Modal */}
       <LogoutConfirmationModal
+        key="logout-modal"
         isOpen={isLogoutModalOpen}
         onClose={() => setIsLogoutModalOpen(false)}
       />

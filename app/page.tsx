@@ -26,13 +26,13 @@ import {
   Clock,
   Globe,
   Calendar,
-  Loader2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CustomCursor } from "@/components/custom-cursor";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import * as React from "react";
 import { Hero } from "@/components/hero";
 import { CTA } from "@/components/cta";
 import {
@@ -46,6 +46,7 @@ import { SignUpModal } from "@/components/auth/sign-up-modal";
 import { SignInModal } from "@/components/auth/sign-in-modal";
 import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
+import { LoadingLogo } from "@/components/loading-logo";
 
 // Dynamically import TutorRequestPopup to avoid SSR issues
 const TutorRequestPopup = dynamic(
@@ -105,6 +106,10 @@ export default function Home() {
     symbol: string;
     rate: number;
   }>({ code: "USD", symbol: "$", rate: 1 });
+
+  // Note: Role selection is now handled by the dashboard page, not the home page
+  // When a user signs in with Google and doesn't have a role, they are redirected to /dashboard
+  // The dashboard page will detect this and show the role selection modal
 
   // Detect user location and set currency
   useEffect(() => {
@@ -327,44 +332,44 @@ export default function Home() {
               timezoneOffset > 0 ? "-" : "+"
             }${Math.abs(timezoneOffset / 60)}`;
 
-              return {
-                id: session.id,
-                mentor_id: session.mentor_id, // Store mentor_id for booking
-                title: session.topic || "Untitled Session",
-                host: {
-                  name: mentor.name || "Unknown Mentor",
-                  avatar:
-                    mentor.avatar ||
-                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                      mentor.name || "Mentor"
-                    )}&background=3B82F6&color=fff&size=128`,
-                  rating: parseFloat(mentor.rating) || 4.0,
-                  reviews: mentor.total_reviews || 0,
-                  verified: mentor.is_verified || false,
-                  expertise:
-                    specializations.length > 0
-                      ? specializations[0]
-                      : mentor.title || "General",
-                },
-                description:
-                  session.notes ||
-                  session.topic ||
-                  "Join this live session to learn and grow.",
-                price: parseFloat(session.amount) || 0,
-                currency: "R",
-                duration: duration,
-                date: session.date,
-                time: session.time,
-                timezone: timezoneString,
-                participants: 0,
-                maxParticipants: 30,
-                subject:
-                  specializations.length > 0 ? specializations[0] : "General",
-                level: "All Levels",
-                language: "English",
-                location: mentor.country || "Global",
-                postedAt: session.created_at || session.updated_at || null,
-              };
+            return {
+              id: session.id,
+              mentor_id: session.mentor_id, // Store mentor_id for booking
+              title: session.topic || "Untitled Session",
+              host: {
+                name: mentor.name || "Unknown Mentor",
+                avatar:
+                  mentor.avatar ||
+                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                    mentor.name || "Mentor"
+                  )}&background=3B82F6&color=fff&size=128`,
+                rating: parseFloat(mentor.rating) || 4.0,
+                reviews: mentor.total_reviews || 0,
+                verified: mentor.is_verified || false,
+                expertise:
+                  specializations.length > 0
+                    ? specializations[0]
+                    : mentor.title || "General",
+              },
+              description:
+                session.notes ||
+                session.topic ||
+                "Join this live session to learn and grow.",
+              price: parseFloat(session.amount) || 0,
+              currency: "R",
+              duration: duration,
+              date: session.date,
+              time: session.time,
+              timezone: timezoneString,
+              participants: 0,
+              maxParticipants: 30,
+              subject:
+                specializations.length > 0 ? specializations[0] : "General",
+              level: "All Levels",
+              language: "English",
+              location: mentor.country || "Global",
+              postedAt: session.created_at || session.updated_at || null,
+            };
           });
 
           // Filter out past sessions
@@ -475,7 +480,11 @@ export default function Home() {
                             transition={{ delay: 0.8, duration: 0.6 }}
                           />
                         </span>{" "}
-                        platform.
+                        platform{" "}
+                        <span className="text-blue-600 font-bold font-['Verdana',sans-serif]">
+                          BrightByt
+                        </span>
+                        .
                       </p>
 
                       <Tabs defaultValue="find-spaces" className="relative">
@@ -759,7 +768,7 @@ export default function Home() {
 
                 {sessionsLoading ? (
                   <div className="flex justify-center items-center py-20">
-                    <Loader2 className="w-8 h-8 animate-spin text-white" />
+                    <LoadingLogo size={32} />
                   </div>
                 ) : liveSessions.length === 0 ? (
                   <div className="text-center py-12">
@@ -974,25 +983,41 @@ export default function Home() {
                                   className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 text-base shadow-md hover:shadow-lg transition-all"
                                   onClick={async () => {
                                     // Check if user is authenticated
-                                    const { data: { user } } = await supabase.auth.getUser();
-                                    
+                                    const {
+                                      data: { user },
+                                    } = await supabase.auth.getUser();
+
                                     // Get mentor ID from session
                                     let mentorId = null;
                                     if (session.mentor_id) {
-                                      mentorId = typeof session.mentor_id === 'string' 
-                                        ? parseInt(session.mentor_id) 
-                                        : session.mentor_id;
+                                      mentorId =
+                                        typeof session.mentor_id === "string"
+                                          ? parseInt(session.mentor_id)
+                                          : session.mentor_id;
                                     }
-                                    
+
                                     if (user && mentorId) {
                                       // User is authenticated, store both mentor ID and session ID
-                                      localStorage.setItem('tutorToBookId', mentorId.toString());
-                                      localStorage.setItem('sessionToBookId', session.id.toString());
-                                      window.location.href = '/dashboard/learner';
+                                      localStorage.setItem(
+                                        "tutorToBookId",
+                                        mentorId.toString()
+                                      );
+                                      localStorage.setItem(
+                                        "sessionToBookId",
+                                        session.id.toString()
+                                      );
+                                      window.location.href =
+                                        "/dashboard/learner";
                                     } else if (mentorId) {
                                       // User not authenticated, store both mentor ID and session ID
-                                      localStorage.setItem('tutorToBookId', mentorId.toString());
-                                      localStorage.setItem('sessionToBookId', session.id.toString());
+                                      localStorage.setItem(
+                                        "tutorToBookId",
+                                        mentorId.toString()
+                                      );
+                                      localStorage.setItem(
+                                        "sessionToBookId",
+                                        session.id.toString()
+                                      );
                                       setIsSignInOpen(true);
                                     } else {
                                       // No mentor ID, just open sign-in modal

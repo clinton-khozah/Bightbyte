@@ -6,9 +6,10 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { MapPin, Video, Users, Star, Calendar, Clock, Globe, CheckCircle, CheckCircle2, Filter, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { MapPin, Video, Users, Star, Calendar, Clock, Globe, CheckCircle, CheckCircle2, Filter, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
+import { LoadingLogo } from "@/components/loading-logo"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 import { PageContainer } from "@/components/page-container"
 import { AnimatePresence, motion } from "framer-motion"
@@ -435,7 +436,7 @@ export default function FindTutorsPage() {
           {/* Tutors Carousel */}
           {loading ? (
             <div className="flex justify-center items-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-white" />
+              <LoadingLogo size={32} />
             </div>
           ) : filteredTutors.length === 0 ? (
             <div className="text-center text-white py-20">

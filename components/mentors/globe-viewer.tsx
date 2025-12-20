@@ -9,7 +9,6 @@ import {
   ZoomOut,
   MapPin,
   Navigation,
-  Loader2,
   Crosshair,
   RefreshCw,
   Search,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import dynamic from "next/dynamic";
+import { LoadingLogo } from "@/components/loading-logo";
 
 // Dynamically import Leaflet to avoid SSR issues
 const MapContainer = dynamic(
@@ -66,7 +66,7 @@ interface GlobeViewerProps {
 // Component to expose map instance to parent
 function MapInstance({ onMapReady }: { onMapReady: (map: any) => void }) {
   const [useMapHook, setUseMapHook] = useState<any>(null);
-
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("react-leaflet").then((mod) => {
@@ -74,21 +74,21 @@ function MapInstance({ onMapReady }: { onMapReady: (map: any) => void }) {
       });
     }
   }, []);
-
+  
   if (!useMapHook) return null;
-
+  
   const MapComponent = () => {
     const map = useMapHook();
-
+    
     useEffect(() => {
       if (map) {
         onMapReady(map);
       }
     }, [map, onMapReady]);
-
+    
     return null;
   };
-
+  
   return <MapComponent />;
 }
 
@@ -103,7 +103,7 @@ function MapUpdater({
   const [useMapHook, setUseMapHook] = useState<any>(null);
   const mapRef = useRef<any>(null);
   const isUpdatingRef = useRef(false);
-
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       import("react-leaflet").then((mod) => {
@@ -111,13 +111,13 @@ function MapUpdater({
       });
     }
   }, []);
-
+  
   if (!useMapHook) return null;
-
+  
   const UpdaterComponent = () => {
     const map = useMapHook();
     mapRef.current = map;
-
+    
     useEffect(() => {
       if (map && !isUpdatingRef.current) {
         // Wait for map to be fully loaded
@@ -140,14 +140,14 @@ function MapUpdater({
             setTimeout(checkAndUpdate, 100);
           }
         };
-
+        
         checkAndUpdate();
       }
     }, [map, center, zoom]);
-
+    
     return null;
   };
-
+  
   return <UpdaterComponent />;
 }
 
@@ -183,7 +183,7 @@ export function GlobeViewer({
         link.crossOrigin = "";
         document.head.appendChild(link);
       }
-
+      
       import("leaflet").then((leaflet) => {
         setL(leaflet.default);
         // Small delay to ensure DOM is ready
@@ -191,7 +191,7 @@ export function GlobeViewer({
           setIsInitialized(true);
         }, 200);
       });
-
+      
       // Hide Leaflet attribution
       const style = document.createElement("style");
       style.id = "hide-leaflet-attribution";
@@ -211,15 +211,15 @@ export function GlobeViewer({
   // Create custom icons for markers with profile pictures
   const createCustomIcon = (mentor: Mentor, size: number = 40) => {
     if (!L) return null;
-
+    
     const borderColor = mentor.is_online ? "#00ff80" : "#ff8000";
     const borderWidth = 3;
-
+    
     // If mentor has avatar, use it; otherwise use colored circle with initial
     const avatarUrl = mentor.avatar || null;
     const initial = mentor.name.charAt(0).toUpperCase();
     const bgColor = mentor.is_online ? "#00ff80" : "#ff8000";
-
+    
     const html = avatarUrl
       ? `<div style="
           width: ${size}px;
@@ -266,7 +266,7 @@ export function GlobeViewer({
           font-weight: bold;
           font-size: ${size * 0.4}px;
         ">${initial}</div>`;
-
+    
     return L.divIcon({
       className: "custom-marker",
       html: html,
@@ -366,40 +366,40 @@ export function GlobeViewer({
         m.longitude !== null &&
         m.longitude !== undefined &&
         !isNaN(Number(m.longitude));
-
-      if (hasLat && hasLng) {
+    
+    if (hasLat && hasLng) {
         return {
           ...m,
           latitude: Number(m.latitude),
           longitude: Number(m.longitude),
           hasExactCoords: true,
         };
-      }
-
-      // If no exact coordinates but has country, use country-level coordinates
+    }
+    
+    // If no exact coordinates but has country, use country-level coordinates
       const countryCoords = getCountryCoords(m.country);
-      if (countryCoords) {
+    if (countryCoords) {
         return {
           ...m,
           latitude: countryCoords.lat,
           longitude: countryCoords.lng,
           hasExactCoords: false,
         };
-      }
-
-      // Log mentors without coordinates for debugging
+    }
+    
+    // Log mentors without coordinates for debugging
       console.warn("Mentor without coordinates:", {
-        name: m.name,
-        country: m.country,
-        city: m.city,
-        latitude: m.latitude,
+      name: m.name,
+      country: m.country,
+      city: m.city,
+      latitude: m.latitude,
         longitude: m.longitude,
       });
-
+    
       return null;
     })
     .filter((m): m is NonNullable<typeof m> => m !== null);
-
+  
   console.log("GlobeViewer - Total mentors received:", mentors.length);
   console.log(
     "GlobeViewer - Mentors with coordinates (exact or country-level):",
@@ -416,19 +416,19 @@ export function GlobeViewer({
   console.log(
     "All mentors data:",
     mentors.map((m) => ({
-      name: m.name,
-      country: m.country,
-      city: m.city,
-      lat: m.latitude,
+    name: m.name,
+    country: m.country,
+    city: m.city,
+    lat: m.latitude,
       lng: m.longitude,
     }))
   );
-
+  
   const nearbyMentors = mentorsWithCoords
     .map((mentor) => {
       const lat = mentor.latitude;
       const lng = mentor.longitude;
-
+      
       if (userLocation && !isNaN(lat) && !isNaN(lng)) {
         const distance = calculateDistance(
           userLocation.lat,
@@ -499,9 +499,9 @@ export function GlobeViewer({
     // Default center (South Africa since most mentors seem to be there)
     return [-30.5595, 22.9375];
   };
-
+  
   const mapCenter: [number, number] = getMapCenter();
-
+  
   // Adjust initial zoom based on number of filtered mentors
   const getInitialZoom = (): number => {
     if (filteredMentors.length === 0) return 2;
@@ -509,9 +509,9 @@ export function GlobeViewer({
     if (filteredMentors.length <= 5) return 5;
     return 4; // Wider view for more mentors
   };
-
+  
   const [mapZoom, setMapZoom] = useState(2);
-
+  
   // Update zoom and center when filtered mentors or filter type changes
   useEffect(() => {
     if (filteredMentors.length > 0) {
@@ -640,13 +640,10 @@ export function GlobeViewer({
                 >
                   {!isInitialized && (
                     <div className="absolute inset-0 flex items-center justify-center z-10 bg-gray-100">
-                      <div className="text-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-2" />
-                        <p className="text-gray-700 text-sm">Loading map...</p>
-                      </div>
+                      <LoadingLogo size={32} />
                     </div>
                   )}
-
+                  
                   {isInitialized && typeof window !== "undefined" && L && (
                     <div className="w-full h-full" style={{ zIndex: 1 }}>
                       <MapContainer
@@ -662,10 +659,10 @@ export function GlobeViewer({
                           attribution=""
                           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                         />
-
+                        
                         <MapInstance onMapReady={handleMapReady} />
                         <MapUpdater center={mapCenter} zoom={mapZoom} />
-
+                        
                         {/* User location marker */}
                         {userLocation && L && (
                           <Marker
@@ -780,37 +777,37 @@ export function GlobeViewer({
                             mentor.is_online ? 40 : 35
                           );
                           if (!icon) return null;
-
-                          // Use a slightly different icon style for mentors without exact coordinates
+                            
+                            // Use a slightly different icon style for mentors without exact coordinates
                           const markerSize =
                             (mentor as any).hasExactCoords === false
                               ? 35
                               : mentor.is_online
                               ? 40
                               : 35;
-
-                          return (
-                            <Marker
-                              key={mentor.id}
-                              position={[mentor.latitude!, mentor.longitude!]}
-                              icon={icon}
-                              eventHandlers={{
-                                click: () => {
+                            
+                            return (
+                              <Marker
+                                key={mentor.id}
+                                position={[mentor.latitude!, mentor.longitude!]}
+                                icon={icon}
+                                eventHandlers={{
+                                  click: () => {
                                   setSelectedMentor(mentor);
                                   onMentorClick?.(mentor);
                                 },
-                              }}
-                            >
-                              <Popup>
-                                <div className="p-2">
+                                }}
+                              >
+                                <Popup>
+                                  <div className="p-2">
                                   <h3 className="font-semibold text-sm mb-1">
                                     {mentor.name}
                                   </h3>
-                                  {mentor.title && (
-                                    <p className="text-xs text-gray-700 mb-1 font-medium">
-                                      {mentor.title}
-                                    </p>
-                                  )}
+                                    {mentor.title && (
+                                      <p className="text-xs text-gray-700 mb-1 font-medium">
+                                        {mentor.title}
+                                      </p>
+                                    )}
                                   {mentor.specialization &&
                                     mentor.specialization.length > 0 && (
                                       <p className="text-xs text-gray-600 mb-1">
@@ -819,44 +816,44 @@ export function GlobeViewer({
                                           .join(", ")}
                                       </p>
                                     )}
-                                  {mentor.city && mentor.country && (
-                                    <p className="text-xs text-gray-600 mb-1">
-                                      {mentor.city}, {mentor.country}
-                                    </p>
-                                  )}
-                                  {!mentor.city && mentor.country && (
-                                    <p className="text-xs text-gray-600 mb-1">
-                                      {mentor.country}
-                                    </p>
-                                  )}
-                                  {(mentor as any).hasExactCoords === false && (
-                                    <p className="text-xs text-amber-600 mb-1 italic">
-                                      Approximate location (country-level)
-                                    </p>
-                                  )}
-                                  {mentor.distance !== undefined && (
-                                    <p className="text-xs text-blue-600 font-medium">
-                                      {mentor.distance.toFixed(1)} km away
-                                    </p>
-                                  )}
-                                  <button
-                                    onClick={() => {
+                                    {mentor.city && mentor.country && (
+                                      <p className="text-xs text-gray-600 mb-1">
+                                        {mentor.city}, {mentor.country}
+                                      </p>
+                                    )}
+                                    {!mentor.city && mentor.country && (
+                                      <p className="text-xs text-gray-600 mb-1">
+                                        {mentor.country}
+                                      </p>
+                                    )}
+                                    {(mentor as any).hasExactCoords === false && (
+                                      <p className="text-xs text-amber-600 mb-1 italic">
+                                        Approximate location (country-level)
+                                      </p>
+                                    )}
+                                    {mentor.distance !== undefined && (
+                                      <p className="text-xs text-blue-600 font-medium">
+                                        {mentor.distance.toFixed(1)} km away
+                                      </p>
+                                    )}
+                                    <button
+                                      onClick={() => {
                                       setSelectedMentor(mentor);
                                       onMentorClick?.(mentor);
-                                    }}
-                                    className="mt-2 w-full px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                                  >
-                                    View Profile
-                                  </button>
-                                </div>
-                              </Popup>
-                            </Marker>
+                                      }}
+                                      className="mt-2 w-full px-3 py-1.5 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                    >
+                                      View Profile
+                                    </button>
+                                  </div>
+                                </Popup>
+                              </Marker>
                           );
-                        })}
+                          })}
                       </MapContainer>
                     </div>
                   )}
-
+                  
                   {/* Legend */}
                   <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 border border-gray-200 shadow-lg z-20">
                     <div className="space-y-2 text-xs">
@@ -967,7 +964,7 @@ export function GlobeViewer({
                         </button>
                       )}
                     </div>
-
+                    
                     {isSearching ? (
                       <div className="text-center py-8">
                         <div className="flex flex-col items-center justify-center">
@@ -980,28 +977,28 @@ export function GlobeViewer({
                               className="absolute inset-2 rounded-full border-2 border-purple-400 animate-pulse"
                               style={{ animationDelay: "0.3s" }}
                             ></div>
-
+                            
                             {/* Blinking line 1 - Vertical */}
                             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-1 h-12 bg-gradient-to-b from-transparent via-blue-400 to-transparent animate-pulse opacity-60"></div>
-
+                            
                             {/* Blinking line 2 - Horizontal */}
                             <div
                               className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-12 h-1 bg-gradient-to-r from-transparent via-purple-400 to-transparent animate-pulse opacity-60"
                               style={{ animationDelay: "0.5s" }}
                             ></div>
-
+                            
                             {/* Center dot */}
                             <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-blue-400 rounded-full animate-pulse shadow-lg shadow-blue-400"></div>
                           </div>
-
-                          <motion.p
+                          
+                          <motion.p 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             className="text-gray-700 text-sm mb-1 font-medium"
                           >
                             Searching for mentors...
                           </motion.p>
-                          <motion.p
+                          <motion.p 
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             transition={{ delay: 0.2 }}
@@ -1077,7 +1074,7 @@ export function GlobeViewer({
                                   <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
                                 )}
                               </div>
-
+                              
                               {/* Mentor Info */}
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-start justify-between mb-1">
@@ -1093,29 +1090,29 @@ export function GlobeViewer({
                                 {/* Star Rating */}
                                 {mentor.rating !== undefined &&
                                   mentor.rating > 0 && (
-                                    <div className="flex items-center gap-0.5 mb-1">
-                                      {Array.from({ length: 5 }).map((_, i) => (
-                                        <Star
-                                          key={i}
-                                          className={`w-3 h-3 ${
-                                            i < Math.floor(mentor.rating || 0)
+                                  <div className="flex items-center gap-0.5 mb-1">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3 h-3 ${
+                                          i < Math.floor(mentor.rating || 0)
                                               ? "fill-yellow-400 text-yellow-400"
                                               : "fill-gray-200 text-gray-200"
-                                          }`}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
                                 {mentor.specialization &&
                                   mentor.specialization.length > 0 && (
-                                    <p className="text-xs text-gray-600 mb-1 line-clamp-1">
+                                  <p className="text-xs text-gray-600 mb-1 line-clamp-1">
                                       {mentor.specialization
                                         .slice(0, 2)
                                         .join(", ")}
                                       {mentor.specialization.length > 2 &&
                                         ` +${mentor.specialization.length - 2}`}
-                                    </p>
-                                  )}
+                                  </p>
+                                )}
                                 <div className="flex items-center gap-2 text-xs text-gray-600 mb-1">
                                   <MapPin className="w-3 h-3 flex-shrink-0" />
                                   <span className="truncate">

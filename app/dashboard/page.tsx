@@ -64,6 +64,7 @@ import { useRouter } from "next/navigation";
 import { MentorProfileCompletionForm } from "@/components/dashboard/mentor-profile-completion-form";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { ProfileCompletionSuccessModal } from "@/components/dashboard/profile-completion-success-modal";
+import { MentorApplicationStatusPopup } from "@/components/dashboard/mentor-application-status-popup";
 import { TutorApplicationModal } from "@/components/dashboard/tutor-application-modal";
 import jsPDF from "jspdf";
 import {
@@ -78,11 +79,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { convertAndFormatPrice } from "@/lib/currency";
+import { LoadingLogo } from "@/components/loading-logo";
 import { fetchTutorPricing, findMatchingPricing } from "@/lib/tutor-pricing";
 import {
   convertUSDToLocal,
   getCurrencyForCountry,
 } from "@/lib/currency-exchange";
+import { RoleSelectionModal } from "@/components/auth/role-selection-modal";
 
 const cardVariants = {
   hidden: {
@@ -144,6 +147,14 @@ export default function DashboardPage() {
   const [isProfileCompletionOpen, setIsProfileCompletionOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [isApplicationStatusOpen, setIsApplicationStatusOpen] = useState(false);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [googleUserData, setGoogleUserData] = useState<{
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+  } | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [userLocation, setUserLocation] = useState<{
@@ -153,6 +164,10 @@ export default function DashboardPage() {
   const [convertedAmounts, setConvertedAmounts] = useState<
     Record<string, string>
   >({});
+  const [currencyInfo, setCurrencyInfo] = useState<{
+    symbol: string;
+    code: string;
+  }>({ symbol: "$", code: "USD" });
   const [adAccount, setAdAccount] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -181,6 +196,29 @@ export default function DashboardPage() {
   );
   const router = useRouter();
 
+  // Helper function to format revenue with currency
+  const formatRevenue = (usdAmount: number): string => {
+    // Determine which currency to use
+    let currencyToUse: { symbol: string; rate: number };
+    
+    if (currencyInfo.symbol && currencyInfo.code !== "USD") {
+      // Use currencyInfo state if it's not USD
+      const countryCurrency = mentorData?.country 
+        ? getCurrencyForCountry(mentorData.country)
+        : { symbol: currencyInfo.symbol, rate: 1 };
+      currencyToUse = countryCurrency;
+    } else if (mentorData?.country) {
+      // Fallback to mentor's country
+      currencyToUse = getCurrencyForCountry(mentorData.country);
+    } else {
+      // Default to USD
+      currencyToUse = { symbol: "$", rate: 1 };
+    }
+    
+    const convertedAmount = usdAmount * currencyToUse.rate;
+    return `${currencyToUse.symbol}${convertedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   // Calculate monthly revenue from paid sessions (memoized to recalculate when sessions change)
   const revenueData = useMemo(() => {
     const monthNames = [
@@ -199,7 +237,7 @@ export default function DashboardPage() {
     ];
     const currentDate = new Date();
     const currentMonthIndex = currentDate.getMonth();
-    
+
     // Get last 6 months
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -213,7 +251,7 @@ export default function DashboardPage() {
         revenue: 0,
       });
     }
-    
+
     // Calculate revenue for each month from paid sessions
     sessions
       .filter((s) => s.is_paid)
@@ -225,18 +263,18 @@ export default function DashboardPage() {
         const monthData = months.find(
           (m) => m.monthIndex === sessionMonth && m.year === sessionYear
         );
-        
+
         if (monthData) {
           monthData.revenue += parseFloat(session.amount || 0);
         }
       });
-    
+
     return months;
   }, [sessions]);
-  
+
   const currentMonth = revenueData[revenueData.length - 1] || revenueData[0];
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  
+
   // Update selected month when revenueData changes
   useEffect(() => {
     if (
@@ -259,14 +297,50 @@ export default function DashboardPage() {
           return;
         }
 
-        // Fetch mentor data - use user_id column to match Supabase Auth UUID
+        const userEmail = user.email?.trim().toLowerCase();
+
+        // Fetch mentor data - check by email first, then by user_id (UUID)
+        // Note: id is BIGINT, not UUID, so we only match by user_id and email
         const { data: mentor, error: mentorError } = await supabase
           .from("mentors")
           .select("*")
-          .eq("user_id", user.id)
+          .or(
+            userEmail
+              ? `email.ilike.${userEmail},user_id.eq.${user.id}`
+              : `user_id.eq.${user.id}`
+          )
           .maybeSingle();
 
+        console.log(
+          "Dashboard: Checking mentor by email:",
+          userEmail,
+          "or ID:",
+          user.id
+        );
+        console.log("Dashboard: Mentor query result:", { mentor, mentorError });
+
         if (mentorError || !mentor) {
+          // Check if user exists in students table by email
+          if (userEmail) {
+            const { data: studentData } = await supabase
+              .from("students")
+              .select("id, email")
+              .ilike("email", userEmail)
+              .maybeSingle();
+
+            console.log("Dashboard: Student query result:", { studentData });
+
+            if (studentData) {
+              // User is a student, redirect to learner dashboard
+              console.log(
+                "Dashboard: User is a student, redirecting to learner dashboard"
+              );
+              setLoading(false);
+              router.push("/dashboard/learner");
+              return;
+            }
+          }
+
           // Check user metadata to see if they signed up as tutor/mentor/other
           const userType = user.user_metadata?.user_type;
 
@@ -330,8 +404,8 @@ export default function DashboardPage() {
 
             if (createError) {
               console.error("Error creating mentor record:", createError);
-              setUserData({ 
-                id: user.id, 
+              setUserData({
+                id: user.id,
                 email: user.email || "",
                 full_name:
                   user.user_metadata?.full_name ||
@@ -350,28 +424,85 @@ export default function DashboardPage() {
                 "New mentor created - is_complete:",
                 newMentor.is_complete
               );
-              
-              // Direct check - if incomplete, set modal to open after a short delay
+
+              // Direct check - if incomplete, check for application progress
               const isIncomplete =
                 newMentor.is_complete === false ||
                 newMentor.is_complete === "false" ||
                 String(newMentor.is_complete).toLowerCase() === "false" ||
-                                  newMentor.is_complete === null || 
+                newMentor.is_complete === null ||
                 newMentor.is_complete === undefined;
-              
+
               if (isIncomplete) {
-                console.log(
-                  "New mentor profile is incomplete - will open modal"
-                );
-                setTimeout(() => {
-                  setIsProfileCompletionOpen(true);
-                }, 1000);
+                // Check if application has been submitted
+                const { data: progressData } = await supabase
+                  .from("mentor_application_progress")
+                  .select("id, application_submitted")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+
+                if (progressData && progressData.application_submitted) {
+                  console.log("New mentor - application submitted, showing status");
+                  setTimeout(() => {
+                    setIsApplicationStatusOpen(true);
+                  }, 1000);
+                } else {
+                  console.log("New mentor - no application, showing profile completion");
+                  setTimeout(() => {
+                    setIsProfileCompletionOpen(true);
+                  }, 1000);
+                }
               }
             }
           } else {
-            // User is not a mentor, redirect to learner dashboard
+            // User is not a mentor and not in students table
+            // Check if they have an application in progress
+            const { data: progressData } = await supabase
+              .from("mentor_application_progress")
+              .select("id, application_submitted, mentor_id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (progressData && progressData.application_submitted) {
+              // Application exists but mentor record might be missing - try to find mentor
+              if (progressData.mentor_id) {
+                const { data: mentorFromProgress } = await supabase
+                  .from("mentors")
+                  .select("*")
+                  .eq("id", progressData.mentor_id)
+                  .maybeSingle();
+
+                if (mentorFromProgress) {
+                  setMentorData(mentorFromProgress);
+                  setUserData({
+                    ...mentorFromProgress,
+                    full_name: mentorFromProgress.name,
+                    user_type: "mentor",
+                  });
+                  setLoading(false);
+                  setTimeout(() => {
+                    setIsApplicationStatusOpen(true);
+                  }, 500);
+                  return;
+                }
+              }
+            }
+
+            // No application found, show role selection modal
+            console.log(
+              "Dashboard: User not found in mentors or students table, showing role selection modal"
+            );
+            setGoogleUserData({
+              id: user.id,
+              email: user.email || "",
+              name: user.user_metadata?.name || user.user_metadata?.full_name,
+              avatar:
+                user.user_metadata?.avatar_url || user.user_metadata?.picture,
+            });
             setLoading(false);
-            router.push("/dashboard/learner");
+            setTimeout(() => {
+              setShowRoleSelection(true);
+            }, 500);
             return;
           }
         } else {
@@ -387,20 +518,36 @@ export default function DashboardPage() {
             "type:",
             typeof mentor.is_complete
           );
-          
-          // Direct check - if incomplete, set modal to open after a short delay
+
+          // Direct check - if incomplete, check for application progress
           const isIncomplete =
             mentor.is_complete === false ||
             mentor.is_complete === "false" ||
             String(mentor.is_complete).toLowerCase() === "false" ||
-                              mentor.is_complete === null || 
+            mentor.is_complete === null ||
             mentor.is_complete === undefined;
-          
+
           if (isIncomplete) {
-            console.log("Mentor profile is incomplete - will open modal");
-            setTimeout(() => {
-              setIsProfileCompletionOpen(true);
-            }, 1000);
+            // Check if application has been submitted
+            const { data: progressData } = await supabase
+              .from("mentor_application_progress")
+              .select("id, application_submitted")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (progressData && progressData.application_submitted) {
+              console.log("Application submitted - showing application status");
+              // Show application status popup
+              setTimeout(() => {
+                setIsApplicationStatusOpen(true);
+              }, 1000);
+            } else {
+              console.log("No application submitted yet - showing profile completion");
+              // Show profile completion if no application submitted
+              setTimeout(() => {
+                setIsProfileCompletionOpen(true);
+              }, 1000);
+            }
           }
         }
       } catch (error) {
@@ -433,7 +580,7 @@ export default function DashboardPage() {
     };
 
     fetchUserData();
-    
+
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       console.warn("Loading timeout - setting loading to false");
@@ -444,7 +591,7 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check profile completion after component mounts - exactly like student dashboard
+  // Check profile completion after component mounts - but only if no application is in progress
   useEffect(() => {
     if (!loading && mentorData && userData && userData.id) {
       console.log("=== PROFILE COMPLETION CHECK ===");
@@ -453,34 +600,52 @@ export default function DashboardPage() {
       console.log("UserData:", userData);
       console.log("is_complete value:", mentorData.is_complete);
       console.log("is_complete type:", typeof mentorData.is_complete);
-      
+
       // Check if profile is incomplete - handle boolean false, string "false", null, undefined
       const isIncomplete =
         mentorData.is_complete === false ||
         mentorData.is_complete === "false" ||
         String(mentorData.is_complete).toLowerCase() === "false" ||
-                          mentorData.is_complete === null || 
+        mentorData.is_complete === null ||
         mentorData.is_complete === undefined;
-      
+
       console.log("Is incomplete?", isIncomplete);
       console.log("Current modal state:", isProfileCompletionOpen);
-      
+
       if (isIncomplete) {
-        console.log("✅ Profile is incomplete - Opening modal in 500ms");
-        // Small delay to ensure component is fully rendered
-        const timer = setTimeout(() => {
-          console.log("🚀 Setting modal to open NOW");
-          setIsProfileCompletionOpen(true);
-        }, 500);
-        return () => clearTimeout(timer);
+        // Check if application has been submitted - if so, don't show profile completion
+        const checkApplicationProgress = async () => {
+          const { data: progressData } = await supabase
+            .from("mentor_application_progress")
+            .select("id, application_submitted")
+            .eq("user_id", userData.id)
+            .maybeSingle();
+
+          if (progressData && progressData.application_submitted) {
+            console.log("✅ Application submitted - showing application status instead");
+            // Application is in progress, show status popup (handled by other useEffect)
+            setIsApplicationStatusOpen(true);
+            setIsProfileCompletionOpen(false); // Ensure profile completion is closed
+          } else {
+            console.log("✅ Profile is incomplete - Opening modal in 500ms");
+            // No application submitted, show profile completion
+            const timer = setTimeout(() => {
+              console.log("🚀 Setting modal to open NOW");
+              setIsProfileCompletionOpen(true);
+            }, 500);
+            return () => clearTimeout(timer);
+          }
+        };
+
+        checkApplicationProgress();
       } else {
         console.log("❌ Profile is complete, not opening modal");
       }
     } else {
       console.log("⚠️ Conditions not met for profile check:", {
-        loading, 
-        hasMentorData: !!mentorData, 
-        hasUserData: !!userData, 
+        loading,
+        hasMentorData: !!mentorData,
+        hasUserData: !!userData,
         userId: userData?.id,
       });
     }
@@ -525,7 +690,7 @@ export default function DashboardPage() {
           const isPaid =
             payment &&
             (payment.status === "succeeded" || payment.status === "completed");
-          
+
           return {
             ...session,
             is_paid: isPaid,
@@ -819,6 +984,14 @@ export default function DashboardPage() {
     fetchAdData();
   }, [mentorData?.id]);
 
+  // Initialize currency from mentor's country if available
+  useEffect(() => {
+    if (mentorData?.country && !userLocation) {
+      const currencyInfo = getCurrencyForCountry(mentorData.country);
+      setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+    }
+  }, [mentorData?.country, userLocation]);
+
   // Auto-detect user location on page load for currency conversion
   useEffect(() => {
     if (!userLocation && navigator.geolocation) {
@@ -834,6 +1007,11 @@ export default function DashboardPage() {
             "Error getting location for currency conversion:",
             error
           );
+          // If geolocation fails, use mentor's country if available
+          if (mentorData?.country) {
+            const currencyInfo = getCurrencyForCountry(mentorData.country);
+            setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+          }
         },
         {
           enableHighAccuracy: false,
@@ -842,7 +1020,7 @@ export default function DashboardPage() {
         }
       );
     }
-  }, [userLocation]);
+  }, [userLocation, mentorData?.country]);
 
   // Convert all session amounts when sessions or user location changes
   useEffect(() => {
@@ -851,9 +1029,9 @@ export default function DashboardPage() {
         setConvertedAmounts({});
         return;
       }
-      
+
       const conversions: Record<string, string> = {};
-      
+
       for (const session of sessions) {
         try {
           // Assume amount in database is in USD
@@ -862,10 +1040,10 @@ export default function DashboardPage() {
             conversions[session.id] = "$0.00";
             continue;
           }
-          
+
           // Try to use user location first, then fallback to mentor's country
           let locationToUse = userLocation;
-          
+
           // If no user location but mentor has country, try to use mentor's country
           if (!locationToUse && mentorData?.country) {
             const countryLower = mentorData.country.toLowerCase();
@@ -920,7 +1098,7 @@ export default function DashboardPage() {
               locationToUse = { lat: 5.6037, lng: -0.187 }; // Accra, Ghana
             }
           }
-          
+
           if (locationToUse) {
             const result = await convertAndFormatPrice(
               usdAmount,
@@ -942,30 +1120,59 @@ export default function DashboardPage() {
           )}`;
         }
       }
-      
+
       setConvertedAmounts(conversions);
     };
-    
+
     convertAllAmounts();
-    
-    // Also convert total revenue for display
-    if (sessions.length > 0 && userLocation) {
-      const totalRevenue = sessions
-        .filter((s) => s.is_paid)
-        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-      
-      if (totalRevenue > 0) {
-        convertAndFormatPrice(totalRevenue, userLocation)
-          .then((result) => {
+
+    // Also convert total revenue for display (always convert, even if 0)
+    const totalRevenue = sessions
+      .filter((s) => s.is_paid)
+      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+
+    // Determine location to use: userLocation first, then mentor's country
+    if (userLocation) {
+      convertAndFormatPrice(totalRevenue, userLocation)
+        .then((result) => {
+          setCurrencyInfo({ symbol: result.symbol, code: result.currency });
+          setConvertedAmounts((prev) => ({
+            ...prev,
+            total: result.formatted,
+          }));
+        })
+        .catch(() => {
+          // Fallback to mentor's country or USD
+          if (mentorData?.country) {
+            const currencyInfo = getCurrencyForCountry(mentorData.country);
+            setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+            const convertedTotal = totalRevenue * currencyInfo.rate;
             setConvertedAmounts((prev) => ({
               ...prev,
-              total: result.formatted,
+              total: `${currencyInfo.symbol}${convertedTotal.toFixed(2)}`,
             }));
-          })
-          .catch(() => {
-            // Fallback handled in display
-          });
-      }
+          } else {
+            setConvertedAmounts((prev) => ({
+              ...prev,
+              total: `$${totalRevenue.toFixed(2)}`,
+            }));
+          }
+        });
+    } else if (mentorData?.country) {
+      // Use mentor's country for currency conversion
+      const currencyInfo = getCurrencyForCountry(mentorData.country);
+      setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+      const convertedTotal = totalRevenue * currencyInfo.rate;
+      setConvertedAmounts((prev) => ({
+        ...prev,
+        total: `${currencyInfo.symbol}${convertedTotal.toFixed(2)}`,
+      }));
+    } else {
+      // No location available, use USD
+      setConvertedAmounts((prev) => ({
+        ...prev,
+        total: `$${totalRevenue.toFixed(2)}`,
+      }));
     }
   }, [sessions, userLocation, mentorData?.country]);
 
@@ -1261,7 +1468,7 @@ export default function DashboardPage() {
 
     doc.save(`Audience_Demographics_Q${quarter}_${year}.pdf`);
   };
-  
+
   const stats = [
     {
       title: "Total Revenue",
@@ -1305,16 +1512,10 @@ export default function DashboardPage() {
     revenueData.reduce((acc, curr) => acc + curr.revenue, 0);
 
   if (loading) {
-  return (
+    return (
       <DashboardLayout role="mentor">
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your dashboard...</p>
-            <p className="mt-2 text-sm text-gray-500">
-              This may take a few moments
-            </p>
-          </div>
+          <LoadingLogo size={48} />
         </div>
       </DashboardLayout>
     );
@@ -1362,9 +1563,7 @@ export default function DashboardPage() {
                   const totalRevenue = sessions
                     .filter((s) => s.is_paid)
                     .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-                  return (
-                    convertedAmounts["total"] || `$${totalRevenue.toFixed(2)}`
-                  );
+                  return convertedAmounts["total"] || formatRevenue(totalRevenue);
                 })()}
               </div>
               <p className="text-xs text-gray-600">
@@ -1408,10 +1607,16 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-gray-900">
-                $
                 {adAccount?.balance
-                  ? parseFloat(adAccount.balance).toFixed(2)
-                  : "0.00"}
+                  ? (() => {
+                      const balanceUSD = parseFloat(adAccount.balance);
+                      const currencyInfo = mentorData?.country 
+                        ? getCurrencyForCountry(mentorData.country)
+                        : { symbol: "$", rate: 1 };
+                      const convertedBalance = balanceUSD * currencyInfo.rate;
+                      return `${currencyInfo.symbol}${convertedBalance.toFixed(2)}`;
+                    })()
+                  : `${currencyInfo.symbol}0.00`}
               </div>
               <p className="text-xs text-gray-600">
                 {adAccount?.lifetime_spent
@@ -1423,35 +1628,35 @@ export default function DashboardPage() {
         </div>
 
         <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="border-2 border-blue-500/50 bg-transparent h-9 w-[600px] grid grid-cols-4 rounded-none p-1 shadow-[inset_0_0_35px_rgba(59,130,246,0.3)]">
-          <TabsTrigger 
-            value="overview" 
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            Overview
-          </TabsTrigger>
-          <TabsTrigger 
-            value="analytics"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger 
-            value="sessions"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            My Sessions
-          </TabsTrigger>
-          <TabsTrigger 
-            value="tasks"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            Tasks
-          </TabsTrigger>
+          <TabsList className="border-2 border-blue-500/50 bg-transparent h-9 w-[600px] grid grid-cols-4 rounded-none p-1 shadow-[inset_0_0_35px_rgba(59,130,246,0.3)]">
+            <TabsTrigger
+              value="overview"
+              className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
+            >
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              value="analytics"
+              className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
+            >
+              Analytics
+            </TabsTrigger>
+            <TabsTrigger
+              value="sessions"
+              className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
+            >
+              My Sessions
+            </TabsTrigger>
+            <TabsTrigger
+              value="tasks"
+              className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
+            >
+              Tasks
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="overview" className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4 bg-white border rounded-xl shadow-sm">
+              <Card className="lg:col-span-4 bg-white border rounded-xl shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-gray-900">
                     Revenue Overview
@@ -1460,81 +1665,81 @@ export default function DashboardPage() {
                     Click on a month to view details
                   </CardDescription>
                 </CardHeader>
-              <CardContent className="flex gap-6">
-                        <div className="space-y-2 w-1/3 border-r border-gray-200 pr-4">
-                  {revenueData.map((data, index) => {
+                <CardContent className="flex gap-6">
+                  <div className="space-y-2 w-1/3 border-r border-gray-200 pr-4">
+                    {revenueData.map((data, index) => {
                       const currentDate = new Date();
                       const currentMonthIndex = currentDate.getMonth();
                       const currentYear = currentDate.getFullYear();
                       const monthIndex = data.monthIndex;
                       const monthYear = data.year;
-                    
-                    // Check if this is a future month
+
+                      // Check if this is a future month
                       const isFutureMonth =
                         monthYear > currentYear ||
                         (monthYear === currentYear &&
                           monthIndex > currentMonthIndex);
                       const isPastMonth =
                         !isFutureMonth && data.month !== selectedMonth.month;
-                    return (
-                      <div key={data.month} className="relative group">
-                        {isFutureMonth && (
-                          <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
-                            {(() => {
+                      return (
+                        <div key={data.month} className="relative group">
+                          {isFutureMonth && (
+                            <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
+                              {(() => {
                                 const currentDate = new Date();
                                 const currentMonthName =
                                   currentDate.toLocaleDateString("en-US", {
                                     month: "long",
                                   });
                                 return `We're currently in ${currentMonthName}. This is a future month.`;
-                            })()}
-                          </div>
-                        )}
-                        {isPastMonth && (
-                          <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
-                            <div className="space-y-1">
+                              })()}
+                            </div>
+                          )}
+                          {isPastMonth && (
+                            <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
+                              <div className="space-y-1">
                                 <p className="font-medium">
-                                  Revenue: ${data.revenue.toLocaleString()}
+                                  Revenue: {formatRevenue(data.revenue)}
                                 </p>
-                              <p className="text-gray-600">
+                                <p className="text-gray-600">
                                   {Math.round(
                                     (data.revenue / getTotalRevenue()) * 100
                                   )}
                                   % of total revenue
-                              </p>
-                              {index < revenueData.length - 1 && (
-                                <p className="text-green-600">
-                                  {Math.round(
+                                </p>
+                                {index < revenueData.length - 1 && (
+                                  <p className="text-green-600">
+                                    {Math.round(
                                       ((revenueData[index + 1].revenue -
                                         data.revenue) /
                                         data.revenue) *
                                         100
                                     )}
                                     % growth next month
-                                </p>
-                              )}
-                  </div>
-                        </div>
-                        )}
-                        <button
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          <button
                             onClick={() =>
                               !isFutureMonth && setSelectedMonth(data)
                             }
-                          className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors
+                            className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors
                             ${
                               selectedMonth.month === data.month
                                 ? "bg-blue-50 text-blue-600"
-                              : isFutureMonth
+                                : isFutureMonth
                                 ? "text-gray-400 cursor-not-allowed"
                                 : "hover:bg-gray-50 text-gray-600 hover:text-blue-600"
                             }`}
-                          disabled={isFutureMonth}
-                        >
+                            disabled={isFutureMonth}
+                          >
                             <div
                               className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                            isFutureMonth 
+                                isFutureMonth
                                   ? "bg-gray-100"
-                              : selectedMonth.month === data.month
+                                  : selectedMonth.month === data.month
                                   ? "bg-blue-100"
                                   : "bg-gray-100"
                               }`}
@@ -1550,7 +1755,7 @@ export default function DashboardPage() {
                               >
                                 {data.month}
                               </span>
-                        </div>
+                            </div>
                             <span
                               className={`text-sm font-medium ${
                                 selectedMonth.month === data.month
@@ -1559,47 +1764,47 @@ export default function DashboardPage() {
                               }`}
                             >
                               {selectedMonth.month === data.month
-                                ? `$${data.revenue.toLocaleString()}`
+                                ? formatRevenue(data.revenue)
                                 : ""}
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="relative w-72 h-72">
-                    <div 
-                      className="absolute inset-0 rounded-full border-2 border-blue-200 bg-blue-50"
+                            </span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="flex-1 flex items-center justify-center">
+                    <div className="relative w-72 h-72">
+                      <div
+                        className="absolute inset-0 rounded-full border-2 border-blue-200 bg-blue-50"
                         style={{
                           animation: "rotateCircle 10s linear infinite",
                         }}
-                    >
-                      <div className="absolute inset-0 rounded-full shadow-[inset_0_0_45px_rgba(59,130,246,0.1)]" />
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="space-y-6 text-center p-8">
-                        <div>
-                          <p className="text-sm text-gray-600">Revenue</p>
-                          <p className="text-4xl font-bold text-gray-900 mt-2">
-                            ${selectedMonth.revenue.toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="space-y-4">
+                      >
+                        <div className="absolute inset-0 rounded-full shadow-[inset_0_0_45px_rgba(59,130,246,0.1)]" />
+                      </div>
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="space-y-6 text-center p-8">
                           <div>
-                            <div className="flex items-center justify-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-green-600" />
-                              <span className="text-base text-green-600">
-                                {getGrowthPercentage(selectedMonth)}%
-                              </span>
-                        </div>
+                            <p className="text-sm text-gray-600">Revenue</p>
+                            <p className="text-4xl font-bold text-gray-900 mt-2">
+                              {formatRevenue(selectedMonth.revenue)}
+                            </p>
+                          </div>
+                          <div className="space-y-4">
+                            <div>
+                              <div className="flex items-center justify-center gap-2">
+                                <TrendingUp className="h-4 w-4 text-green-600" />
+                                <span className="text-base text-green-600">
+                                  {getGrowthPercentage(selectedMonth)}%
+                                </span>
+                              </div>
                               <p className="text-sm text-gray-600 mt-1">
                                 vs prev month
                               </p>
-                      </div>
-                          <div>
-                            <p className="text-base font-medium text-gray-900">
+                            </div>
+                            <div>
+                              <p className="text-base font-medium text-gray-900">
                                 {Math.round(
                                   (selectedMonth.revenue / getTotalRevenue()) *
                                     100
@@ -1609,16 +1814,16 @@ export default function DashboardPage() {
                               <p className="text-sm text-gray-600">
                                 of total revenue
                               </p>
-                        </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="lg:col-span-3 bg-white border rounded-xl shadow-sm">
-              <CardHeader>
+                </CardContent>
+              </Card>
+              <Card className="lg:col-span-3 bg-white border rounded-xl shadow-sm">
+                <CardHeader>
                   <CardTitle className="text-gray-900">
                     Tutor Requests
                   </CardTitle>
@@ -1631,12 +1836,12 @@ export default function DashboardPage() {
                         } (pending and accepted)`
                       : "No tutor requests"}
                   </CardDescription>
-              </CardHeader>
+                </CardHeader>
                 <CardContent>
                   {requestsLoading ? (
                     <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
+                      <LoadingLogo size={32} />
+                    </div>
                   ) : tutorRequests.length > 0 ? (
                     <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2">
                       {tutorRequests.map((request) => {
@@ -1734,9 +1939,7 @@ export default function DashboardPage() {
                                     <h4 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
                                       {request.subject}
                                     </h4>
-                                    <div>
-                                      {getStatusBadge(request.status)}
-                                    </div>
+                                    <div>{getStatusBadge(request.status)}</div>
                                   </div>
                                   <div className="flex items-center gap-1.5 text-xs text-gray-500">
                                     <Calendar className="w-3 h-3" />
@@ -1752,9 +1955,9 @@ export default function DashboardPage() {
                                     <MessageSquare className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
                                     <p className="text-xs text-gray-700 line-clamp-2">
                                       {request.description}
-                    </p>
-                      </div>
-                    </div>
+                                    </p>
+                                  </div>
+                                </div>
                               )}
 
                               {/* Request Details - Compact */}
@@ -1763,7 +1966,7 @@ export default function DashboardPage() {
                                   <div className="flex items-center gap-2 text-xs">
                                     <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
                                       <Clock className="w-3 h-3 text-indigo-600" />
-                        </div>
+                                    </div>
                                     <div className="flex-1 min-w-0">
                                       <span className="text-gray-500 text-xs">
                                         Preferred Time:{" "}
@@ -1771,7 +1974,7 @@ export default function DashboardPage() {
                                       <span className="text-gray-900 font-medium">
                                         {request.preferred_time}
                                       </span>
-                      </div>
+                                    </div>
                                   </div>
                                 )}
 
@@ -1814,7 +2017,7 @@ export default function DashboardPage() {
                                           : "text-gray-600"
                                       }`}
                                     />
-                        </div>
+                                  </div>
                                   <div className="flex-1 min-w-0">
                                     <span className="text-gray-500 text-xs">
                                       Payment Status:{" "}
@@ -1830,9 +2033,9 @@ export default function DashboardPage() {
                                     >
                                       {request.payment_status || "pending"}
                                     </span>
-                      </div>
-                    </div>
-                  </div>
+                                  </div>
+                                </div>
+                              </div>
 
                               {/* Accept/Reject Buttons */}
                               {request.status === "pending" && (
@@ -1852,7 +2055,7 @@ export default function DashboardPage() {
                                     >
                                       {processingRequestId === request.id ? (
                                         <>
-                                          <Loader2 className="w-3.5 h-3.5 mr-1.5 inline animate-spin" />
+                                          <LoadingLogo size={14} />
                                           Accepting...
                                         </>
                                       ) : (
@@ -1879,7 +2082,7 @@ export default function DashboardPage() {
                                     >
                                       {processingRequestId === request.id ? (
                                         <>
-                                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                                          <LoadingLogo size={14} />
                                           Rejecting...
                                         </>
                                       ) : (
@@ -1910,7 +2113,7 @@ export default function DashboardPage() {
               </Card>
             </div>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="bg-white border rounded-xl shadow-sm">
+              <Card className="bg-white border rounded-xl shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-gray-900">
                     Session Requests
@@ -1973,7 +2176,7 @@ export default function DashboardPage() {
                     }
 
                     return (
-                  <div className="space-y-4">
+                      <div className="space-y-4">
                         {recentRequests.map((session) => {
                           const sessionDate = new Date(
                             `${session.date}T${session.time}`
@@ -1985,10 +2188,10 @@ export default function DashboardPage() {
                           const timeAgo =
                             hoursAgo < 1
                               ? "Just now"
-                            : hoursAgo === 1 
+                              : hoursAgo === 1
                               ? "1 hour ago"
-                            : hoursAgo < 24
-                            ? `${hoursAgo} hours ago`
+                              : hoursAgo < 24
+                              ? `${hoursAgo} hours ago`
                               : `${Math.floor(hoursAgo / 24)} day${
                                   Math.floor(hoursAgo / 24) > 1 ? "s" : ""
                                 } ago`;
@@ -2001,8 +2204,8 @@ export default function DashboardPage() {
                               <div className="flex-shrink-0">
                                 <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
                                   {session.topic.charAt(0).toUpperCase()}
-                        </div>
-                      </div>
+                                </div>
+                              </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-gray-900 truncate">
                                   {session.topic}
@@ -2029,9 +2232,9 @@ export default function DashboardPage() {
                                     )}`}{" "}
                                   • {session.duration} min
                                 </p>
-                    </div>
-                              <Button 
-                                size="sm" 
+                              </div>
+                              <Button
+                                size="sm"
                                 className="bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white"
                                 onClick={() => {
                                   // Navigate to sessions page or open accept modal
@@ -2040,7 +2243,7 @@ export default function DashboardPage() {
                               >
                                 Accept Session
                               </Button>
-                        </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -2048,10 +2251,10 @@ export default function DashboardPage() {
                   })()}
                 </CardContent>
                 <CardFooter>
-                <Button 
-                  className="w-full bg-gradient-to-r from-blue-500/80 to-green-500/80 hover:from-blue-500/90 hover:to-green-500/90 transition-all duration-300 text-white border-0 shadow-lg shadow-blue-500/20" 
-                  asChild
-                >
+                  <Button
+                    className="w-full bg-gradient-to-r from-blue-500/80 to-green-500/80 hover:from-blue-500/90 hover:to-green-500/90 transition-all duration-300 text-white border-0 shadow-lg shadow-blue-500/20"
+                    asChild
+                  >
                     <Link
                       href="/dashboard/tutor/sessions"
                       className="flex items-center justify-center"
@@ -2099,7 +2302,7 @@ export default function DashboardPage() {
                       (sum: number, c: any) => sum + (c.total_impressions || 0),
                       0
                     )}
-            </div>
+                  </div>
                   <p className="text-xs text-gray-600 mt-1">
                     {adImpressions.length} detailed records
                   </p>
@@ -2111,8 +2314,8 @@ export default function DashboardPage() {
                     Click-Through Rate
                   </CardTitle>
                   <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
+                </CardHeader>
+                <CardContent>
                   <div className="text-2xl font-bold text-gray-900">
                     {(() => {
                       const totalClicks = campaigns.reduce(
@@ -2129,7 +2332,7 @@ export default function DashboardPage() {
                         : "0.00";
                     })()}
                     %
-                            </div>
+                  </div>
                   <p className="text-xs text-gray-600 mt-1">
                     Clicks per 100 impressions
                   </p>
@@ -2162,7 +2365,7 @@ export default function DashboardPage() {
                   </p>
                 </CardContent>
               </Card>
-                              </div>
+            </div>
 
             {/* Conversion Metrics */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2184,7 +2387,7 @@ export default function DashboardPage() {
                         : "0.0";
                     })()}
                     %
-                            </div>
+                  </div>
                   <p className="text-xs text-gray-600 mt-2">
                     {sessions.filter((s) => s.is_paid).length} of{" "}
                     {sessions.length} sessions paid
@@ -2211,7 +2414,7 @@ export default function DashboardPage() {
                         ? `$${(totalRevenue / totalClicks).toFixed(2)}`
                         : "$0.00";
                     })()}
-                            </div>
+                  </div>
                   <p className="text-xs text-gray-600 mt-2">
                     Average revenue generated per click
                   </p>
@@ -2238,13 +2441,13 @@ export default function DashboardPage() {
                         ? `$${(totalSpent / paidSessions).toFixed(2)}`
                         : "$0.00";
                     })()}
-                        </div>
+                  </div>
                   <p className="text-xs text-gray-600 mt-2">
                     Ad spend per paid session
                   </p>
                 </CardContent>
               </Card>
-                  </div>
+            </div>
 
             {/* Geographic Analytics */}
             <Card className="bg-white border rounded-xl shadow-sm">
@@ -2259,11 +2462,11 @@ export default function DashboardPage() {
               <CardContent>
                 {analyticsLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                      </div>
+                    <LoadingLogo size={32} />
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
+                    <div>
                       <h4 className="text-sm font-semibold text-gray-700 mb-3">
                         Top Countries (Clicks)
                       </h4>
@@ -2291,7 +2494,7 @@ export default function DashboardPage() {
                                 <span className="text-sm font-semibold text-gray-900">
                                   {count}
                                 </span>
-                          </div>
+                              </div>
                             ))
                           ) : (
                             <p className="text-sm text-gray-500">
@@ -2301,7 +2504,7 @@ export default function DashboardPage() {
                         })()}
                       </div>
                     </div>
-                            <div>
+                    <div>
                       <h4 className="text-sm font-semibold text-gray-700 mb-3">
                         Top Countries (Impressions)
                       </h4>
@@ -2358,7 +2561,7 @@ export default function DashboardPage() {
               <CardContent>
                 {sessionsLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                    <LoadingLogo size={32} />
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -2385,8 +2588,8 @@ export default function DashboardPage() {
                           uniqueStudents
                             .get(session.learner_email)
                             .sessions.push({
-                            topic: session.topic,
-                            date: session.date,
+                              topic: session.topic,
+                              date: session.date,
                               amount: session.amount,
                             });
                         }
@@ -2403,8 +2606,8 @@ export default function DashboardPage() {
                                 <div className="flex items-center gap-3 mb-2">
                                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
                                     {student.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
+                                  </div>
+                                  <div>
                                     <h4 className="font-semibold text-gray-900">
                                       {student.name}
                                     </h4>
@@ -2435,17 +2638,17 @@ export default function DashboardPage() {
                                             s.date
                                           ).toLocaleDateString()}
                                           )
-                            </div>
+                                        </div>
                                       )
                                     )}
-                          </div>
-                        </div>
-                      </div>
+                                  </div>
+                                </div>
+                              </div>
                               <Badge className="bg-green-100 text-green-700 border-green-200">
                                 Paid
                               </Badge>
-                    </div>
-                  </div>
+                            </div>
+                          </div>
                         ))
                       ) : (
                         <div className="text-center py-12">
@@ -2454,7 +2657,7 @@ export default function DashboardPage() {
                           <p className="text-sm text-gray-500 mt-1">
                             Students who pay for sessions will appear here
                           </p>
-                </div>
+                        </div>
                       );
                     })()}
                   </div>
@@ -2517,10 +2720,7 @@ export default function DashboardPage() {
               <CardContent>
                 {sessionsLoading ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600">Loading sessions...</p>
-                    </div>
+                    <LoadingLogo size={32} />
                   </div>
                 ) : sessions.length === 0 ? (
                   <div className="text-center py-12">
@@ -2528,7 +2728,7 @@ export default function DashboardPage() {
                     <p className="text-gray-600">No sessions scheduled yet</p>
                   </div>
                 ) : (
-                <div className="space-y-4">
+                  <div className="space-y-4">
                     {sessions.map((session) => {
                       const sessionDate = new Date(
                         `${session.date}T${session.time}`
@@ -2541,7 +2741,7 @@ export default function DashboardPage() {
                           ? "bg-red-100 text-red-700 border-red-200"
                           : session.status === "in-progress"
                           ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                        : isPast
+                          : isPast
                           ? "bg-gray-100 text-gray-700 border-gray-200"
                           : "bg-blue-100 text-blue-700 border-blue-200";
 
@@ -2612,7 +2812,7 @@ export default function DashboardPage() {
                             </div>
 
                             {/* Content Section */}
-                    <div className="flex-1 min-w-0">
+                            <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-3">
                                 <div className="flex-1">
                                   <h3 className="text-xl font-bold text-gray-900 mb-1">
@@ -2634,10 +2834,10 @@ export default function DashboardPage() {
                                       <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700 border border-orange-200">
                                         Awaiting Payment
                                       </span>
-                                )}
-                    </div>
-                  </div>
-                    </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
 
                               {/* Student Info */}
                               {session.is_paid &&
@@ -2653,15 +2853,15 @@ export default function DashboardPage() {
                                       <span className="text-sm font-medium text-gray-900">
                                         {session.learner_name}
                                       </span>
-                  </div>
+                                    </div>
                                     <div className="flex items-center gap-2">
                                       <Mail className="h-4 w-4 text-blue-600" />
                                       <span className="text-sm text-gray-700">
                                         {session.learner_email}
                                       </span>
-                    </div>
-                  </div>
-                </div>
+                                    </div>
+                                  </div>
+                                </div>
                               ) : (
                                 <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
                                   <p className="text-xs font-semibold text-gray-600 mb-1">
@@ -2670,8 +2870,8 @@ export default function DashboardPage() {
                                   <p className="text-xs text-gray-500">
                                     Waiting for a student to book this session
                                   </p>
-                            </div>
-                          )}
+                                </div>
+                              )}
 
                               {/* Session Details */}
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
@@ -2688,10 +2888,10 @@ export default function DashboardPage() {
                                       }
                                     )}
                                   </span>
-                            </div>
+                                </div>
                                 <div className="flex items-center gap-2 text-gray-700">
                                   <Clock className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium">
+                                  <span className="text-sm font-medium">
                                     {new Date(
                                       `2000-01-01T${session.time}`
                                     ).toLocaleTimeString("en-US", {
@@ -2700,8 +2900,8 @@ export default function DashboardPage() {
                                       hour12: true,
                                     })}{" "}
                                     • {session.duration} min
-                            </span>
-                        </div>
+                                  </span>
+                                </div>
                                 <div className="flex items-center gap-2 text-gray-700">
                                   <span className="text-sm font-semibold">
                                     {convertedAmounts[session.id] ||
@@ -2709,16 +2909,16 @@ export default function DashboardPage() {
                                         session.amount || 0
                                       ).toFixed(2)}`}
                                   </span>
-                  </div>
+                                </div>
                                 {session.meeting_type && (
                                   <div className="flex items-center gap-2 text-gray-700">
                                     <Video className="h-4 w-4 text-blue-600" />
                                     <span className="text-sm capitalize">
                                       {session.meeting_type.replace("-", " ")}
                                     </span>
-                      </div>
+                                  </div>
                                 )}
-                          </div>
+                              </div>
 
                               {/* Notes */}
                               {session.notes && (
@@ -2729,64 +2929,64 @@ export default function DashboardPage() {
                                   <p className="text-sm text-gray-600">
                                     {session.notes}
                                   </p>
-                              </div>
+                                </div>
                               )}
 
                               {/* Meeting Link - Only show if session is paid AND student is assigned */}
-                              {session.meeting_link && 
-                               session.is_paid === true && 
-                               session.learner_name && 
+                              {session.meeting_link &&
+                                session.is_paid === true &&
+                                session.learner_name &&
                                 session.learner_name !== "TBD" &&
                                 session.learner_name.trim() !== "" &&
-                               session.learner_email && (
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
+                                session.learner_email && (
+                                  <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex-1 min-w-0">
                                         <p className="text-xs font-semibold text-gray-700 mb-1">
                                           Meeting Link
                                         </p>
                                         <p className="text-sm text-gray-600 truncate">
                                           {session.meeting_link}
                                         </p>
-                            </div>
-                <Button 
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => {
                                           navigator.clipboard.writeText(
                                             session.meeting_link
                                           );
-                                      }}
-                                      className="ml-2 flex-shrink-0"
-                                    >
-                                      <Copy className="h-4 w-4" />
-                </Button>
-          </div>
-              </div>
-                              )}
+                                        }}
+                                        className="ml-2 flex-shrink-0"
+                                      >
+                                        <Copy className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )}
 
                               {/* Join Meeting Button - Only accessible when meeting starts and session is paid AND student is assigned */}
-                              {session.meeting_link && 
-                               session.is_paid === true && 
-                               session.learner_name && 
+                              {session.meeting_link &&
+                                session.is_paid === true &&
+                                session.learner_name &&
                                 session.learner_name !== "TBD" &&
                                 session.learner_name.trim() !== "" &&
-                               session.learner_email && (
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                  {isMeetingActive ? (
-                                    <a
-                                      href={session.meeting_link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm"
-                                    >
-                                      <Video className="h-4 w-4" />
-                                      Join Meeting Now
-                                      <ArrowRight className="h-4 w-4" />
-                                    </a>
-                                  ) : sessionDate > new Date() ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                                      <Clock className="h-4 w-4" />
+                                session.learner_email && (
+                                  <div className="mt-4 pt-4 border-t border-gray-200">
+                                    {isMeetingActive ? (
+                                      <a
+                                        href={session.meeting_link}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm"
+                                      >
+                                        <Video className="h-4 w-4" />
+                                        Join Meeting Now
+                                        <ArrowRight className="h-4 w-4" />
+                                      </a>
+                                    ) : sessionDate > new Date() ? (
+                                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
+                                        <Clock className="h-4 w-4" />
                                         Meeting starts{" "}
                                         {new Date(
                                           sessionDate
@@ -2802,17 +3002,17 @@ export default function DashboardPage() {
                                           minute: "2-digit",
                                           hour12: true,
                                         })}
-                    </div>
-                                  ) : (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                                      <Clock className="h-4 w-4" />
-                                      Meeting has ended
-                  </div>
-                                  )}
-                    </div>
-                              )}
-                  </div>
-                    </div>
+                                      </div>
+                                    ) : (
+                                      <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
+                                        <Clock className="h-4 w-4" />
+                                        Meeting has ended
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                            </div>
+                          </div>
                         </motion.div>
                       );
                     })}
@@ -2820,23 +3020,23 @@ export default function DashboardPage() {
                 )}
               </CardContent>
             </Card>
-        </TabsContent>
-        <TabsContent value="tasks" className="space-y-4">
-          <Card className="bg-white border rounded-xl shadow-sm">
+          </TabsContent>
+          <TabsContent value="tasks" className="space-y-4">
+            <Card className="bg-white border rounded-xl shadow-sm">
               <CardHeader>
-              <CardTitle className="text-gray-900">Tasks & Grading</CardTitle>
+                <CardTitle className="text-gray-900">Tasks & Grading</CardTitle>
                 <CardDescription className="text-gray-600">
                   View and grade student task submissions
                 </CardDescription>
               </CardHeader>
               <CardContent>
-              {tasksLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                    </div>
-              ) : tasks.length === 0 ? (
-                <div className="text-center py-12">
-                  <ClipboardList className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                {tasksLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingLogo size={32} />
+                  </div>
+                ) : tasks.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ClipboardList className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <p className="text-lg font-medium text-gray-600 mb-2">
                       No tasks yet
                     </p>
@@ -2844,24 +3044,24 @@ export default function DashboardPage() {
                       Tasks you create will appear here for grading
                     </p>
                   </div>
-              ) : (
-                <div className="space-y-4">
-                  {tasks.map((task: any) => {
+                ) : (
+                  <div className="space-y-4">
+                    {tasks.map((task: any) => {
                       const dueDate = new Date(task.due_date);
-                    
-                    return (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
+
+                      return (
+                        <motion.div
+                          key={task.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white"
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
                               <h3 className="text-xl font-bold text-gray-900 mb-2">
                                 {task.title}
                               </h3>
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
+                              <div className="flex items-center gap-2 flex-wrap mb-2">
                                 <Badge
                                   className={
                                     task.status === "graded"
@@ -2878,200 +3078,194 @@ export default function DashboardPage() {
                                   )}
                                   {task.status.charAt(0).toUpperCase() +
                                     task.status.slice(1)}
-                              </Badge>
-                              {task.session && (
+                                </Badge>
+                                {task.session && (
                                   <Badge variant="outline">
                                     {task.session.topic}
                                   </Badge>
-                              )}
-                    </div>
-                  </div>
+                                )}
+                              </div>
+                            </div>
                             {task.status === "graded" &&
                               task.score !== null && (
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-green-600">
-                                {task.score}/{task.max_score}
-                    </div>
-                              <div className="text-sm text-gray-500">
+                                <div className="text-right">
+                                  <div className="text-2xl font-bold text-green-600">
+                                    {task.score}/{task.max_score}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
                                     {(
                                       (task.score / task.max_score) *
                                       100
                                     ).toFixed(1)}
                                     %
-                  </div>
-                </div>
-                          )}
-          </div>
+                                  </div>
+                                </div>
+                              )}
+                          </div>
 
-                        <div className="space-y-3 mb-4">
+                          <div className="space-y-3 mb-4">
                             <p className="text-sm text-gray-700 whitespace-pre-wrap">
                               {task.description}
                             </p>
-                          
-                          {task.instructions && (
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+
+                            {task.instructions && (
+                              <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
                                 <p className="text-xs font-semibold text-blue-900 mb-1">
                                   Instructions:
                                 </p>
                                 <p className="text-sm text-blue-800 whitespace-pre-wrap">
                                   {task.instructions}
                                 </p>
-              </div>
-                          )}
+                              </div>
+                            )}
 
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span>Due: {dueDate.toLocaleDateString()}</span>
-                    </div>
-                            {task.learner && (
+                            <div className="grid grid-cols-2 gap-4 text-sm">
                               <div className="flex items-center gap-2 text-gray-600">
-                                <User className="h-4 w-4" />
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>Due: {dueDate.toLocaleDateString()}</span>
+                              </div>
+                              {task.learner && (
+                                <div className="flex items-center gap-2 text-gray-600">
+                                  <User className="h-4 w-4" />
                                   <span>
                                     {task.learner.full_name ||
                                       task.learner.email}
                                   </span>
-                  </div>
-                            )}
-                    </div>
+                                </div>
+                              )}
+                            </div>
 
-                          {task.submission_text && (
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                            {task.submission_text && (
+                              <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                                 <p className="text-xs font-semibold text-gray-700 mb-1">
                                   Student Submission:
                                 </p>
                                 <p className="text-sm text-gray-600 whitespace-pre-wrap">
                                   {task.submission_text}
                                 </p>
-                              {task.submission_file_url && (
-                                <a
-                                  href={task.submission_file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2"
-                                >
-                                  <Download className="h-3 w-3" />
+                                {task.submission_file_url && (
+                                  <a
+                                    href={task.submission_file_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2"
+                                  >
+                                    <Download className="h-3 w-3" />
                                     {task.submission_file_name ||
                                       "Download file"}
-                                </a>
-                              )}
-                              {task.submitted_at && (
-                                <p className="text-xs text-gray-500 mt-2">
+                                  </a>
+                                )}
+                                {task.submitted_at && (
+                                  <p className="text-xs text-gray-500 mt-2">
                                     Submitted:{" "}
                                     {new Date(
                                       task.submitted_at
                                     ).toLocaleString()}
-                                </p>
-                              )}
-                  </div>
-                          )}
+                                  </p>
+                                )}
+                              </div>
+                            )}
 
                             {task.status === "graded" && task.feedback && (
-                            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
                                 <p className="text-xs font-semibold text-green-900 mb-1">
                                   Your Feedback:
                                 </p>
                                 <p className="text-sm text-green-800 whitespace-pre-wrap">
                                   {task.feedback}
                                 </p>
-                    </div>
-                          )}
-                  </div>
+                              </div>
+                            )}
+                          </div>
 
-                        <div className="flex justify-end gap-2 pt-4 border-t">
+                          <div className="flex justify-end gap-2 pt-4 border-t">
                             {task.status === "submitted" && (
-                            <Button
-                              onClick={() => {
+                              <Button
+                                onClick={() => {
                                   setSelectedTask(task);
-                                setGradeData({
-                                  score: task.max_score.toString(),
+                                  setGradeData({
+                                    score: task.max_score.toString(),
                                     feedback: "",
                                   });
                                   setIsGradeModalOpen(true);
-                              }}
-                            >
-                              <Star className="h-4 w-4 mr-2" />
-                              Grade Task
-                      </Button>
-                          )}
+                                }}
+                              >
+                                <Star className="h-4 w-4 mr-2" />
+                                Grade Task
+                              </Button>
+                            )}
                             {task.status === "graded" && (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
+                              <Button
+                                variant="outline"
+                                onClick={() => {
                                   setSelectedTask(task);
-                                setGradeData({
+                                  setGradeData({
                                     score:
                                       task.score?.toString() ||
                                       task.max_score.toString(),
                                     feedback: task.feedback || "",
                                   });
                                   setIsGradeModalOpen(true);
-                              }}
-                            >
-                              <Star className="h-4 w-4 mr-2" />
-                              Update Grade
-                            </Button>
-                          )}
-                </div>
-                      </motion.div>
+                                }}
+                              >
+                                <Star className="h-4 w-4 mr-2" />
+                                Update Grade
+                              </Button>
+                            )}
+                          </div>
+                        </motion.div>
                       );
-                  })}
-                </div>
-              )}
+                    })}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-      {/* Debug: Test button to manually open modal */}
-      {userData && userData.id && mentorData && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <button
-            onClick={() => {
-                console.log("Manual test: Opening modal");
-                console.log(
-                  "Current state - isProfileCompletionOpen:",
-                  isProfileCompletionOpen
-                );
-                console.log(
-                  "Mentor data - is_complete:",
-                  mentorData.is_complete
-                );
-                setIsProfileCompletionOpen(true);
-            }}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg"
-          >
-            Test Modal (Debug)
-          </button>
-    </div>
-      )}
-
-      {/* Mentor Profile Completion Form */}
-      {userData && userData.id && (
-        <MentorProfileCompletionForm
-          isOpen={isProfileCompletionOpen}
-          onClose={() => {
+        {/* Mentor Profile Completion Form - Only show if application status is not open */}
+        {userData && userData.id && !isApplicationStatusOpen && (
+          <MentorProfileCompletionForm
+            isOpen={isProfileCompletionOpen}
+            onClose={() => {
               console.log("Closing profile completion modal");
               setIsProfileCompletionOpen(false);
-          }}
-          userId={userData.id}
-          onComplete={() => {
+            }}
+            userId={userData.id}
+            onComplete={async () => {
               console.log("Profile completion finished");
               setIsProfileCompletionOpen(false);
-            // Show success modal
-              setIsSuccessModalOpen(true);
-            // Refresh user data
-            const fetchUserData = async () => {
+              // Check if application has been submitted
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+              if (user) {
+                const { data: progressData } = await supabase
+                  .from("mentor_application_progress")
+                  .select("id, application_submitted")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+
+                if (progressData && progressData.application_submitted) {
+                  // Application already submitted, show status popup
+                  setIsApplicationStatusOpen(true);
+                } else {
+                  // No application submitted, show success modal
+                  setIsSuccessModalOpen(true);
+                }
+              }
+              // Refresh user data
+              const fetchUserData = async () => {
                 const {
                   data: { user },
                 } = await supabase.auth.getUser();
-              if (user) {
-                const { data: mentor } = await supabase
+                if (user) {
+                  const { data: mentor } = await supabase
                     .from("mentors")
                     .select("*")
                     .eq("user_id", user.id)
                     .single();
-                if (mentor) {
+                  if (mentor) {
                     setMentorData(mentor);
                     setUserData({
                       ...mentor,
@@ -3082,76 +3276,183 @@ export default function DashboardPage() {
                 }
               };
               fetchUserData();
+            }}
+          />
+        )}
+        <ProfileCompletionSuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={() => setIsSuccessModalOpen(false)}
+          onContinue={async () => {
+            setIsSuccessModalOpen(false);
+            // Check if application has already been submitted
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (user) {
+              const { data: progressData } = await supabase
+                .from("mentor_application_progress")
+                .select("id, application_submitted")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+              if (progressData && progressData.application_submitted) {
+                // Application already submitted, show status popup
+                setIsApplicationStatusOpen(true);
+              } else {
+                // No application submitted, show application form
+                setIsApplicationModalOpen(true);
+              }
+            } else {
+              setIsApplicationModalOpen(true);
+            }
           }}
         />
-      )}
-      <ProfileCompletionSuccessModal
-        isOpen={isSuccessModalOpen}
-        onClose={() => setIsSuccessModalOpen(false)}
-        onContinue={() => {
-            setIsSuccessModalOpen(false);
-            setIsApplicationModalOpen(true);
-        }}
-      />
-      <TutorApplicationModal
-        isOpen={isApplicationModalOpen}
-        onClose={() => setIsApplicationModalOpen(false)}
+        <TutorApplicationModal
+          isOpen={isApplicationModalOpen}
+          onClose={() => setIsApplicationModalOpen(false)}
           userEmail={userData?.email || ""}
           userName={userData?.full_name || userData?.name || ""}
-      />
+          onComplete={() => {
+            setIsApplicationModalOpen(false);
+            // Show application status popup after submission
+            setTimeout(() => {
+              setIsApplicationStatusOpen(true);
+            }, 500);
+          }}
+        />
+        {/* Application Status Popup - Shows when is_complete is FALSE */}
+        {mentorData && 
+         (mentorData.is_complete === false || 
+          mentorData.is_complete === "false" || 
+          mentorData.is_complete === null || 
+          mentorData.is_complete === undefined) && (
+          <MentorApplicationStatusPopup
+            isOpen={isApplicationStatusOpen}
+            mentorId={mentorData.id}
+            userId={userData?.id || null}
+            onClose={() => {
+              setIsApplicationStatusOpen(false);
+              // Use router refresh instead of full reload
+              router.refresh();
+            }}
+          />
+        )}
+        {googleUserData && (
+          <RoleSelectionModal
+            isOpen={showRoleSelection}
+            onClose={() => {
+              setShowRoleSelection(false);
+              setGoogleUserData(null);
+            }}
+            userId={googleUserData.id}
+            userEmail={googleUserData.email}
+            userName={googleUserData.name}
+            userAvatar={googleUserData.avatar}
+            onTutorSelected={() => {
+              // Close role selection modal
+              setShowRoleSelection(false);
+              setGoogleUserData(null);
+              // Refresh user data to get the newly created mentor record
+              const refreshUserData = async () => {
+                try {
+                  const {
+                    data: { user },
+                  } = await supabase.auth.getUser();
+                  if (!user) return;
 
-      {/* Grade Task Modal */}
-      <Dialog open={isGradeModalOpen} onOpenChange={setIsGradeModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Grade Task: {selectedTask?.title}</DialogTitle>
-            <DialogDescription>
-              Provide a score and feedback for the student's submission
-            </DialogDescription>
-          </DialogHeader>
-                <div className="space-y-4">
-            <div>
+                  const { data: mentor } = await supabase
+                    .from("mentors")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .maybeSingle();
+
+                  if (mentor) {
+                    setMentorData(mentor);
+                    setUserData({
+                      ...mentor,
+                      full_name: mentor.name,
+                      user_type: "mentor",
+                    });
+                    // Check if application has been submitted
+                    const { data: progressData } = await supabase
+                      .from("mentor_application_progress")
+                      .select("id, application_submitted")
+                      .eq("user_id", user.id)
+                      .maybeSingle();
+
+                    if (progressData && progressData.application_submitted) {
+                      // Application submitted, show status popup
+                      setTimeout(() => {
+                        setIsApplicationStatusOpen(true);
+                      }, 300);
+                    } else {
+                      // No application, show profile completion
+                      setTimeout(() => {
+                        setIsProfileCompletionOpen(true);
+                      }, 300);
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error refreshing user data:", error);
+                }
+              };
+              refreshUserData();
+            }}
+          />
+        )}
+
+        {/* Grade Task Modal */}
+        <Dialog open={isGradeModalOpen} onOpenChange={setIsGradeModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Grade Task: {selectedTask?.title}</DialogTitle>
+              <DialogDescription>
+                Provide a score and feedback for the student's submission
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="score">
                   Score (out of {selectedTask?.max_score || 100})
                 </Label>
-              <Input
-                id="score"
-                type="number"
-                value={gradeData.score}
+                <Input
+                  id="score"
+                  type="number"
+                  value={gradeData.score}
                   onChange={(e) =>
                     setGradeData({ ...gradeData, score: e.target.value })
                   }
-                min="0"
-                max={selectedTask?.max_score || 100}
-                step="0.01"
-              />
-                  </div>
-            <div>
-              <Label htmlFor="feedback">Feedback</Label>
-              <Textarea
-                id="feedback"
-                value={gradeData.feedback}
+                  min="0"
+                  max={selectedTask?.max_score || 100}
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <Label htmlFor="feedback">Feedback</Label>
+                <Textarea
+                  id="feedback"
+                  value={gradeData.feedback}
                   onChange={(e) =>
                     setGradeData({ ...gradeData, feedback: e.target.value })
                   }
-                placeholder="Provide detailed feedback for the student..."
-                rows={8}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
+                  placeholder="Provide detailed feedback for the student..."
+                  rows={8}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setIsGradeModalOpen(false);
                     setSelectedTask(null);
                     setGradeData({ score: "", feedback: "" });
-                }}
-                disabled={grading}
-              >
-                Cancel
-                      </Button>
-              <Button
-                onClick={async () => {
+                  }}
+                  disabled={grading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
                     if (!selectedTask) return;
                     if (
                       !gradeData.score ||
@@ -3164,14 +3465,14 @@ export default function DashboardPage() {
                     }
 
                     setGrading(true);
-                  try {
-                    const { error } = await supabase
+                    try {
+                      const { error } = await supabase
                         .from("tasks")
-                      .update({
-                        score: parseFloat(gradeData.score),
-                        feedback: gradeData.feedback || null,
-                        graded_at: new Date().toISOString(),
-                        graded_by: mentorData?.id,
+                        .update({
+                          score: parseFloat(gradeData.score),
+                          feedback: gradeData.feedback || null,
+                          graded_at: new Date().toISOString(),
+                          graded_by: mentorData?.id,
                           status: "graded",
                         })
                         .eq("id", selectedTask.id);
@@ -3182,9 +3483,9 @@ export default function DashboardPage() {
                       setIsGradeModalOpen(false);
                       setSelectedTask(null);
                       setGradeData({ score: "", feedback: "" });
-                    
-                    // Refresh tasks
-                    const { data, error: fetchError } = await supabase
+
+                      // Refresh tasks
+                      const { data, error: fetchError } = await supabase
                         .from("tasks")
                         .select(
                           `
@@ -3204,32 +3505,32 @@ export default function DashboardPage() {
                         .order("created_at", { ascending: false });
 
                       if (!fetchError) setTasks(data || []);
-                  } catch (error: any) {
+                    } catch (error: any) {
                       console.error("Error grading task:", error);
                       toast.error(error.message || "Failed to grade task");
-                  } finally {
+                    } finally {
                       setGrading(false);
-                  }
-                }}
-                disabled={grading}
-              >
-                {grading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Grading...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Submit Grade
-                  </>
-                )}
-              </Button>
-                </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+                    }
+                  }}
+                  disabled={grading}
+                >
+                  {grading ? (
+                    <>
+                      <LoadingLogo size={16} />
+                      Grading...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Submit Grade
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 }

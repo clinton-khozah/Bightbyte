@@ -7,9 +7,10 @@ import { Footer } from "@/components/footer"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
-import { Star, Users, DollarSign, Heart, Share2, Video, Clock, Globe, Calendar, Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Star, Users, DollarSign, Heart, Share2, Video, Clock, Globe, Calendar, ChevronLeft, ChevronRight } from "lucide-react"
 import { useTheme } from "next-themes"
 import { motion } from "framer-motion"
+import { LoadingLogo } from "@/components/loading-logo"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { supabase } from "@/lib/supabase"
 import { SignInModal } from "@/components/auth/sign-in-modal"
@@ -509,7 +510,7 @@ export default function LiveSessionsPage() {
           
           {loading ? (
             <div className="flex justify-center items-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-white" />
+              <LoadingLogo size={32} />
             </div>
           ) : filteredSessions.length === 0 ? (
             <div className="text-center py-12">

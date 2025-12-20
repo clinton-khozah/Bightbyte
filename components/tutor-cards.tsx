@@ -10,10 +10,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Star,
-  Loader2,
   CheckCircle2,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { LoadingLogo } from "@/components/loading-logo";
 import dynamic from "next/dynamic";
 
 // Dynamically import modals to avoid SSR issues
@@ -628,7 +628,7 @@ export function TutorCards({
   if (loading) {
     return (
       <div className="w-full py-8 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <LoadingLogo size={32} />
       </div>
     );
   }

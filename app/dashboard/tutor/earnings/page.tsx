@@ -28,11 +28,11 @@ import {
   TrendingDown,
   Wallet,
   Download,
-  Loader2,
   CheckCircle2,
   AlertCircle,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { LoadingLogo } from "@/components/loading-logo";
 import { convertAndFormatPrice } from "@/lib/currency";
 
 interface Payment {
@@ -665,10 +665,7 @@ export default function EarningsPage() {
     return (
       <DashboardLayout role="mentor">
         <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-            <p className="text-gray-600">Loading earnings...</p>
-          </div>
+          <LoadingLogo size={32} />
         </div>
       </DashboardLayout>
     );
@@ -945,7 +942,7 @@ export default function EarningsPage() {
                   }
                 }}
               >
-                <Loader2 className="h-4 w-4 mr-2" />
+                <LoadingLogo size={16} />
                 Refresh
               </Button>
             </div>
@@ -1061,7 +1058,7 @@ export default function EarningsPage() {
                       {(withdrawal.status === "pending" ||
                         withdrawal.status === "processing" ||
                         withdrawal.status === "pending_manual") && (
-                        <Loader2 className="h-6 w-6 text-yellow-600 animate-spin" />
+                        <LoadingLogo size={24} />
                       )}
                     </div>
                   </motion.div>
@@ -1315,7 +1312,7 @@ export default function EarningsPage() {
                 >
                   {withdrawing ? (
                     <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      <LoadingLogo size={16} />
                       Processing...
                     </>
                   ) : (

@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { LoadingLogo } from "@/components/loading-logo"
 import { 
   Search, 
   MapPin, 
@@ -15,7 +16,6 @@ import {
   Star, 
   CheckCircle2, 
   Eye,
-  Loader2,
   AlertCircle,
   ArrowLeft,
   GraduationCap,
@@ -609,7 +609,7 @@ export default function TutorsPage() {
     return (
       <DashboardLayout userData={userData} role="student">
         <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <LoadingLogo size={48} />
         </div>
       </DashboardLayout>
     )
@@ -691,7 +691,7 @@ export default function TutorsPage() {
               >
                 {isFindingNearby ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <LoadingLogo size={20} />
                     Finding...
                   </>
                 ) : (
@@ -728,7 +728,7 @@ export default function TutorsPage() {
         {/* Mentors Grid */}
         {mentorsLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <LoadingLogo size={32} />
           </div>
         ) : filteredMentors.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-lg border border-gray-200">

@@ -1,68 +1,40 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import Image from "next/image"
-import { motion } from "framer-motion"
+import * as React from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
 
 interface LoadingLogoProps {
-  size?: number
+  size?: number;
+  className?: string;
 }
 
-export function LoadingLogo({ size = 44 }: LoadingLogoProps) {
-  const [colorIndex, setColorIndex] = React.useState(0)
-
-  // Logo colors for the border
-  const logoColors = [
-    "#6B54FA", // Purple
-    "#FA6565", // Pink/Red
-    "#F9CA56", // Yellow/Gold
-    "#53E2D2"  // Teal
-  ]
-
-  // Color rotation effect
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      setColorIndex((prevIndex) => (prevIndex + 1) % logoColors.length)
-    }, 2000)
-    
-    return () => clearInterval(interval)
-  }, [])
-
+export function LoadingLogo({ size = 44, className = "" }: LoadingLogoProps) {
   return (
-    <div className="flex items-center justify-center">
+    <div className={`flex items-center justify-center ${className}`}>
       <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
+        animate={{
+          scale: [1, 1.2, 1],
+        }}
         transition={{
-          duration: 0.5,
+          duration: 1.5,
           repeat: Infinity,
-          repeatType: "reverse"
+          ease: "easeInOut",
         }}
         className="relative flex items-center justify-center"
-        style={{ 
-          border: `2px solid ${logoColors[colorIndex]}`,
-          transition: "border-color 0.5s ease-in-out",
-          borderRadius: "50%",
-          width: `${size + 8}px`,
-          height: `${size + 8}px`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center"
-        }}
       >
-        <Image 
-          src="/images/Picture1.png" 
-          alt="Logo" 
-          width={size} 
+        <Image
+          src="/images/loader.png"
+          alt="BrightByt Loader"
+          width={size}
           height={size}
-          className="overflow-hidden" 
+          className="overflow-hidden"
           priority
-          style={{ 
-            borderRadius: "50%",
-            objectFit: "contain"
+          style={{
+            objectFit: "contain",
           }}
         />
       </motion.div>
     </div>
-  )
-} 
+  );
+}
