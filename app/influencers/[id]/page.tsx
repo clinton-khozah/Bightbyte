@@ -130,7 +130,6 @@ export default function InfluencerDetailPage({ params }: { params: { id: string 
       <div
         className="fixed inset-0 w-full h-full -z-10"
         style={{ backgroundImage: "url('/images/adspace.png')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat" }}
-        style={{ backgroundImage: "url('/images/adspace.png')" }}
         aria-hidden="true"
       />
       <div className="relative z-10 bg-black/50">
