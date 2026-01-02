@@ -74,6 +74,7 @@ export function CreateJobModal({
     tags: "",
     benefits: "",
     company_logo: "",
+    company_name: "", // Company name field
     application_method: "platform", // 'platform', 'external_link', 'email'
     application_link: "",
     application_email: "",
@@ -340,9 +341,11 @@ export function CreateJobModal({
       } = await supabase.auth.getUser();
       const postedByUserId = authUser?.id || null;
 
-      // Get company/mentor name for company_name field
-      let companyName = null;
-      if (validCompanyId) {
+      // Get company name from form or fallback to database lookup
+      let companyName = formData.company_name?.trim() || "";
+      
+      // If company_name not provided in form, try to get from database
+      if (!companyName && validCompanyId) {
         // Try to get company name from companies table
         const { data: companyInfo } = await supabase
           .from("companies")
@@ -366,7 +369,7 @@ export function CreateJobModal({
             }
           }
         }
-      } else if (authUser) {
+      } else if (!companyName && authUser) {
         // If no company_id, try to get name from mentor or user
         const { data: mentorInfo } = await supabase
           .from("mentors")
@@ -379,10 +382,17 @@ export function CreateJobModal({
         }
       }
 
+      // Validate company_name is provided
+      if (!companyName || companyName.trim() === "") {
+        setError("Company name is required");
+        setIsSubmitting(false);
+        return;
+      }
+
       const jobData: any = {
         company_id: validCompanyId,
         posted_by: postedByUserId, // Track who posted this job
-        company_name: companyName, // Add company_name to job data
+        company_name: companyName, // Use form value or fallback
         title: formData.title.trim(),
         description: formData.description.trim(),
         job_type: formData.job_type,
@@ -677,6 +687,7 @@ export function CreateJobModal({
       tags: "",
       benefits: "",
       company_logo: "",
+      company_name: "",
       application_method: "platform",
       application_link: "",
       application_email: "",
@@ -814,6 +825,30 @@ export function CreateJobModal({
                         </p>
                       </div>
                     </div>
+                  </div>
+
+                  {/* Company Name */}
+                  <div className="space-y-3 pb-4 border-b border-gray-200">
+                    <Label
+                      htmlFor="company_name"
+                      className="text-sm font-semibold text-gray-700 mb-1.5 block flex items-center gap-2"
+                    >
+                      <Briefcase className="h-4 w-4 text-blue-600" />
+                      Company Name <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      id="company_name"
+                      name="company_name"
+                      value={formData.company_name}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Acme Corporation, Tech Solutions Inc."
+                      className="h-10 text-sm"
+                      disabled={isSubmitting}
+                      required
+                    />
+                    <p className="text-xs text-gray-500">
+                      Enter the name of the company posting this job
+                    </p>
                   </div>
 
                   {/* Basic Information */}
