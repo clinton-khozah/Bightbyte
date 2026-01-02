@@ -257,43 +257,9 @@ export function CreateJobModal({
         type: typeof validCompanyId,
       });
 
-      // If company_id is invalid, use mentor ID as fallback
-      // This ensures jobs are always linked to the user who posted them
-      if (!validCompanyId || validCompanyId === 0) {
-        console.log(
-          "ℹ️ Company ID is null or invalid, checking for mentor ID fallback..."
-        );
-
-        // Get the current user's mentor ID
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user) {
-          const { data: mentorData } = await supabase
-            .from("mentors")
-            .select("id")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          if (mentorData?.id) {
-            validCompanyId = mentorData.id;
-            console.log("✅ Using mentor ID as company_id:", validCompanyId);
-          } else {
-            console.warn(
-              "⚠️ No mentor ID found, posting job without company_id"
-            );
-            validCompanyId = null;
-          }
-        } else {
-          console.warn(
-            "⚠️ No authenticated user, posting job without company_id"
-          );
-          validCompanyId = null;
-        }
-      } else {
-        // Verify that the company_id actually exists in the companies table
-        // This prevents foreign key constraint violations
+      // Verify that the company_id actually exists in the companies table
+      // This prevents foreign key constraint violations
+      if (validCompanyId && validCompanyId !== 0) {
         const { data: companyCheck, error: companyCheckError } = await supabase
           .from("companies")
           .select("id")
@@ -302,37 +268,16 @@ export function CreateJobModal({
 
         if (companyCheckError || !companyCheck) {
           console.warn(
-            "⚠️ Company ID does not exist in companies table, trying mentor ID fallback..."
+            "⚠️ Company ID does not exist in companies table, setting to NULL"
           );
-
-          // Try mentor ID as fallback
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-
-          if (user) {
-            const { data: mentorData } = await supabase
-              .from("mentors")
-              .select("id")
-              .eq("user_id", user.id)
-              .maybeSingle();
-
-            if (mentorData?.id) {
-              validCompanyId = mentorData.id;
-              console.log(
-                "✅ Using mentor ID as company_id fallback:",
-                validCompanyId
-              );
-            } else {
-              console.warn(
-                "⚠️ No mentor ID found, posting job without company_id"
-              );
-              validCompanyId = null;
-            }
-          } else {
-            validCompanyId = null;
-          }
+          validCompanyId = null; // Set to NULL if company doesn't exist
+        } else {
+          console.log("✅ Company ID verified:", validCompanyId);
         }
+      } else {
+        // If no valid company_id, set to NULL
+        validCompanyId = null;
+        console.log("ℹ️ No company_id provided, setting to NULL");
       }
 
       // Get current user ID for posted_by field
@@ -341,10 +286,10 @@ export function CreateJobModal({
       } = await supabase.auth.getUser();
       const postedByUserId = authUser?.id || null;
 
-      // Get company name from form or fallback to database lookup
+      // Get company name from form (required field)
       let companyName = formData.company_name?.trim() || "";
       
-      // If company_name not provided in form, try to get from database
+      // If company_name not provided in form, try to get from database (fallback only)
       if (!companyName && validCompanyId) {
         // Try to get company name from companies table
         const { data: companyInfo } = await supabase
@@ -355,30 +300,6 @@ export function CreateJobModal({
 
         if (companyInfo) {
           companyName = companyInfo.company_name || companyInfo.name;
-        } else {
-          // Try to get mentor name as fallback
-          if (authUser) {
-            const { data: mentorInfo } = await supabase
-              .from("mentors")
-              .select("name, company_name")
-              .eq("id", validCompanyId)
-              .maybeSingle();
-
-            if (mentorInfo) {
-              companyName = mentorInfo.company_name || mentorInfo.name;
-            }
-          }
-        }
-      } else if (!companyName && authUser) {
-        // If no company_id, try to get name from mentor or user
-        const { data: mentorInfo } = await supabase
-          .from("mentors")
-          .select("name, company_name")
-          .eq("user_id", authUser.id)
-          .maybeSingle();
-
-        if (mentorInfo) {
-          companyName = mentorInfo.company_name || mentorInfo.name;
         }
       }
 
