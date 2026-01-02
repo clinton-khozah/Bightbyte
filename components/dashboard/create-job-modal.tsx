@@ -861,7 +861,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue placeholder="Select job type" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
                               <SelectItem value="job">
                                 <div className="flex items-center gap-2">
                                   <Briefcase className="h-3.5 w-3.5" />
@@ -907,7 +907,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
                               <SelectItem value="IT">IT</SelectItem>
                               <SelectItem value="Engineering">Engineering</SelectItem>
                               <SelectItem value="Finance">Finance</SelectItem>
@@ -1054,7 +1054,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
                               <SelectItem value="USD">USD ($)</SelectItem>
                               <SelectItem value="ZAR">ZAR (R)</SelectItem>
                               <SelectItem value="EUR">EUR (€)</SelectItem>
@@ -1091,7 +1091,7 @@ export function CreateJobModal({
                           <SelectTrigger className="h-10 text-sm">
                             <SelectValue placeholder="Select experience level" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[10000] bg-white" position="item-aligned">
                             <SelectItem value="entry">Entry Level</SelectItem>
                             <SelectItem value="mid">Mid Level</SelectItem>
                             <SelectItem value="senior">Senior Level</SelectItem>
@@ -1117,7 +1117,7 @@ export function CreateJobModal({
                           <SelectTrigger className="h-10 text-sm">
                             <SelectValue placeholder="Select education level" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[10000] bg-white" position="item-aligned">
                             <SelectItem value="high_school">
                               High School
                             </SelectItem>
