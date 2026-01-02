@@ -13,7 +13,7 @@ export default function AboutPage() {
           inset: 0,
           width: "100vw",
           height: "100vh",
-          backgroundImage: "url('/images/adspace.jpg')",
+          backgroundImage: "url('/images/adspace.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           zIndex: 0,
