@@ -420,6 +420,33 @@ export function CreateJobModal({
               }
             }
 
+            // Send email notifications to subscribers
+            try {
+              const notificationResponse = await fetch("/api/send-job-notifications", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  jobId: data.job?.id || data.id,
+                  jobTitle: formData.title,
+                  companyName: companyName,
+                  jobType: formData.job_type,
+                  category: formData.category,
+                  location: formData.location,
+                  matchReason: `New ${formData.job_type} posted in ${formData.category}`,
+                }),
+              });
+
+              if (notificationResponse.ok) {
+                const notificationData = await notificationResponse.json();
+                console.log("✅ Email notifications sent:", notificationData);
+              }
+            } catch (notificationError) {
+              console.error("Error sending notifications:", notificationError);
+              // Don't fail job posting if notifications fail
+            }
+
             // Trigger refresh event for dashboard
             window.dispatchEvent(new CustomEvent("jobPosted"));
             if (onSuccess) onSuccess();
@@ -552,6 +579,33 @@ export function CreateJobModal({
           } catch (notifErr) {
             console.error("Error creating notification:", notifErr);
           }
+        }
+
+        // Send email notifications to subscribers
+        try {
+          const notificationResponse = await fetch("/api/send-job-notifications", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              jobId: data?.id,
+              jobTitle: formData.title,
+              companyName: companyName,
+              jobType: formData.job_type,
+              category: formData.category,
+              location: formData.location,
+              matchReason: `New ${formData.job_type} posted in ${formData.category}`,
+            }),
+          });
+
+          if (notificationResponse.ok) {
+            const notificationData = await notificationResponse.json();
+            console.log("✅ Email notifications sent:", notificationData);
+          }
+        } catch (notificationError) {
+          console.error("Error sending notifications:", notificationError);
+          // Don't fail job posting if notifications fail
         }
 
         setSuccess(true);

@@ -133,7 +133,7 @@ export function JobNotificationPopup({
 
     setIsSubmitting(true);
     try {
-      // Insert into job_notifications table (we'll create this table)
+      // Insert into job_notifications table
       const { error } = await supabase.from("job_notifications").insert({
         email: email,
         categories: selectedCategories.length > 0 ? selectedCategories : null,
@@ -144,6 +144,29 @@ export function JobNotificationPopup({
         console.error("Error submitting notification:", error);
         alert("Something went wrong. Please try again.");
         return;
+      }
+
+      // Send welcome email
+      try {
+        const response = await fetch("/api/send-email", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            to: email,
+            subject: "Welcome to Brightbyt! 🎉",
+            html: generateWelcomeEmail(email.split("@")[0] || "there", email),
+            from: "clintonkhozah@gmail.com",
+          }),
+        });
+
+        if (response.ok) {
+          console.log("✅ Welcome email sent to", email);
+        }
+      } catch (emailError) {
+        console.error("Error sending welcome email:", emailError);
+        // Don't fail the subscription if email fails
       }
 
       // Mark as submitted in localStorage (also marks as seen)
