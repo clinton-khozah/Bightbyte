@@ -542,30 +542,22 @@ export function JobCards({
                               <span className="text-[10px]">{job.location}</span>
                             </div>
                           </div>
-                          {job.application_deadline && (
-                            <div className="flex items-start gap-1.5">
-                              <Calendar className="h-3 w-3 text-blue-600 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1 leading-tight min-w-0">
-                                <span className="font-semibold text-gray-900 text-[10px]">Deadline: </span>
-                                <span className="text-[10px]">
-                                  {new Date(job.application_deadline).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          {job.duration && (
+                          {job.company_name && (
                             <div className="flex items-center gap-1.5">
-                              <Clock className="h-3 w-3 text-blue-600 flex-shrink-0" />
-                              <div className="min-w-0">
-                                <span className="font-semibold text-gray-900 text-[10px]">Duration: </span>
-                                <span className="text-[10px]">{job.duration}</span>
+                              <Briefcase className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <span className="font-semibold text-gray-900 text-[10px]">Company: </span>
+                                <span className="text-[10px] truncate">{job.company_name}</span>
                               </div>
                             </div>
                           )}
+                          <div className="flex items-center gap-1.5">
+                            <Briefcase className="h-3 w-3 text-blue-600 flex-shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <span className="font-semibold text-gray-900 text-[10px]">Type: </span>
+                              <span className="text-[10px] capitalize">{job.job_type}</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Tags */}
@@ -814,30 +806,22 @@ export function JobCards({
                               <span>{job.location}</span>
                             </div>
                           </div>
-                          {job.application_deadline && (
-                            <div className="flex items-start gap-2">
-                              <Calendar className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1 leading-tight">
-                                <span className="font-semibold text-gray-900">Deadline: </span>
-                                <span>
-                                  {new Date(job.application_deadline).toLocaleDateString("en-US", {
-                                    year: "numeric",
-                                    month: "short",
-                                    day: "numeric",
-                                  })}
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          {job.duration && (
+                          {job.company_name && (
                             <div className="flex items-center gap-2">
-                              <Clock className="h-4 w-4 text-blue-600 flex-shrink-0" />
-                              <div>
-                                <span className="font-semibold text-gray-900">Duration: </span>
-                                <span>{job.duration}</span>
+                              <Briefcase className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                              <div className="min-w-0 flex-1">
+                                <span className="font-semibold text-gray-900">Company: </span>
+                                <span className="truncate">{job.company_name}</span>
                               </div>
                             </div>
                           )}
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                            <div>
+                              <span className="font-semibold text-gray-900">Type: </span>
+                              <span className="capitalize">{job.job_type}</span>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Tags */}
