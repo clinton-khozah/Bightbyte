@@ -609,18 +609,6 @@ export default function MyJobsPage() {
                         </div>
                       </div>
 
-                      {/* Application Method Indicator */}
-                      {job.application_method === "external_link" &&
-                        job.application_link && (
-                          <div className="mb-2 md:mb-3 p-1.5 md:p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                            <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-xs text-blue-700">
-                              <ExternalLink className="h-3 w-3 md:h-3.5 md:w-3.5 flex-shrink-0" />
-                              <span className="font-medium line-clamp-1">
-                                Apply on company website
-                              </span>
-                            </div>
-                          </div>
-                        )}
                       {job.application_method === "email" &&
                         job.application_email && (
                           <div className="mb-2 md:mb-3 p-1.5 md:p-2 bg-green-50 border border-green-200 rounded-lg">

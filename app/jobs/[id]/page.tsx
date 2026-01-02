@@ -294,7 +294,7 @@ export default function JobDetailsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       <Navbar />
-      <div className="container mx-auto px-3 md:px-4 pt-20 md:pt-24 pb-6 md:pb-8 max-w-4xl">
+      <div className="container mx-auto px-3 md:px-4 pt-20 md:pt-24 pb-6 md:pb-8 max-w-4xl overflow-hidden">
         {/* Back Button */}
         <Button
           variant="ghost"
@@ -373,8 +373,8 @@ export default function JobDetailsPage() {
           {/* Description */}
           <div className="mb-4 md:mb-6">
             <h2 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">Description</h2>
-            <div className="prose max-w-none">
-              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">{job.description}</p>
+            <div className="prose max-w-none break-words overflow-wrap-anywhere">
+              <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm break-words overflow-wrap-anywhere">{job.description}</p>
             </div>
           </div>
 
@@ -443,8 +443,8 @@ export default function JobDetailsPage() {
           {job.requirements && (
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">Requirements</h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">{job.requirements}</p>
+              <div className="prose max-w-none break-words overflow-wrap-anywhere">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm break-words overflow-wrap-anywhere">{job.requirements}</p>
               </div>
             </div>
           )}
@@ -453,8 +453,8 @@ export default function JobDetailsPage() {
           {job.qualifications && (
             <div className="mb-4 md:mb-6">
               <h2 className="text-base md:text-xl font-bold text-gray-900 mb-2 md:mb-3">Qualifications</h2>
-              <div className="prose max-w-none">
-                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">{job.qualifications}</p>
+              <div className="prose max-w-none break-words overflow-wrap-anywhere">
+                <p className="text-gray-700 leading-relaxed whitespace-pre-wrap text-xs md:text-sm break-words overflow-wrap-anywhere">{job.qualifications}</p>
               </div>
             </div>
           )}
@@ -498,36 +498,6 @@ export default function JobDetailsPage() {
 
           {/* Application Method Indicator - Moved to bottom */}
           <div id="apply" className="scroll-mt-24">
-          {job.application_method === "external_link" && job.application_link && (
-            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-md md:rounded-lg">
-              <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-blue-700 mb-1.5 md:mb-2">
-                <ExternalLink className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="font-semibold">Apply on company website</span>
-              </div>
-              <a
-                href={job.application_link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline text-xs md:text-sm break-all"
-              >
-                {job.application_link}
-              </a>
-            </div>
-          )}
-          {job.application_method === "email" && job.application_email && (
-            <div className="mb-4 md:mb-6 p-3 md:p-4 bg-green-50 border border-green-200 rounded-md md:rounded-lg">
-              <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-green-700 mb-1.5 md:mb-2">
-                <Mail className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
-                <span className="font-semibold">Apply via email: </span>
-              </div>
-              <a
-                href={`mailto:${job.application_email}?subject=Application for ${encodeURIComponent(job.title)}`}
-                className="text-green-600 hover:underline break-all text-xs md:text-sm"
-              >
-                {job.application_email}
-              </a>
-            </div>
-          )}
 
           {/* Action Buttons - Moved to bottom */}
           <div className="flex gap-2 md:gap-3 pt-4 md:pt-6 border-t border-gray-200 mt-6 md:mt-8">
@@ -556,7 +526,7 @@ export default function JobDetailsPage() {
                 className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs md:text-base h-9 md:h-11"
               >
                 <ExternalLink className="h-3 w-3 md:h-5 md:w-5 mr-1 md:mr-2" />
-                <span className="hidden sm:inline">Apply on Website</span>
+                <span className="hidden sm:inline">Apply</span>
                 <span className="sm:hidden">Apply</span>
               </Button>
             ) : job.application_method === "email" && job.application_email ? (

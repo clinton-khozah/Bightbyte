@@ -599,15 +599,6 @@ export function JobCards({
                         </div>
                       </div>
 
-                      {/* Application Method Indicator */}
-                      {job.application_method === "external_link" && job.application_link && (
-                        <div className="mb-2 p-1.5 bg-blue-50 border border-blue-200 rounded-md">
-                          <div className="flex items-center gap-1.5 text-[10px] text-blue-700">
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                            <span className="font-medium line-clamp-1">Apply on company website</span>
-                          </div>
-                        </div>
-                      )}
                       {job.application_method === "email" && job.application_email && (
                         <div className="mb-2 p-1.5 bg-green-50 border border-green-200 rounded-md">
                           <div className="flex items-center gap-1.5 text-[10px] text-green-700">
@@ -864,15 +855,6 @@ export function JobCards({
                         </div>
                       </div>
 
-                      {/* Application Method Indicator */}
-                      {job.application_method === "external_link" && job.application_link && (
-                        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                          <div className="flex items-center gap-2 text-xs text-blue-700">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            <span className="font-medium">Apply on company website</span>
-                          </div>
-                        </div>
-                      )}
                       {job.application_method === "email" && job.application_email && (
                         <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
                           <div className="flex items-center gap-2 text-xs text-green-700">

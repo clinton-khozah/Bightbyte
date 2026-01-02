@@ -534,7 +534,6 @@ export default function TutorSessionsPage() {
                         <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
                           <div className="flex items-center gap-2 text-xs text-blue-700">
                             <ExternalLink className="h-3.5 w-3.5" />
-                            <span className="font-medium">Apply on company website</span>
                           </div>
                         </div>
                       )}

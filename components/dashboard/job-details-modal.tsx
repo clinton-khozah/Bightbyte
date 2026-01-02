@@ -287,15 +287,6 @@ export function JobDetailsModal({ isOpen, onClose, job }: JobDetailsModalProps) 
             </div>
           )}
 
-          {/* Application Method Indicator */}
-          {job.application_method === "external_link" && job.application_link && (
-            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center gap-2 text-sm text-blue-700">
-                <ExternalLink className="h-4 w-4" />
-                <span className="font-medium">Apply on company website</span>
-              </div>
-            </div>
-          )}
           {job.application_method === "email" && job.application_email && (
             <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
               <div className="flex items-center gap-2 text-sm text-green-700">
