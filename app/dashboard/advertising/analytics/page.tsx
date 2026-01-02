@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { DashboardLayout } from "@/components/dashboard/layout"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,7 +11,7 @@ import { Loader2, TrendingUp, MousePointerClick, Eye, DollarSign, Globe, Calenda
 import { motion } from "framer-motion"
 import { supabase } from "@/lib/supabase"
 
-const API_BASE_URL = "http://127.0.0.1:8000/api/v1"
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1"
 
 interface Campaign {
   id: string
@@ -41,7 +41,7 @@ interface CampaignAnalytics {
   }>
 }
 
-export default function AdAnalyticsPage() {
+function AdAnalyticsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [userData, setUserData] = useState<any>(null)
@@ -389,5 +389,19 @@ export default function AdAnalyticsPage() {
         )}
       </div>
     </DashboardLayout>
+  )
+}
+
+export default function AdAnalyticsPage() {
+  return (
+    <Suspense fallback={
+      <DashboardLayout userData={null} role="mentor">
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        </div>
+      </DashboardLayout>
+    }>
+      <AdAnalyticsContent />
+    </Suspense>
   )
 }
