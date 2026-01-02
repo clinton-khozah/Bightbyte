@@ -1,0 +1,58 @@
+# Netlify Configuration File
+# This file configures how Netlify builds and deploys your Next.js application
+
+[build]
+  # Build command - navigate to website directory and build
+  command = "cd website && npm install && npm run build"
+  
+  # Publish directory - Next.js output directory
+  publish = "website/.next"
+
+# Build environment variables
+# NOTE: Sensitive values should be set in Netlify Dashboard, not here!
+# Go to: Site settings → Environment variables
+[build.environment]
+  # Node version (check your package.json for compatibility)
+  NODE_VERSION = "18.20.0"
+  
+  # Next.js specific
+  NEXT_TELEMETRY_DISABLED = "1"
+
+# Next.js handles routing internally, no redirects needed
+# The framework handles all routing automatically
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Plugin configuration (if using Netlify plugins)
+# [plugins]
+#   package = "@netlify/plugin-nextjs"
+
+# Context-specific settings
+[context.production.environment]
+  # Production-specific environment variables
+  # Add these in Netlify Dashboard instead of here for security
+
+[context.deploy-preview.environment]
+  # Preview-specific settings
+
+[context.branch-deploy.environment]
+  # Branch-specific settings
+

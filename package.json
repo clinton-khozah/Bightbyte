@@ -1,0 +1,16 @@
+{
+  "name": "acareer-fullstack",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n \"FRONTEND,API\" -c \"cyan,magenta\" \"npm run dev:frontend\" \"npm run dev:api\"",
+    "dev:frontend": "cd website && npm run dev",
+    "dev:api": "cd edu-spaceAI-API && python manage.py runserver",
+    "install:all": "npm install && cd website && npm install",
+    "build": "cd website && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
+
