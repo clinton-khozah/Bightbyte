@@ -43,6 +43,15 @@ export function SignInModal({
   } | null>(null);
   const router = useRouter();
 
+  // Reset form fields when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setEmail("");
+      setPassword("");
+      setError("");
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -344,7 +353,7 @@ export function SignInModal({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="clintonsope48p@gmail.com"
+                    placeholder="Enter your email"
                     required
                     className="w-full px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 rounded-md text-sm md:text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -362,7 +371,7 @@ export function SignInModal({
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
+                    placeholder="Enter your password"
                     required
                     className="w-full px-3 py-1.5 md:px-4 md:py-2 bg-white border border-gray-300 rounded-md text-sm md:text-base text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
