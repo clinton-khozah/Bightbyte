@@ -1,68 +1,85 @@
 // Email service for Brightbyt notifications
-// Uses Resend API for sending emails
+// Uses Django backend API for sending emails
 
 interface EmailOptions {
   to: string;
-  subject: string;
-  html: string;
+  subject?: string;
+  html?: string;
   from?: string;
+  name?: string;
+  type?: "welcome" | "job_match" | "alert";
+  // For job_match type
+  job_title?: string;
+  company_name?: string;
+  job_type?: string;
+  location?: string;
+  match_reason?: string;
+  job_url?: string;
+  // For alert type
+  title?: string;
+  message?: string;
+  action_url?: string;
+  action_text?: string;
 }
 
-const FROM_EMAIL = "clintonkhozah@gmail.com";
-const FROM_NAME = "Brightbyt";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
 
 /**
- * Send email using Resend API
- * Falls back to a simple fetch if Resend is not configured
+ * Send email using Django backend API
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    // Try using Resend API if available
-    const resendApiKey = process.env.RESEND_API_KEY;
+    const emailType = options.type || "welcome";
     
-    if (resendApiKey) {
-      const response = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${resendApiKey}`,
-        },
-        body: JSON.stringify({
-          from: `${FROM_NAME} <${options.from || FROM_EMAIL}>`,
-          to: [options.to],
-          subject: options.subject,
-          html: options.html,
-        }),
-      });
-
-      if (response.ok) {
-        console.log(`✅ Email sent successfully to ${options.to}`);
-        return true;
-      } else {
-        const error = await response.text();
-        console.error("Resend API error:", error);
-      }
+    // Prepare request body based on email type
+    let requestBody: any = {
+      type: emailType,
+      to: options.to,
+    };
+    
+    if (options.name) {
+      requestBody.name = options.name;
     }
-
-    // Fallback: Use Next.js API route
-    const apiResponse = await fetch("/api/send-email", {
+    
+    if (emailType === "welcome") {
+      // Welcome email - no additional fields needed
+    } else if (emailType === "job_match") {
+      requestBody.job_title = options.job_title || "New Job";
+      requestBody.company_name = options.company_name || "Company";
+      requestBody.job_type = options.job_type || "Job";
+      requestBody.location = options.location || "Not specified";
+      requestBody.match_reason = options.match_reason || "New job posting";
+      requestBody.job_url = options.job_url || `${window.location.origin}/jobs`;
+    } else if (emailType === "alert") {
+      requestBody.title = options.title || "Notification";
+      requestBody.message = options.message || "";
+      if (options.action_url) requestBody.action_url = options.action_url;
+      if (options.action_text) requestBody.action_text = options.action_text;
+    }
+    
+    // If custom HTML/subject provided, include them (though Django will generate if not provided)
+    if (options.html) {
+      requestBody.html = options.html;
+    }
+    if (options.subject) {
+      requestBody.subject = options.subject;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/ai/email/send/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-        from: options.from || FROM_EMAIL,
-      }),
+      body: JSON.stringify(requestBody),
     });
 
-    if (apiResponse.ok) {
-      console.log(`✅ Email sent via API route to ${options.to}`);
+    if (response.ok) {
+      const data = await response.json();
+      console.log(`✅ Email sent successfully to ${options.to}:`, data);
       return true;
     } else {
-      console.error("Failed to send email via API route");
+      const error = await response.text();
+      console.error("Django API error:", error);
       return false;
     }
   } catch (error) {
@@ -72,7 +89,8 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
 }
 
 /**
- * Generate welcome email HTML
+ * Generate welcome email HTML (for preview/testing)
+ * Note: Django backend generates emails automatically, this is just for preview
  */
 export function generateWelcomeEmail(name: string, email: string): string {
   return `

@@ -93,8 +93,21 @@ export default function TestEmailPage() {
 
       const success = await sendEmail({
         to: email,
-        subject: subject,
-        html: html,
+        type: emailType,
+        name: name || email.split("@")[0],
+        ...(emailType === "job-match" ? {
+          job_title: "Senior Software Developer",
+          company_name: "Tech Solutions Inc.",
+          job_type: "Full-time",
+          location: "Remote",
+          match_reason: "Matches your preferred category: IT",
+          job_url: `${window.location.origin}/jobs/123`,
+        } : emailType === "alert" ? {
+          title: "New Opportunities Available",
+          message: "We have new job postings that might interest you. Check out our latest opportunities!",
+          action_url: `${window.location.origin}/jobs`,
+          action_text: "View Jobs",
+        } : {}),
       });
 
       if (success) {
@@ -207,11 +220,11 @@ export default function TestEmailPage() {
                 </Button>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
                 <p className="font-semibold mb-1">📝 Note:</p>
                 <p>
-                  In development mode, emails are logged to console. Configure RESEND_API_KEY 
-                  environment variable for production email sending.
+                  Emails are sent via Django backend using Gmail SMTP. Make sure your Django server 
+                  is running and NEXT_PUBLIC_API_URL is configured correctly.
                 </p>
               </div>
             </CardContent>

@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
-import { generateWelcomeEmail } from "@/lib/email-service";
 
 interface JobNotificationPopupProps {
   onClose?: () => void;
@@ -147,23 +146,27 @@ export function JobNotificationPopup({
         return;
       }
 
-      // Send welcome email
+      // Send welcome email via Django API
       try {
-        const response = await fetch("/api/send-email", {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+        const response = await fetch(`${apiUrl}/ai/email/send/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
+            type: "welcome",
             to: email,
-            subject: "Welcome to Brightbyt! 🎉",
-            html: generateWelcomeEmail(email.split("@")[0] || "there", email),
-            from: "clintonkhozah@gmail.com",
+            name: email.split("@")[0] || "there",
           }),
         });
 
         if (response.ok) {
-          console.log("✅ Welcome email sent to", email);
+          const data = await response.json();
+          console.log("✅ Welcome email sent to", email, data);
+        } else {
+          const error = await response.text();
+          console.error("Error sending welcome email:", error);
         }
       } catch (emailError) {
         console.error("Error sending welcome email:", emailError);

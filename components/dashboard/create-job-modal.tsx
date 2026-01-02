@@ -581,27 +581,32 @@ export function CreateJobModal({
           }
         }
 
-        // Send email notifications to subscribers
+        // Send email notifications to subscribers via Django API
         try {
-          const notificationResponse = await fetch("/api/send-job-notifications", {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+          const notificationResponse = await fetch(`${apiUrl}/ai/email/job-notifications/`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
-              jobId: data?.id,
-              jobTitle: formData.title,
-              companyName: companyName,
-              jobType: formData.job_type,
+              job_id: data?.id,
+              job_title: formData.title,
+              company_name: companyName,
+              job_type: formData.job_type,
               category: formData.category,
               location: formData.location,
-              matchReason: `New ${formData.job_type} posted in ${formData.category}`,
+              match_reason: `New ${formData.job_type} posted in ${formData.category}`,
+              job_url: `${window.location.origin}/jobs/${data?.id}`,
             }),
           });
 
           if (notificationResponse.ok) {
             const notificationData = await notificationResponse.json();
             console.log("✅ Email notifications sent:", notificationData);
+          } else {
+            const error = await notificationResponse.text();
+            console.error("Error sending notifications:", error);
           }
         } catch (notificationError) {
           console.error("Error sending notifications:", notificationError);
