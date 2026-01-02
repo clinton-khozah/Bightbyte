@@ -128,7 +128,8 @@ export default function InfluencerDetailPage({ params }: { params: { id: string 
     <div className="min-h-screen relative">
       {/* Background image as a div */}
       <div
-        className="fixed inset-0 w-full h-full bg-cover bg-center -z-10"
+        className="fixed inset-0 w-full h-full -z-10"
+        style={{ backgroundImage: "url('/images/adspace.png')", backgroundSize: "120%", backgroundPosition: "center" }}
         style={{ backgroundImage: "url('/images/adspace.png')" }}
         aria-hidden="true"
       />

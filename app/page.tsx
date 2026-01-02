@@ -311,7 +311,7 @@ export default function Home() {
           width: "100vw",
           height: "100vh",
           backgroundImage: "url('/images/adspace.png')",
-          backgroundSize: "cover",
+          backgroundSize: "120%",
           backgroundPosition: "center",
           zIndex: 0,
         }}
