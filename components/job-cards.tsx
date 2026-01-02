@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import { supabase } from "@/lib/supabase";
 import { LoadingLogo } from "@/components/loading-logo";
 import dynamic from "next/dynamic";
 import { trackJobEvent, trackButtonClick } from "@/lib/analytics";
+import { apiCache, createCacheKey } from "@/lib/api-cache";
 
 // Dynamically import modals to avoid SSR issues
 const SignInModal = dynamic(
@@ -129,11 +130,25 @@ export function JobCards({
     window.open(shareUrl, "_blank", "width=600,height=400");
   };
 
-  // Fetch jobs from database
+  // Fetch jobs from database with caching
   useEffect(() => {
     const fetchJobs = async () => {
       try {
         setLoading(true);
+
+        // Check cache first
+        const cacheKey = createCacheKey("http://127.0.0.1:8000/api/v1/jobs/list/");
+        const cachedData = apiCache.get<Job[]>(cacheKey);
+        if (cachedData) {
+          console.log("✅ Using cached jobs data");
+          setAllJobs(cachedData);
+          const displayJobs = searchQuery.trim() || selectedCategory
+            ? cachedData
+            : cachedData.slice(0, 10);
+          setJobs(displayJobs);
+          setLoading(false);
+          return;
+        }
 
         // Try API first
         try {
@@ -144,6 +159,9 @@ export function JobCards({
               headers: {
                 "Content-Type": "application/json",
               },
+              // Add cache headers
+              cache: 'force-cache',
+              next: { revalidate: 300 } // Revalidate every 5 minutes
             }
           );
 
@@ -197,6 +215,9 @@ export function JobCards({
                   return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
                 });
 
+              // Cache the results
+              apiCache.set(cacheKey, sortedJobs, 5 * 60 * 1000); // Cache for 5 minutes
+              
               setAllJobs(sortedJobs);
               const displayJobs = searchQuery.trim() || selectedCategory
                 ? sortedJobs
@@ -257,6 +278,10 @@ export function JobCards({
             application_email: job.application_email || null,
           }));
 
+          // Cache Supabase results too
+          const supabaseCacheKey = createCacheKey("supabase:jobs");
+          apiCache.set(supabaseCacheKey, mappedJobs, 5 * 60 * 1000);
+          
           setAllJobs(mappedJobs);
           const displayJobs = searchQuery.trim() || selectedCategory
             ? mappedJobs

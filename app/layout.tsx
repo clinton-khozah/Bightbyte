@@ -85,6 +85,9 @@ export default function RootLayout({
             <ChatBot />
           </ThemeProvider>
         </TranslationProvider>
+        {/* Preload critical resources */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
       </body>
     </html>
   )
