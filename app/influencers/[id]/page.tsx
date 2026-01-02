@@ -129,7 +129,7 @@ export default function InfluencerDetailPage({ params }: { params: { id: string 
       {/* Background image as a div */}
       <div
         className="fixed inset-0 w-full h-full bg-cover bg-center -z-10"
-        style={{ backgroundImage: "url('/images/influencers.jpg')" }}
+        style={{ backgroundImage: "url('/images/adspace.png')" }}
         aria-hidden="true"
       />
       <div className="relative z-10 bg-black/50">
