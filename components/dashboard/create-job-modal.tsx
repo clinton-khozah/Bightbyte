@@ -859,7 +859,7 @@ export function CreateJobModal({
                             disabled={isSubmitting}
                           >
                             <SelectTrigger className="h-10 text-sm">
-                              <SelectValue />
+                              <SelectValue placeholder="Select job type" />
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="job">
@@ -897,16 +897,33 @@ export function CreateJobModal({
                           >
                             Category <span className="text-red-500">*</span>
                           </Label>
-                          <Input
-                            id="category"
-                            name="category"
+                          <Select
                             value={formData.category}
-                            onChange={handleInputChange}
-                            placeholder="e.g., IT, Engineering, Finance"
-                            className="h-10 text-sm"
+                            onValueChange={(value) =>
+                              handleSelectChange("category", value)
+                            }
                             disabled={isSubmitting}
-                            required
-                          />
+                          >
+                            <SelectTrigger className="h-10 text-sm">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="IT">IT</SelectItem>
+                              <SelectItem value="Engineering">Engineering</SelectItem>
+                              <SelectItem value="Finance">Finance</SelectItem>
+                              <SelectItem value="Healthcare">Healthcare</SelectItem>
+                              <SelectItem value="Marketing">Marketing</SelectItem>
+                              <SelectItem value="Education">Education</SelectItem>
+                              <SelectItem value="Sales">Sales</SelectItem>
+                              <SelectItem value="Human Resources">Human Resources</SelectItem>
+                              <SelectItem value="Legal">Legal</SelectItem>
+                              <SelectItem value="Operations">Operations</SelectItem>
+                              <SelectItem value="Customer Service">Customer Service</SelectItem>
+                              <SelectItem value="Design">Design</SelectItem>
+                              <SelectItem value="Media">Media</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
 
@@ -1072,7 +1089,7 @@ export function CreateJobModal({
                           disabled={isSubmitting}
                         >
                           <SelectTrigger className="h-10 text-sm">
-                            <SelectValue placeholder="Select level" />
+                            <SelectValue placeholder="Select experience level" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="entry">Entry Level</SelectItem>
@@ -1098,7 +1115,7 @@ export function CreateJobModal({
                           disabled={isSubmitting}
                         >
                           <SelectTrigger className="h-10 text-sm">
-                            <SelectValue placeholder="Select level" />
+                            <SelectValue placeholder="Select education level" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="high_school">
