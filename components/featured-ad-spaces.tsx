@@ -2,9 +2,18 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Monitor, Mail, Smartphone, Instagram, Users, Eye, MousePointerClick, Activity, Clock } from "lucide-react";
+import {
+  Monitor,
+  Mail,
+  Smartphone,
+  Instagram,
+  Users,
+  Eye,
+  MousePointerClick,
+  Activity,
+  Clock,
+} from "lucide-react";
 import { DisplayCards } from "@/components/ui/display-cards";
-import { Meteors } from "@/components/ui/meteors";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -14,17 +23,14 @@ export function FeaturedAdSpaces() {
   const [flippedCards, setFlippedCards] = useState<number[]>([]);
 
   const toggleFlip = (index: number) => {
-    setFlippedCards(prev => 
-      prev.includes(index) 
-        ? prev.filter(i => i !== index)
-        : [...prev, index]
+    setFlippedCards((prev) =>
+      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
     );
   };
 
   return (
     <section className="relative py-20 overflow-hidden">
       <div className="absolute inset-0 bg-transparent" />
-      <Meteors number={20} className="absolute inset-0" />
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 bg-transparent font-['Calibri',sans-serif] relative">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -32,18 +38,18 @@ export function FeaturedAdSpaces() {
           transition={{ duration: 0.5 }}
           className="text-center mb-16"
         >
-          <motion.h2 
+          <motion.h2
             className="text-4xl md:text-5xl font-bold mb-4 text-yellow-400"
             initial={{ opacity: 0, x: -100 }}
-            whileInView={{ 
-              opacity: 1, 
+            whileInView={{
+              opacity: 1,
               x: 0,
               transition: {
                 type: "spring",
                 stiffness: 50,
                 damping: 15,
-                mass: 1
-              }
+                mass: 1,
+              },
             }}
             viewport={{ once: true }}
           >
@@ -60,8 +66,14 @@ export function FeaturedAdSpaces() {
               price: "R5,000/mo",
               category: "Technology",
               image: "https://source.unsplash.com/featured/300x200?tech-blog",
-              description: "Premium banner placement on a leading tech blog. High visibility and engagement from tech-savvy audience.",
-              features: ["Top banner position", "Responsive design", "Analytics included", "A/B testing available"]
+              description:
+                "Premium banner placement on a leading tech blog. High visibility and engagement from tech-savvy audience.",
+              features: [
+                "Top banner position",
+                "Responsive design",
+                "Analytics included",
+                "A/B testing available",
+              ],
             },
             {
               title: "YouTube Pre-roll",
@@ -70,8 +82,14 @@ export function FeaturedAdSpaces() {
               price: "R8,000/mo",
               category: "Entertainment",
               image: "https://source.unsplash.com/featured/300x200?youtube",
-              description: "Pre-roll video ads on a popular YouTube channel. Capture attention before content starts.",
-              features: ["15-30 second spots", "Targeted audience", "Performance metrics", "Creative support"]
+              description:
+                "Pre-roll video ads on a popular YouTube channel. Capture attention before content starts.",
+              features: [
+                "15-30 second spots",
+                "Targeted audience",
+                "Performance metrics",
+                "Creative support",
+              ],
             },
             {
               title: "Instagram Story",
@@ -80,8 +98,14 @@ export function FeaturedAdSpaces() {
               price: "R6,500/mo",
               category: "Lifestyle",
               image: "https://source.unsplash.com/featured/300x200?instagram",
-              description: "Full-screen story ads on an influential Instagram account. Perfect for visual storytelling.",
-              features: ["Interactive elements", "Swipe-up links", "Story highlights", "Engagement tracking"]
+              description:
+                "Full-screen story ads on an influential Instagram account. Perfect for visual storytelling.",
+              features: [
+                "Interactive elements",
+                "Swipe-up links",
+                "Story highlights",
+                "Engagement tracking",
+              ],
             },
             {
               title: "Podcast Mid-roll",
@@ -90,9 +114,15 @@ export function FeaturedAdSpaces() {
               price: "R4,000/mo",
               category: "Education",
               image: "https://source.unsplash.com/featured/300x200?podcast",
-              description: "Mid-roll audio spots in a popular podcast series. Connect with engaged listeners.",
-              features: ["60-second spots", "Host read option", "Download tracking", "Listener demographics"]
-            }
+              description:
+                "Mid-roll audio spots in a popular podcast series. Connect with engaged listeners.",
+              features: [
+                "60-second spots",
+                "Host read option",
+                "Download tracking",
+                "Listener demographics",
+              ],
+            },
           ].map((space, index) => (
             <motion.div
               key={index}
@@ -105,9 +135,14 @@ export function FeaturedAdSpaces() {
                 <motion.div
                   className="absolute inset-0 w-full h-full"
                   initial={false}
-                  animate={{ 
+                  animate={{
                     rotateY: flippedCards.includes(index) ? 180 : 0,
-                    transition: { duration: 0.6, type: "spring", stiffness: 260, damping: 20 }
+                    transition: {
+                      duration: 0.6,
+                      type: "spring",
+                      stiffness: 260,
+                      damping: 20,
+                    },
                   }}
                   style={{ transformStyle: "preserve-3d" }}
                 >
@@ -127,14 +162,22 @@ export function FeaturedAdSpaces() {
                           />
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
                           <div className="absolute bottom-4 left-4 right-4">
-                            <h3 className="text-xl font-bold text-white mb-1">{space.title}</h3>
-                            <p className="text-sm text-gray-300">{space.platform}</p>
+                            <h3 className="text-xl font-bold text-white mb-1">
+                              {space.title}
+                            </h3>
+                            <p className="text-sm text-gray-300">
+                              {space.platform}
+                            </p>
                           </div>
                         </div>
                         <div className="p-4 flex-grow">
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm text-gray-300">{space.reach}</span>
-                            <span className="text-lg font-semibold text-yellow-400">{space.price}</span>
+                            <span className="text-sm text-gray-300">
+                              {space.reach}
+                            </span>
+                            <span className="text-lg font-semibold text-yellow-400">
+                              {space.price}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2 mb-4">
                             <div className="h-6 w-6 rounded-full bg-gray-800/20 flex items-center justify-center">
@@ -152,9 +195,11 @@ export function FeaturedAdSpaces() {
                                 />
                               </svg>
                             </div>
-                            <span className="text-sm text-gray-300">{space.category}</span>
+                            <span className="text-sm text-gray-300">
+                              {space.category}
+                            </span>
                           </div>
-                          <Button 
+                          <Button
                             className="w-full bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-400 border border-yellow-400/30"
                             onClick={() => toggleFlip(index)}
                           >
@@ -168,15 +213,19 @@ export function FeaturedAdSpaces() {
                   {/* Back of card */}
                   <motion.div
                     className="absolute inset-0 w-full h-full backface-hidden"
-                    style={{ 
+                    style={{
                       backfaceVisibility: "hidden",
-                      transform: "rotateY(180deg)"
+                      transform: "rotateY(180deg)",
                     }}
                   >
                     <Card className="bg-black/30 backdrop-blur-sm border-gray-700/30 overflow-hidden h-full">
                       <CardContent className="p-6 h-full flex flex-col">
-                        <h3 className="text-xl font-bold text-white mb-2">{space.title}</h3>
-                        <p className="text-gray-300 mb-4">{space.description}</p>
+                        <h3 className="text-xl font-bold text-white mb-2">
+                          {space.title}
+                        </h3>
+                        <p className="text-gray-300 mb-4">
+                          {space.description}
+                        </p>
                         <div className="space-y-2 mb-4">
                           {space.features.map((feature, i) => (
                             <div key={i} className="flex items-center gap-2">
@@ -195,12 +244,14 @@ export function FeaturedAdSpaces() {
                                   />
                                 </svg>
                               </div>
-                              <span className="text-sm text-gray-300">{feature}</span>
+                              <span className="text-sm text-gray-300">
+                                {feature}
+                              </span>
                             </div>
                           ))}
                         </div>
                         <div className="mt-auto">
-                          <Button 
+                          <Button
                             className="w-full bg-yellow-400/20 hover:bg-yellow-400/30 text-yellow-400 border border-yellow-400/30"
                             onClick={() => toggleFlip(index)}
                           >
@@ -218,4 +269,4 @@ export function FeaturedAdSpaces() {
       </div>
     </section>
   );
-} 
+}

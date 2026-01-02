@@ -1,912 +1,259 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { motion } from "framer-motion"
+import * as React from "react";
+import { motion } from "framer-motion";
 import { 
-  BarChart2, 
+  Briefcase,
   Users, 
-  DollarSign, 
   TrendingUp,
-  MessageSquare,
-  Bell,
-  ChevronRight,
-  Search
-} from "lucide-react"
-import { AnimatedButton } from "@/components/animated-button"
-import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
-import { MentorProfileCompletionForm } from '@/components/dashboard/mentor-profile-completion-form'
+  Calendar,
+  Plus,
+  Eye,
+} from "lucide-react";
+import { DashboardLayout } from "@/components/dashboard/layout";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { LoadingLogo } from "@/components/loading-logo";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const stats = [
-  {
-    name: "Total Revenue",
-    value: "$45,231.89",
-    change: "+20.1% from last month",
-    icon: DollarSign,
-    color: "#F9CA56" // Yellow from logo
-  },
-  {
-    name: "Active Campaigns",
-    value: "12",
-    change: "+2 new this month",
-    icon: BarChart2,
-    color: "#6B54FA" // Purple from logo
-  },
-  {
-    name: "Total Influencers",
-    value: "48",
-    change: "+5 new this month",
-    icon: Users,
-    color: "#53E2D2" // Teal from logo
-  },
-  {
-    name: "Engagement Rate",
-    value: "4.2%",
-    change: "+0.3% from last month",
-    icon: TrendingUp,
-    color: "#F9CA56" // Yellow from logo
-  }
-]
-
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"]
-const revenueData = {
-  Mar: "$10,500",
-  current: {
-    amount: "$10,500",
-    percentage: "14%",
-    vsLastMonth: "vs prev month",
-    ofTotal: "37% of total revenue"
-  }
+interface Job {
+  id: string;
+  title: string;
+  job_type: string;
+  status: string;
+  total_applications: number;
+  total_views: number;
+  created_at: string;
 }
 
-const topAdSpaces = [
-  {
-    name: "Tech Blog Premium Banner",
-    revenue: "$4,200",
-    period: "This month",
-    color: "#F9CA56" // Yellow
-  },
-  {
-    name: "Newsletter Sponsorship",
-    revenue: "$3,150",
-    period: "This month",
-    color: "#6B54FA" // Purple
-  },
-  {
-    name: "Podcast Ad Spot",
-    revenue: "$2,800",
-    period: "This month",
-    color: "#53E2D2" // Teal
-  }
-]
-
-const recentRequests = [
-  {
-    company: "TechGadgets Inc.",
-    type: "Tech Blog Banner",
-    time: "2 hours ago"
-  },
-  {
-    company: "SaaS Platform Pro",
-    type: "Newsletter",
-    time: "5 hours ago"
-  },
-  {
-    company: "CloudCompute Ltd",
-    type: "Podcast Ad",
-    time: "1 day ago"
-  }
-]
-
-const recentMessages = [
-  {
-    name: "Sarah Johnson",
-    message: "Question about banner specs",
-    time: "1 hour ago"
-  },
-  {
-    name: "Michael Chen",
-    message: "Campaign renewal",
-    time: "3 hours ago"
-  },
-  {
-    name: "Jessica Williams",
-    message: "Payment confirmation",
-    time: "5 hours ago"
-  }
-]
-
 export default function CompanyDashboard() {
-  const [activeTab, setActiveTab] = React.useState<'overview' | 'analytics' | 'reports'>('overview')
-  const [userData, setUserData] = React.useState<any>(null)
-  const [mentorData, setMentorData] = React.useState<any>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [isProfileCompletionOpen, setIsProfileCompletionOpen] = React.useState(false)
-  const router = useRouter()
+  const [userData, setUserData] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [jobs, setJobs] = React.useState<Job[]>([]);
+  const [jobsLoading, setJobsLoading] = React.useState(true);
+  const router = useRouter();
+
 
   React.useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data: { user } } = await supabase.auth.getUser();
         if (!user) {
-          router.push('/')
-          return
+          router.push("/login");
+          return;
         }
 
-        // Fetch mentor data
-        const { data: mentor, error: mentorError } = await supabase
-          .from('mentors')
-          .select('*')
-          .eq('id', user.id)
-          .maybeSingle()
+        // Fetch company profile
+        const { data: companyData } = await supabase
+          .from("companies")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle();
 
-        if (mentorError || !mentor) {
-          // Check user metadata to see if they signed up as tutor/mentor
-          const userType = user.user_metadata?.user_type
-          
-          if (userType === 'tutor' || userType === 'mentor') {
-            // User signed up as tutor but mentor record doesn't exist yet
-            // Create a basic mentor record
-            const { data: newMentor, error: createError } = await supabase
-              .from('mentors')
-              .insert({
-                id: user.id,
-                name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                email: user.email || '',
-                title: '',
-                description: '',
-                specialization: '[]',
-                rating: 1.00,
-                total_reviews: 0,
-                hourly_rate: 0.00,
-                avatar: user.user_metadata?.avatar_url || '',
-                experience: 0,
-                languages: '[]',
-                availability: 'Available now',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-                phone_number: '',
-                gender: '',
-                age: null,
-                country: '',
-                latitude: null,
-                longitude: null,
-                sessions_conducted: 0,
-                qualifications: '',
-                id_document: '',
-                id_number: '',
-                cv_document: '',
-                payment_method: '',
-                linkedin_profile: '',
-                github_profile: '',
-                twitter_profile: '',
-                facebook_profile: '',
-                instagram_profile: '',
-                personal_website: '',
-                bank_name: '',
-                account_holder_name: '',
-                account_number: '',
-                routing_number: '',
-                payment_account_details: '{}',
-                payment_period: 'per_session',
-                is_complete: false,
-                is_verified: false
-              })
-              .select()
-              .single()
-
-            if (createError) {
-              console.error('Error creating mentor record:', createError)
-              // Still allow access, user can complete profile later
               setUserData({ 
-                id: user.id, 
-                email: user.email || '', 
-                full_name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-                user_type: 'mentor'
-              })
-            } else if (newMentor) {
-              setMentorData(newMentor)
-              setUserData({ ...newMentor, full_name: newMentor.name, user_type: 'mentor' })
-              // Show profile completion modal for new mentors
-              const isIncomplete = newMentor.is_complete === false || 
-                                  newMentor.is_complete === null || 
-                                  newMentor.is_complete === undefined ||
-                                  newMentor.is_complete === 'false' ||
-                                  newMentor.is_complete === 0
-              
-              if (isIncomplete) {
-                console.log('New mentor created, showing modal. is_complete:', newMentor.is_complete)
-                setTimeout(() => {
-                  setIsProfileCompletionOpen(true)
-                }, 500) // Increased timeout to ensure component is fully rendered
-              }
-            }
-          } else {
-            // User is not a mentor, redirect to learner dashboard
-            router.push('/dashboard/learner')
-            return
-          }
-        } else {
-          setMentorData(mentor)
-          // Use mentor data as user data for tutors
-          setUserData({ ...mentor, full_name: mentor.name, user_type: 'mentor' })
-          
-          // Check if profile is incomplete (handle both boolean and string "false")
-          // Supabase might return boolean as string, so we need to handle both
-          const isCompleteValue = mentor.is_complete
-          const isIncomplete = isCompleteValue === false || 
-                              isCompleteValue === null || 
-                              isCompleteValue === undefined ||
-                              isCompleteValue === 'false' ||
-                              String(isCompleteValue).toLowerCase() === 'false' ||
-                              isCompleteValue === 0 ||
-                              isCompleteValue === '0'
-          
-          console.log('Mentor data loaded - is_complete:', isCompleteValue, 'type:', typeof isCompleteValue, 'isIncomplete:', isIncomplete)
-          
-          if (isIncomplete) {
-            console.log('Profile is incomplete, will show modal. is_complete:', isCompleteValue)
-            // Use a longer timeout to ensure the component is fully rendered
-            setTimeout(() => {
-              console.log('Setting isProfileCompletionOpen to true')
-              setIsProfileCompletionOpen(true)
-            }, 800)
-          } else {
-            console.log('Profile is complete. is_complete:', isCompleteValue)
-          }
+          ...user,
+          ...companyData,
+          full_name: companyData?.name || companyData?.company_name || user.user_metadata?.full_name || user.email?.split("@")[0],
+        });
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, [router]);
+
+  React.useEffect(() => {
+    const fetchJobs = async () => {
+      if (!userData?.id) return;
+
+      try {
+        setJobsLoading(true);
+        const { data: jobsData, error } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("company_id", userData.id)
+          .order("created_at", { ascending: false })
+          .limit(10);
+
+        if (error) {
+          console.error("Error fetching jobs:", error);
+      } else {
+          setJobs(jobsData || []);
         }
       } catch (error) {
-        console.error('Error fetching user data:', error)
-        router.push('/')
+        console.error("Error fetching jobs:", error);
       } finally {
-        setLoading(false)
+        setJobsLoading(false);
       }
-    }
+    };
 
-    fetchUserData()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Check if profile completion modal should be shown after data loads
-  React.useEffect(() => {
-    console.log('useEffect triggered - loading:', loading, 'mentorData:', mentorData, 'isProfileCompletionOpen:', isProfileCompletionOpen)
-    if (!loading && mentorData) {
-      // Check if profile is incomplete (handle both boolean and string "false")
-      // Convert to string first to handle all cases
-      const isCompleteValue = mentorData.is_complete
-      const isCompleteStr = String(isCompleteValue).toLowerCase().trim()
-      const isIncomplete = isCompleteValue === false || 
-                          isCompleteValue === null || 
-                          isCompleteValue === undefined ||
-                          isCompleteStr === 'false' ||
-                          isCompleteStr === '0' ||
-                          isCompleteValue === 0
-      
-      console.log('Checking profile completion - is_complete:', isCompleteValue, 'type:', typeof isCompleteValue, 'string:', isCompleteStr, 'isIncomplete:', isIncomplete)
-      
-      if (isIncomplete && !isProfileCompletionOpen) {
-        console.log('useEffect: Profile is incomplete, showing modal. is_complete:', isCompleteValue)
-        // Use setTimeout to ensure state update happens after render
-        const timer = setTimeout(() => {
-          setIsProfileCompletionOpen(true)
-          console.log('Modal state set to true')
-        }, 1000)
-        return () => clearTimeout(timer)
-      } else if (!isIncomplete) {
-        console.log('Profile is complete, not showing modal')
-      } else {
-        console.log('Modal already open or will be opened')
-      }
-    } else if (!loading && !mentorData) {
-      console.log('No mentor data found, not showing modal')
+    if (userData) {
+      fetchJobs();
     }
-  }, [loading, mentorData, isProfileCompletionOpen])
+  }, [userData?.id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0a0e1a]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-400">Loading...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingLogo size={48} />
       </div>
-    )
+    );
   }
 
-  // Logo colors for the circle background
-  const circleColors = {
-    overview: "rgba(249, 202, 86, 0.05)", // Yellow transparent
-    analytics: "rgba(107, 84, 250, 0.05)", // Purple transparent
-    reports: "rgba(83, 226, 210, 0.05)" // Teal transparent
-  }
-
-  // Border colors for the circle with glow
-  const circleBorderColors = {
-    overview: "#F9CA56", // Yellow
-    analytics: "#6B54FA", // Purple
-    reports: "#53E2D2" // Teal
-  }
-
-  const getTabContent = () => {
-    switch (activeTab) {
-      case 'analytics':
-        return {
-          title: "Analytics Overview",
-          description: "Detailed performance metrics and trends",
-          amount: "$12,750",
-          percentage: "18%",
-          comparison: "vs last period",
-          share: "42% of total analytics"
-        }
-      case 'reports':
-        return {
-          title: "Reports Overview",
-          description: "Generated reports and summaries",
-          amount: "$8,920",
-          percentage: "11%",
-          comparison: "vs previous reports",
-          share: "31% of total reports"
-        }
-      default:
-        return {
-          title: "Revenue Overview",
-          description: "Click on a month to view details",
-          amount: revenueData.current.amount,
-          percentage: revenueData.current.percentage,
-          comparison: revenueData.current.vsLastMonth,
-          share: revenueData.current.ofTotal
-        }
-    }
-  }
-
-  const content = getTabContent()
+  const totalJobs = jobs.length;
+  const openJobs = jobs.filter((job) => job.status === "open").length;
+  const totalApplications = jobs.reduce((sum, job) => sum + (job.total_applications || 0), 0);
 
   return (
-    <div className="space-y-6 p-6">
-      {/* Horizontal Lines */}
-      <div className="flex flex-col gap-2 mb-8">
-        <motion.div 
-          className="h-0.5 bg-gradient-to-r from-[#F9CA56] to-transparent"
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 0.7, delay: 0.1 }}
-        />
-        <motion.div 
-          className="h-0.5 bg-gradient-to-r from-[#6B54FA] to-transparent w-3/4"
-          initial={{ width: 0 }}
-          animate={{ width: "75%" }}
-          transition={{ duration: 0.7, delay: 0.2 }}
-        />
-        <motion.div 
-          className="h-0.5 bg-gradient-to-r from-[#53E2D2] to-transparent w-1/2"
-          initial={{ width: 0 }}
-          animate={{ width: "50%" }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-        />
-        <motion.div 
-          className="h-0.5 bg-gradient-to-r from-[#F9CA56] to-transparent w-1/4"
-          initial={{ width: 0 }}
-          animate={{ width: "25%" }}
-          transition={{ duration: 0.7, delay: 0.4 }}
-        />
+    <DashboardLayout>
+      <div className="p-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Welcome, {userData?.company_name || userData?.full_name || "Company"}!
+          </h1>
+          <p className="text-gray-600">
+            Manage your job postings and review applications
+          </p>
         </div>
 
-      {/* Welcome Message */}
-      <h2 className="text-xl text-gray-400">Welcome back! Here's an overview of your advertising spaces.</h2>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Jobs</CardTitle>
+              <Briefcase className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalJobs}</div>
+              <p className="text-xs text-muted-foreground">All time</p>
+            </CardContent>
+          </Card>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat) => (
-            <motion.div
-            key={stat.name}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="bg-[#0f1424] border rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300"
-            style={{
-              borderColor: stat.color,
-              boxShadow: `0 0 20px ${stat.color}25`,
-            }}
-          >
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-gray-400 text-sm group-hover:text-white transition-colors">
-                  {stat.name}
-                </span>
-                <stat.icon 
-                  className="h-4 w-4 transition-colors" 
-                  style={{ color: stat.color }}
-                />
-              </div>
-              <motion.div 
-                className="text-3xl font-bold mb-2 transition-all duration-300"
-                style={{ 
-                  color: 'white',
-                  textShadow: `0 0 10px ${stat.color}50`
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Open Positions</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{openJobs}</div>
+              <p className="text-xs text-muted-foreground">Currently active</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Applications</CardTitle>
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalApplications}</div>
+              <p className="text-xs text-muted-foreground">Total received</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Jobs */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Recent Job Postings</CardTitle>
+              <Button
+                onClick={() => {
+                  // Trigger the modal in the layout
+                  window.dispatchEvent(new CustomEvent('openCreateJobModal'));
                 }}
+                className="bg-blue-600 hover:bg-blue-700"
               >
-                {stat.value}
-              </motion.div>
-              <div 
-                className="text-sm transition-colors"
-                style={{ color: stat.color }}
-              >
-                  {stat.change}
+                <Plus className="h-4 w-4 mr-2" />
+                Post New Job
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {jobsLoading ? (
+              <div className="flex justify-center py-8">
+                <LoadingLogo size={32} />
+          </div>
+            ) : jobs.length === 0 ? (
+              <div className="text-center py-12">
+                <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  No jobs posted yet
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Start posting jobs, learnerships, internships, and bursaries to find the best candidates
+                </p>
+                <Button
+                  onClick={() => router.push("/dashboard/company/jobs")}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Post Your First Job
+                </Button>
               </div>
-            </div>
-            <div 
-              className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
-              style={{ 
-                background: `radial-gradient(circle at center, ${stat.color} 0%, transparent 70%)`
-              }}
-            />
-            </motion.div>
-          ))}
-        </div>
-
-      {/* Tabs */}
-      <div className="flex gap-6 border-b border-[#1a1e32] mb-6">
-        <button 
-          onClick={() => setActiveTab('overview')}
-          className={`px-4 py-2 text-white border-b-2 transition-colors ${
-            activeTab === 'overview' ? 'border-[#F9CA56]' : 'border-transparent text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Overview
-        </button>
-        <button 
-          onClick={() => setActiveTab('analytics')}
-          className={`px-4 py-2 text-white border-b-2 transition-colors ${
-            activeTab === 'analytics' ? 'border-[#6B54FA]' : 'border-transparent text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Analytics
-        </button>
-        <button 
-          onClick={() => setActiveTab('reports')}
-          className={`px-4 py-2 text-white border-b-2 transition-colors ${
-            activeTab === 'reports' ? 'border-[#53E2D2]' : 'border-transparent text-gray-400 hover:text-gray-300'
-          }`}
-        >
-          Reports
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Content Section */}
-        <div className="lg:col-span-2 bg-[#0f1424] border border-[#1a1e32] rounded-xl p-6">
-          <h2 className="text-xl font-bold text-white mb-4">{content.title}</h2>
-          <p className="text-gray-400 mb-6">{content.description}</p>
-          
-          <div className="flex gap-8">
-            {/* Months List - Always visible */}
-            <div className="space-y-4">
-              {months.map((month) => (
-                <div 
-                  key={month}
-                  className={`px-4 py-2 rounded ${
-                    month === "Mar" ? "bg-[#1a1e32] text-white" : "text-gray-400"
-                  }`}
-                >
-                  {month}
-                  {month === "Mar" && (
-                    <div className="text-blue-400 mt-1">{revenueData[month]}</div>
-                  )}
-          </div>
-              ))}
-            </div>
-
-            {/* Circle Display with Glow */}
-            <div className="flex-1 flex items-center justify-center">
-              <motion.div 
-                className="relative w-64 h-64 rounded-full flex items-center justify-center"
-                style={{ 
-                  backgroundColor: circleColors[activeTab],
-                  border: `4px solid ${circleBorderColors[activeTab]}`,
-                  boxShadow: `0 0 20px ${circleBorderColors[activeTab]}`,
-                  transition: "all 0.5s ease"
-                }}
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                key={activeTab}
-              >
-                <div className="text-center">
-                  <motion.div 
-                    className="text-4xl font-bold text-white mb-2"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.1 }}
-                    style={{
-                      textShadow: `0 0 10px ${circleBorderColors[activeTab]}`
-                    }}
+            ) : (
+              <div className="space-y-4">
+                {jobs.map((job) => (
+                  <motion.div
+                    key={job.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="border rounded-lg p-4 hover:shadow-md transition-shadow"
                   >
-                    {content.amount}
-                  </motion.div>
-                  <motion.div 
-                    className="text-green-400 text-lg mb-1"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
-                  >
-                    ↑ {content.percentage}
-                  </motion.div>
-                  <motion.div 
-                    className="text-gray-400 text-sm"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.3 }}
-                  >
-                    {content.comparison}
-                  </motion.div>
-                  <motion.div 
-                    className="text-gray-400 text-sm"
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.4 }}
-                  >
-                    {content.share}
-                  </motion.div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Performing Ad Spaces */}
-        <div className="bg-[#0f1424] border border-[#1a1e32] rounded-xl p-6 relative overflow-hidden">
-          <div className="relative z-10">
-            <motion.h2 
-              className="text-xl font-bold text-white mb-4"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              Top Performing Ad Spaces
-            </motion.h2>
-            <motion.p 
-              className="text-gray-400 mb-6"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
-              Based on revenue this month
-            </motion.p>
-            
-            <div className="space-y-4">
-              {topAdSpaces.map((ad, index) => (
-                <motion.div 
-                  key={ad.name}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.5, delay: 0.2 + index * 0.1 }}
-                  className="relative bg-[#1a1e32] rounded-lg p-4 group hover:-translate-y-1 transition-all duration-300"
-                  style={{
-                    border: `1px solid ${ad.color}25`,
-                    boxShadow: `0 0 20px ${ad.color}10`
-                  }}
-                >
-                  <h3 
-                    className="text-white font-medium mb-2 transition-colors"
-                    style={{
-                      textShadow: `0 0 10px ${ad.color}50`
-                    }}
-                  >
-                    {ad.name}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                          {job.title}
                   </h3>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-400 text-sm">{ad.period}</span>
-                    <span 
-                      className="text-white font-bold"
-                      style={{ color: ad.color }}
-                    >
-                      {ad.revenue}
+                        <div className="flex items-center gap-4 mb-2">
+                          <Badge variant="outline" className="capitalize">
+                            {job.job_type}
+                          </Badge>
+                          <Badge
+                            className={
+                              job.status === "open"
+                                ? "bg-green-100 text-green-700 border-green-200"
+                                : "bg-gray-100 text-gray-700 border-gray-200"
+                            }
+                          >
+                            {job.status}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-4 text-sm text-gray-500">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {job.total_applications || 0} applications
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Eye className="h-4 w-4" />
+                            {job.total_views || 0} views
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(job.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300 rounded-lg"
-                    style={{ 
-                      background: `radial-gradient(circle at center, ${ad.color} 0%, transparent 70%)`
-                    }}
-                  />
-                </motion.div>
-              ))}
             </div>
-
-            <motion.button 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="w-full mt-6 py-3 text-center text-blue-400 bg-[#1a1e32] rounded-lg relative group overflow-hidden"
-              style={{
-                border: `1px solid ${circleBorderColors.analytics}25`,
-                boxShadow: `0 0 20px ${circleBorderColors.analytics}10`
-              }}
-            >
-              <span className="relative z-10 group-hover:text-white transition-colors">
-                View detailed analytics →
-              </span>
-              <div 
-                className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-                style={{ 
-                  background: `radial-gradient(circle at center, ${circleBorderColors.analytics} 0%, transparent 70%)`
-                }}
-              />
-            </motion.button>
-          </div>
-          <div 
-            className="absolute inset-0 opacity-5"
-            style={{ 
-              background: `radial-gradient(circle at top right, #53E2D2 0%, transparent 70%)`
-            }}
-          />
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Recent Requests */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="bg-[#0f1424] border border-[#1a1e32] rounded-xl p-6 relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <motion.h2 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xl font-bold text-white mb-4"
-              style={{ textShadow: '0 0 10px #53E2D240' }}
-            >
-              Recent Requests
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-gray-400 mb-6"
-            >
-              You have 5 pending requests
-            </motion.p>
-            
-            <div className="space-y-4">
-              {recentRequests.map((request, index) => (
-                <motion.div 
-                  key={request.company}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                  className="flex items-center justify-between p-4 bg-[#1a1e32] rounded-lg group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-                  style={{
-                    border: '1px solid #53E2D230',
-                    boxShadow: '0 0 15px #53E2D215'
-                  }}
-                >
-                  <div>
-                    <h3 
-                      className="text-white font-medium"
-                      style={{ textShadow: '0 0 10px #53E2D240' }}
-                    >
-                      {request.company}
-                    </h3>
-                    <p className="text-gray-400 text-sm">{request.type} • {request.time}</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/company/jobs/${job.id}`)}
+                      >
+                        View Details
+                      </Button>
                   </div>
-                  <button className="px-3 py-1 text-sm text-[#53E2D2] hover:bg-[#53E2D2] hover:text-white bg-transparent rounded-lg relative group overflow-hidden border border-[#53E2D240] transition-all duration-300">
-                    View
-                  </button>
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
-                    style={{ 
-                      background: 'radial-gradient(circle at center, #53E2D2 0%, transparent 70%)'
-                    }}
-                  />
                 </motion.div>
               ))}
             </div>
-
-            <motion.button 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="w-full mt-6 py-3 text-center text-[#53E2D2] bg-[#1a1e32] rounded-lg relative group overflow-hidden hover:bg-[#53E2D2] hover:text-white transition-all duration-300"
-              style={{
-                border: '1px solid #53E2D230',
-                boxShadow: '0 0 15px #53E2D215'
-              }}
-            >
-              View all requests →
-            </motion.button>
-          </div>
-          <div 
-            className="absolute inset-0 opacity-5"
-            style={{ 
-              background: 'radial-gradient(circle at top right, #53E2D2 0%, transparent 70%)'
-            }}
-          />
-        </motion.div>
-
-        {/* Recent Messages */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-          className="bg-[#0f1424] border border-[#1a1e32] rounded-xl p-6 relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <motion.h2 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xl font-bold text-white mb-4"
-              style={{ textShadow: '0 0 10px #6B54FA40' }}
-            >
-              Recent Messages
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-gray-400 mb-6"
-            >
-              You have 3 unread messages
-            </motion.p>
-            
-            <div className="space-y-4">
-              {recentMessages.map((message, index) => (
-                <motion.div 
-                  key={message.name}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                  className="flex items-center justify-between p-4 bg-[#1a1e32] rounded-lg group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-                  style={{
-                    border: '1px solid #6B54FA30',
-                    boxShadow: '0 0 15px #6B54FA15'
-                  }}
-                >
-                  <div className="flex-1">
-                    <h3 
-                      className="text-white font-medium"
-                      style={{ textShadow: '0 0 10px #6B54FA40' }}
-                    >
-                      {message.name}
-                    </h3>
-                    <p className="text-gray-400 text-sm">{message.message} • {message.time}</p>
-                  </div>
-                  <div className="w-2 h-2 rounded-full bg-[#6B54FA] ml-4" style={{ boxShadow: '0 0 10px #6B54FA' }}></div>
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
-                    style={{ 
-                      background: 'radial-gradient(circle at center, #6B54FA 0%, transparent 70%)'
-                    }}
-                  />
-                </motion.div>
-              ))}
-            </div>
-
-            <motion.button 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="w-full mt-6 py-3 text-center text-[#6B54FA] bg-[#1a1e32] rounded-lg relative group overflow-hidden hover:bg-[#6B54FA] hover:text-white transition-all duration-300"
-              style={{
-                border: '1px solid #6B54FA30',
-                boxShadow: '0 0 15px #6B54FA15'
-              }}
-            >
-              View all messages →
-            </motion.button>
-          </div>
-          <div 
-            className="absolute inset-0 opacity-5"
-            style={{ 
-              background: 'radial-gradient(circle at top right, #6B54FA 0%, transparent 70%)'
-            }}
-          />
-        </motion.div>
-
-        {/* Quick Actions */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="bg-[#0f1424] border border-[#1a1e32] rounded-xl p-6 relative overflow-hidden"
-        >
-          <div className="relative z-10">
-            <motion.h2 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="text-xl font-bold text-white mb-4"
-              style={{ textShadow: '0 0 10px #F9CA5640' }}
-            >
-              Quick Actions
-            </motion.h2>
-            <motion.p 
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.1 }}
-              className="text-gray-400 mb-6"
-            >
-              Common tasks and operations
-            </motion.p>
-            
-            <div className="space-y-4">
-              {[
-                { text: "Add New Ad Space", color: "#F9CA56" },
-                { text: "Withdraw Earnings", color: "#6B54FA" },
-                { text: "Export Analytics", color: "#53E2D2" },
-                { text: "Update Profile", color: "#F9CA56" }
-              ].map((action, index) => (
-                <motion.button
-                  key={action.text}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.2 + index * 0.1 }}
-                  className="w-full flex items-center justify-between bg-[#1a1e32] p-4 rounded-lg group hover:-translate-y-1 transition-all duration-300 relative overflow-hidden"
-                  style={{
-                    border: `1px solid ${action.color}30`,
-                    boxShadow: `0 0 15px ${action.color}15`
-                  }}
-                >
-                  <span 
-                    className="text-white relative z-10 group-hover:text-white transition-colors"
-                    style={{ textShadow: `0 0 10px ${action.color}40` }}
-                  >
-                    {action.text}
-                  </span>
-                  <ChevronRight 
-                    className="h-4 w-4 relative z-10 transition-colors duration-300" 
-                    style={{ color: action.color }}
-                  />
-                  <div 
-                    className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-                    style={{ 
-                      background: `radial-gradient(circle at center, ${action.color} 0%, transparent 70%)`
-                    }}
-                  />
-                </motion.button>
-              ))}
-            </div>
-          </div>
-          <div 
-            className="absolute inset-0 opacity-5"
-            style={{ 
-              background: 'radial-gradient(circle at top right, #F9CA56 0%, transparent 70%)'
-            }}
-          />
-        </motion.div>
+            )}
+          </CardContent>
+        </Card>
       </div>
-
-      {/* Mentor Profile Completion Form */}
-      {userData && userData.id && (
-        <MentorProfileCompletionForm
-          isOpen={isProfileCompletionOpen}
-          onClose={() => {
-            console.log('Closing profile completion modal')
-            setIsProfileCompletionOpen(false)
-          }}
-          userId={userData.id}
-          onComplete={() => {
-            console.log('Profile completion finished')
-            setIsProfileCompletionOpen(false)
-            // Refresh mentor data
-            const fetchMentorData = async () => {
-              const { data: { user } } = await supabase.auth.getUser()
-              if (user) {
-                const { data: mentor } = await supabase
-                  .from('mentors')
-                  .select('*')
-                  .eq('id', user.id)
-                  .single()
-                if (mentor) {
-                  setMentorData(mentor)
-                  setUserData({ ...mentor, full_name: mentor.name, user_type: 'mentor' })
-                }
-              }
-            }
-            fetchMentorData()
-          }}
-        />
-      )}
-    </div>
-  )
-} 
+    </DashboardLayout>
+  );
+}

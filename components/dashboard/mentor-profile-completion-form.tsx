@@ -1,1139 +1,496 @@
-"use client"
+"use client";
 
-import * as React from "react"
-import { X, AlertCircle, CheckCircle, Loader2, Camera, Upload, Plus, X as XIcon, MapPin, Check } from "lucide-react"
-import { motion, AnimatePresence } from "framer-motion"
-import { supabase } from "@/lib/supabase"
-import { Button } from "@/components/ui/button"
+import * as React from "react";
+import {
+  X,
+  AlertCircle,
+  CheckCircle,
+  Loader2,
+  User,
+  FileText,
+  Phone,
+  MapPin,
+  Globe,
+  Linkedin,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from "next/image";
+import { LoadingLogo } from "@/components/loading-logo";
 
 interface MentorProfileCompletionFormProps {
-  isOpen: boolean
-  onClose: () => void
-  userId: string
-  onComplete: () => void
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+  onComplete: () => void;
 }
 
-export function MentorProfileCompletionForm({ isOpen, onClose, userId, onComplete }: MentorProfileCompletionFormProps) {
-  const [isLoading, setIsLoading] = React.useState(false)
-  const [isLoadingCountries, setIsLoadingCountries] = React.useState(false)
-  const [isUploading, setIsUploading] = React.useState<string | null>(null)
-  const [avatarPreview, setAvatarPreview] = React.useState<string | null>(null)
-  const [qualificationsPreview, setQualificationsPreview] = React.useState<string | null>(null)
-  const [idDocumentPreview, setIdDocumentPreview] = React.useState<string | null>(null)
-  const [cvDocumentPreview, setCvDocumentPreview] = React.useState<string | null>(null)
-  const [countries, setCountries] = React.useState<Array<{name: string, code: string}>>([])
-  const [currentSpecialization, setCurrentSpecialization] = React.useState("")
-  const [currentLanguage, setCurrentLanguage] = React.useState("")
-  const [isGettingLocation, setIsGettingLocation] = React.useState(false)
-  const [locationStatus, setLocationStatus] = React.useState<"idle" | "success" | "error">("idle")
-  const [locationError, setLocationError] = React.useState<string>("")
+export function MentorProfileCompletionForm({
+  isOpen,
+  onClose,
+  userId,
+  onComplete,
+}: MentorProfileCompletionFormProps) {
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isLoadingCountries, setIsLoadingCountries] = React.useState(false);
+  const [countries, setCountries] = React.useState<
+    Array<{ name: string; code: string }>
+  >([]);
   const [formData, setFormData] = React.useState({
-    name: '',
-    title: '',
-    description: '',
-    phone_number: '',
-    country: '',
-    gender: '',
-    age: '',
-    id_number: '',
-    linkedin_profile: '',
-    github_profile: '',
-    twitter_profile: '',
-    facebook_profile: '',
-    instagram_profile: '',
-    personal_website: '',
-    hourly_rate: '',
-    experience: '',
-    availability: 'Available now',
-    languages: [] as string[],
-    specialization: [] as string[],
-    payment_method: '',
-    payment_period: 'per_session',
-    payment_email: '',
-    bank_name: '',
-    account_holder_name: '',
-    account_number: '',
-    routing_number: '',
-    crypto_wallet: '',
-    latitude: '',
-    longitude: ''
-  })
-  const [errors, setErrors] = React.useState<Record<string, string>>({})
-  
-  // Function to get live location
-  const getLiveLocation = () => {
-    setIsGettingLocation(true)
-    setLocationStatus("idle")
-    setLocationError("")
-    
-    if (!navigator.geolocation) {
-      setLocationError("Geolocation is not supported by your browser")
-      setLocationStatus("error")
-      setIsGettingLocation(false)
-      return
-    }
-    
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords
-        setFormData(prev => ({
-          ...prev,
-          latitude: latitude.toString(),
-          longitude: longitude.toString()
-        }))
-        setLocationStatus("success")
-        setIsGettingLocation(false)
-        
-        // Save location to database immediately
-        try {
-          const { error } = await supabase
-            .from('mentors')
-            .update({
-              latitude: latitude,
-              longitude: longitude
-            })
-            .eq('user_id', userId)
-          
-          if (error) {
-            console.error('Error saving location:', error)
-            setLocationError("Location saved locally but failed to save to database")
-          }
-        } catch (error) {
-          console.error('Error saving location:', error)
-        }
-      },
-      (error) => {
-        console.error('Error getting location:', error)
-        setLocationError(error.message || "Failed to get your location. Please check your browser permissions.")
-        setLocationStatus("error")
-        setIsGettingLocation(false)
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0
-      }
-    )
-  }
+    name: "",
+    description: "",
+    phone_number: "",
+    country: "",
+    city: "",
+    facebook_profile: "",
+    linkedin_profile: "",
+  });
+  const [errors, setErrors] = React.useState<Record<string, string>>({});
 
   const fetchUserData = React.useCallback(async () => {
-    if (!userId) return
-    
     try {
-      const { data: mentorData, error } = await supabase
-        .from('mentors')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle()
+      // Get authenticated user UUID from session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching mentor data:', error)
-        return
+      if (!session?.user?.id) {
+        console.error("No session found");
+        return;
+      }
+
+      const authUserId = session.user.id; // UUID from Supabase Auth
+
+      const { data: mentorData, error } = await supabase
+        .from("mentors")
+        .select("*")
+        .eq("user_id", authUserId) // Use UUID from session, not userId prop
+        .maybeSingle();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching mentor data:", error);
+        return;
       }
 
       if (mentorData) {
-        const paymentDetails = typeof mentorData.payment_account_details === 'string' 
-          ? JSON.parse(mentorData.payment_account_details || '{}')
-          : mentorData.payment_account_details || {}
-
         setFormData({
-          name: mentorData.name || '',
-          title: mentorData.title || '',
-          description: mentorData.description || '',
-          phone_number: mentorData.phone_number || '',
-          country: mentorData.country || '',
-          gender: mentorData.gender || '',
-          age: mentorData.age?.toString() || '',
-          id_number: mentorData.id_number || '',
-          linkedin_profile: mentorData.linkedin_profile || '',
-          github_profile: mentorData.github_profile || '',
-          twitter_profile: mentorData.twitter_profile || '',
-          facebook_profile: mentorData.facebook_profile || '',
-          instagram_profile: mentorData.instagram_profile || '',
-          personal_website: mentorData.personal_website || '',
-          hourly_rate: mentorData.hourly_rate?.toString() || '',
-          experience: mentorData.experience?.toString() || '',
-          availability: mentorData.availability || 'Available now',
-          languages: Array.isArray(mentorData.languages) ? mentorData.languages : (typeof mentorData.languages === 'string' ? JSON.parse(mentorData.languages || '[]') : []),
-          specialization: Array.isArray(mentorData.specialization) ? mentorData.specialization : (typeof mentorData.specialization === 'string' ? JSON.parse(mentorData.specialization || '[]') : []),
-          payment_method: mentorData.payment_method || '',
-          payment_period: mentorData.payment_period || 'per_session',
-          payment_email: paymentDetails.email || '',
-          bank_name: mentorData.bank_name || paymentDetails.bank_name || '',
-          account_holder_name: mentorData.account_holder_name || paymentDetails.account_holder || '',
-          account_number: mentorData.account_number || paymentDetails.account_number || '',
-          routing_number: mentorData.routing_number || paymentDetails.routing_number || '',
-          crypto_wallet: paymentDetails.wallet_address || ''
-        })
-        if (mentorData.avatar) setAvatarPreview(mentorData.avatar)
-        if (mentorData.qualifications) setQualificationsPreview(mentorData.qualifications)
-        if (mentorData.id_document) setIdDocumentPreview(mentorData.id_document)
-        if (mentorData.cv_document) setCvDocumentPreview(mentorData.cv_document)
+          name: mentorData.name || "",
+          description: mentorData.description || "",
+          phone_number: mentorData.phone_number || "",
+          country: mentorData.country || "",
+          city: mentorData.city || "",
+          facebook_profile: mentorData.facebook_profile || "",
+          linkedin_profile: mentorData.linkedin_profile || "",
+        });
       }
     } catch (error) {
-      console.error('Error fetching mentor data:', error)
+      console.error("Error fetching mentor data:", error);
     }
-  }, [userId])
+  }, [userId]);
 
   const fetchCountries = React.useCallback(async () => {
-    setIsLoadingCountries(true)
+    setIsLoadingCountries(true);
     try {
-      const response = await fetch('https://restcountries.com/v3.1/all?fields=name,cca2')
-      if (!response.ok) throw new Error('Failed to fetch countries')
-      const data = await response.json()
-      const formattedCountries = data.map((country: any) => ({
-        name: country.name?.common || '',
-        code: country.cca2 || ''
-      })).filter((c: any) => c.name && c.code).sort((a: any, b: any) => a.name.localeCompare(b.name))
-      setCountries(formattedCountries)
+      const response = await fetch(
+        "https://restcountries.com/v3.1/all?fields=name,cca2"
+      );
+      if (!response.ok) throw new Error("Failed to fetch countries");
+      const data = await response.json();
+      const formattedCountries = data
+        .map((country: any) => ({
+          name: country.name?.common || "",
+          code: country.cca2 || "",
+        }))
+        .filter((c: any) => c.name && c.code)
+        .sort((a: any, b: any) => a.name.localeCompare(b.name));
+      setCountries(formattedCountries);
     } catch (error) {
-      console.error('Error fetching countries:', error)
-      setCountries([])
+      console.error("Error fetching countries:", error);
+      setCountries([]);
     } finally {
-      setIsLoadingCountries(false)
+      setIsLoadingCountries(false);
     }
-  }, [])
+  }, []);
 
   React.useEffect(() => {
-    if (isOpen && userId) {
-      fetchUserData()
-      fetchCountries()
+    if (isOpen) {
+      fetchUserData();
+      fetchCountries();
     }
-  }, [isOpen, userId, fetchUserData, fetchCountries])
+  }, [isOpen, fetchUserData, fetchCountries]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }))
+      setErrors((prev) => ({ ...prev, [name]: "" }));
     }
-  }
-
-  const handleAddSpecialization = () => {
-    if (currentSpecialization.trim() && !formData.specialization.includes(currentSpecialization.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        specialization: [...prev.specialization, currentSpecialization.trim()]
-      }))
-      setCurrentSpecialization("")
-    }
-  }
-
-  const handleRemoveSpecialization = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      specialization: prev.specialization.filter((_, i) => i !== index)
-    }))
-  }
-
-  const handleAddLanguage = () => {
-    if (currentLanguage.trim() && !formData.languages.includes(currentLanguage.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        languages: [...prev.languages, currentLanguage.trim()]
-      }))
-      setCurrentLanguage("")
-    }
-  }
-
-  const handleRemoveLanguage = (index: number) => {
-    setFormData(prev => ({
-      ...prev,
-      languages: prev.languages.filter((_, i) => i !== index)
-    }))
-  }
-
-  const handleFileUpload = async (file: File, type: 'avatar' | 'qualifications' | 'id_document' | 'cv_document') => {
-    if (file.size > 10 * 1024 * 1024) {
-      setErrors(prev => ({ ...prev, [type]: 'File size must be less than 10MB' }))
-      return null
-    }
-
-    setIsUploading(type)
-    try {
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${userId}_${Date.now()}.${fileExt}`
-      let filePath = ''
-
-      if (type === 'avatar') {
-        filePath = `avatars-temp/${userId}/${fileName}`
-      } else {
-        filePath = `verification-docs/${userId}/${fileName}`
-      }
-
-      const { error: uploadError } = await supabase.storage
-        .from('course-media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        })
-
-      if (uploadError) throw uploadError
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('course-media')
-        .getPublicUrl(filePath)
-
-      return publicUrl
-    } catch (error) {
-      console.error(`Error uploading ${type}:`, error)
-      setErrors(prev => ({ ...prev, [type]: `Failed to upload ${type}` }))
-      return null
-    } finally {
-      setIsUploading(null)
-    }
-  }
-
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await handleFileUpload(file, 'avatar')
-    if (url) setAvatarPreview(url)
-  }
-
-  const handleQualificationsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await handleFileUpload(file, 'qualifications')
-    if (url) setQualificationsPreview(url)
-  }
-
-  const handleIdDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await handleFileUpload(file, 'id_document')
-    if (url) setIdDocumentPreview(url)
-  }
-
-  const handleCvDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const url = await handleFileUpload(file, 'cv_document')
-    if (url) setCvDocumentPreview(url)
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErrors({})
+    e.preventDefault();
+    setErrors({});
 
-    // Validation
-    const newErrors: Record<string, string> = {}
-    if (!formData.name.trim()) newErrors.name = 'Name is required'
-    if (!formData.title.trim()) newErrors.title = 'Title is required'
-    if (!formData.description.trim()) newErrors.description = 'Description is required'
-    if (!formData.hourly_rate || parseFloat(formData.hourly_rate) <= 0) {
-      newErrors.hourly_rate = 'Valid hourly rate is required'
-    }
-    if (formData.specialization.length === 0) {
-      newErrors.specialization = 'At least one specialization is required'
-    }
+    // Validation - only check required fields
+    const newErrors: Record<string, string> = {};
+    if (!formData.name.trim()) newErrors.name = "Full name is required";
+    if (!formData.description.trim()) newErrors.description = "Bio is required";
+    if (!formData.phone_number.trim())
+      newErrors.phone_number = "Phone number is required";
+    if (!formData.country) newErrors.country = "Country is required";
+    // Note: city validation removed - mentors table doesn't have city column
 
     if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
-      return
+      setErrors(newErrors);
+      return;
     }
 
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      // Build payment account details based on payment method
-      let paymentAccountDetails: any = {}
-      if (formData.payment_method === 'paypal' || formData.payment_method === 'stripe') {
-        paymentAccountDetails = {
-          type: formData.payment_method,
-          email: formData.payment_email
-        }
-      } else if (formData.payment_method === 'bank_transfer') {
-        paymentAccountDetails = {
-          type: 'bank_transfer',
-          bank_name: formData.bank_name,
-          account_holder: formData.account_holder_name,
-          account_number: formData.account_number,
-          routing_number: formData.routing_number
-        }
-      } else if (formData.payment_method === 'crypto') {
-        paymentAccountDetails = {
-          type: 'crypto',
-          wallet_address: formData.crypto_wallet
-        }
+      // Get authenticated user UUID from session
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session?.user?.id) {
+        throw new Error("No session found. Please log in again.");
       }
 
-      // Build update data - explicitly exclude id and user_id to avoid conflicts
+      const authUserId = session.user.id; // UUID from Supabase Auth
+
+      // Build update data - only include the simplified fields
       const updateData: any = {
         name: formData.name.trim(),
-        title: formData.title.trim(),
+        title: "", // Required field - set to empty string (user can update later)
         description: formData.description.trim(),
-        phone_number: formData.phone_number.trim() || null,
-        country: formData.country || null,
-        gender: formData.gender || null,
-        age: formData.age ? parseInt(formData.age) : null,
-        id_number: formData.id_number.trim() || null,
-        linkedin_profile: formData.linkedin_profile.trim() || null,
-        github_profile: formData.github_profile.trim() || null,
-        twitter_profile: formData.twitter_profile.trim() || null,
+        phone_number: formData.phone_number.trim(),
+        country: formData.country,
+        hourly_rate: 0.00, // Required field - set to 0 (user can update later)
+        experience: 0, // Required field - set to 0 years (user can update later)
+        // Note: city column doesn't exist in mentors table, so we don't save it
         facebook_profile: formData.facebook_profile.trim() || null,
-        instagram_profile: formData.instagram_profile.trim() || null,
-        personal_website: formData.personal_website.trim() || null,
-        hourly_rate: parseFloat(formData.hourly_rate),
-        experience: formData.experience ? parseInt(formData.experience) : 0,
-        availability: formData.availability,
-        languages: JSON.stringify(formData.languages),
-        specialization: JSON.stringify(formData.specialization),
-        payment_method: formData.payment_method || null,
-        payment_period: formData.payment_period,
-        payment_account_details: JSON.stringify(paymentAccountDetails),
-        bank_name: formData.bank_name.trim() || null,
-        account_holder_name: formData.account_holder_name.trim() || null,
-        account_number: formData.account_number.trim() || null,
-        routing_number: formData.routing_number.trim() || null,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-        is_complete: true,
-        updated_at: new Date().toISOString()
-      }
-      
-      // Explicitly remove id if it somehow got included
-      delete updateData.id
+        linkedin_profile: formData.linkedin_profile.trim() || null,
+        is_complete: true, // Set to true after completing basic profile
+        updated_at: new Date().toISOString(),
+      };
 
-      if (avatarPreview) updateData.avatar = avatarPreview
-      if (qualificationsPreview) updateData.qualifications = qualificationsPreview
-      if (idDocumentPreview) updateData.id_document = idDocumentPreview
-      if (cvDocumentPreview) updateData.cv_document = cvDocumentPreview
+      // Explicitly remove id if it somehow got included
+      delete updateData.id;
 
       // Check if mentor record exists first - get the numeric id
       const { data: existingMentor, error: checkError } = await supabase
-        .from('mentors')
-        .select('id, user_id')
-        .eq('user_id', userId)
-        .maybeSingle()
+        .from("mentors")
+        .select("id, user_id")
+        .eq("user_id", authUserId) // Use UUID from session, not userId prop
+        .maybeSingle();
 
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking existing mentor:', checkError)
-        throw checkError
+      if (checkError && checkError.code !== "PGRST116") {
+        console.error("Error checking existing mentor:", checkError);
+        throw checkError;
       }
 
-      let error
+      let error;
       if (existingMentor && existingMentor.id) {
         // Update existing record using the numeric id
-        console.log('Updating existing mentor record with id:', existingMentor.id)
+        console.log(
+          "Updating existing mentor record with id:",
+          existingMentor.id
+        );
         const { error: updateError } = await supabase
-          .from('mentors')
+          .from("mentors")
           .update(updateData)
-          .eq('id', existingMentor.id)  // Use numeric id for update
-        error = updateError
+          .eq("id", existingMentor.id); // Use numeric id for update
+        error = updateError;
         if (error) {
-          console.error('Update error details:', error)
+          console.error("Update error details:", error);
         }
       } else {
         // Insert new record with user_id
-        console.log('Inserting new mentor record for user_id:', userId)
-        const { error: insertError } = await supabase
-          .from('mentors')
-          .insert({
-            ...updateData,
-            user_id: userId
-          })
-        error = insertError
+        console.log("Inserting new mentor record for user_id:", authUserId);
+        const { error: insertError } = await supabase.from("mentors").insert({
+          ...updateData,
+          user_id: authUserId, // Use UUID from session, not userId prop
+        });
+        error = insertError;
         if (error) {
-          console.error('Insert error details:', error)
+          console.error("Insert error details:", error);
         }
       }
 
       if (error) {
-        console.error('Error saving mentor profile:', error)
-        throw error
+        console.error("Error saving mentor profile:", error);
+        throw error;
       }
 
-      onComplete()
+      onComplete();
     } catch (error: any) {
-      console.error('Error updating mentor profile:', error)
-      setErrors({ submit: error.message || 'Failed to update profile. Please try again.' })
+      console.error("Error updating mentor profile:", error);
+      setErrors({
+        submit: error.message || "Failed to update profile. Please try again.",
+      });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <AnimatePresence>
       {isOpen && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-          onClick={onClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
-        >
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">Complete Your Profile</h2>
-              <p className="text-sm text-gray-600 mt-1">Fill in your information to start teaching and get verified</p>
-            </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className="relative w-full max-w-md"
+          >
+            <div
+              className="relative p-[3px] rounded-xl animate-border-rotate"
+              style={{
+                background:
+                  "conic-gradient(from 0deg, #3b82f6, #2563eb, #1d4ed8, #1e40af, #3b82f6)",
+              }}
             >
-              <X className="w-6 h-6" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
-            {/* Basic Information Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Basic Information</h3>
-              
-              {/* Avatar Upload */}
-              <div className="flex items-center gap-6">
-                <div className="relative">
-                  <div className="w-24 h-24 rounded-full bg-gray-200 flex items-center justify-center overflow-hidden">
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
-                    ) : (
-                      <Camera className="w-8 h-8 text-gray-400" />
-                    )}
-                  </div>
-                  <label className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full cursor-pointer hover:bg-blue-700 transition-colors">
-                    <Upload className="w-4 h-4" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarUpload}
-                      className="hidden"
-                      disabled={isUploading === 'avatar'}
-                    />
-                  </label>
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-700">Profile Picture</p>
-                  <p className="text-xs text-gray-500 mt-1">Upload a professional photo</p>
-                  {errors.avatar && <p className="text-xs text-red-500 mt-1">{errors.avatar}</p>}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Full Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="John Doe"
-                  />
-                  {errors.name && <p className="text-xs text-red-500 mt-1">{errors.name}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Professional Title <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="title"
-                    value={formData.title}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Senior Software Engineer"
-                  />
-                  {errors.title && <p className="text-xs text-red-500 mt-1">{errors.title}</p>}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bio/Description <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Tell students about yourself, your experience, and teaching style..."
-                />
-                {errors.description && <p className="text-xs text-red-500 mt-1">{errors.description}</p>}
-              </div>
-
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number</label>
-                  <input
-                    type="tel"
-                    name="phone_number"
-                    value={formData.phone_number}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="+1234567890"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
-                  <select
-                    name="country"
-                    value={formData.country}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    disabled={isLoadingCountries}
-                  >
-                    <option value="">Select country</option>
-                    {countries.map((country) => (
-                      <option key={country.code} value={country.name}>
-                        {country.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-              
-              {/* Location Section */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Location
-                </label>
-                <div className="flex items-center gap-3">
-                  <Button
-                    type="button"
-                    onClick={getLiveLocation}
-                    disabled={isGettingLocation}
-                    className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
-                  >
-                    {isGettingLocation ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Getting Location...
-                      </>
-                    ) : locationStatus === "success" ? (
-                      <>
-                        <Check className="h-4 w-4" />
-                        Location Saved
-                      </>
-                    ) : (
-                      <>
-                        <MapPin className="h-4 w-4" />
-                        Get My Live Location
-                      </>
-                    )}
-                  </Button>
-                  {formData.latitude && formData.longitude && (
-                    <span className="text-sm text-gray-600">
-                      {parseFloat(formData.latitude).toFixed(6)}, {parseFloat(formData.longitude).toFixed(6)}
-                    </span>
-                  )}
-                </div>
-                {locationError && (
-                  <p className="text-xs text-red-500 mt-1">{locationError}</p>
-                )}
-                {locationStatus === "success" && !locationError && (
-                  <p className="text-xs text-green-600 mt-1">Location saved successfully!</p>
-                )}
-                <p className="text-xs text-gray-500 mt-1">
-                  Click the button to automatically detect and save your current location. This helps students find tutors nearby.
-                </p>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID Number</label>
-                  <input
-                    type="text"
-                    name="id_number"
-                    value={formData.id_number}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="1234567890123"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Gender</label>
-                  <select
-                    name="gender"
-                    value={formData.gender}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select gender</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
-                    <option value="prefer_not_to_say">Prefer not to say</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
-                  <input
-                    type="number"
-                    name="age"
-                    value={formData.age}
-                    onChange={handleInputChange}
-                    min="18"
-                    max="100"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="25"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Professional Details Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Professional Details</h3>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Hourly Rate ($) <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    name="hourly_rate"
-                    value={formData.hourly_rate}
-                    onChange={handleInputChange}
-                    min="0"
-                    step="0.01"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="50.00"
-                  />
-                  {errors.hourly_rate && <p className="text-xs text-red-500 mt-1">{errors.hourly_rate}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Years of Experience</label>
-                  <input
-                    type="number"
-                    name="experience"
-                    value={formData.experience}
-                    onChange={handleInputChange}
-                    min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="5"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Availability</label>
-                  <select
-                    name="availability"
-                    value={formData.availability}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="Available now">Available now</option>
-                    <option value="Available soon">Available soon</option>
-                    <option value="Limited availability">Limited availability</option>
-                    <option value="Not available">Not available</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Specializations */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Specializations <span className="text-red-500">*</span>
-                </label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={currentSpecialization}
-                    onChange={(e) => setCurrentSpecialization(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddSpecialization()
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., Python, React, AWS"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddSpecialization}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                {errors.specialization && <p className="text-xs text-red-500 mb-2">{errors.specialization}</p>}
-                <div className="flex flex-wrap gap-2">
-                  {formData.specialization.map((spec, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+              <Card className="bg-white shadow-2xl border-2 border-blue-200 rounded-xl overflow-hidden relative z-10">
+                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-500 text-white pb-2 pt-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center p-1">
+                        <Image
+                          src="/images/logo1.png"
+                          alt="BrightByt Logo"
+                          width={24}
+                          height={24}
+                          className="object-contain"
+                        />
+                      </div>
+                      <CardTitle className="text-sm font-bold">
+                        Complete Your Profile
+                      </CardTitle>
+                    </div>
+                    <button
+                      onClick={onClose}
+                      className="text-white hover:bg-white/20 rounded-full p-0.5 transition-colors"
+                      aria-label="Close"
                     >
-                      {spec}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveSpecialization(index)}
-                        className="hover:text-blue-600"
-                      >
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                  <p className="text-xs text-blue-100 mt-0.5 leading-tight">
+                    Fill in your information to get started
+                  </p>
+                </CardHeader>
 
-              {/* Languages */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Languages</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={currentLanguage}
-                    onChange={(e) => setCurrentLanguage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddLanguage()
-                      }
-                    }}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="e.g., English, Spanish"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddLanguage}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {formData.languages.map((lang, index) => (
-                    <span
-                      key={index}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                <CardContent className="p-2.5">
+                  <form onSubmit={handleSubmit} className="space-y-2">
+                    {/* Full Name */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <User className="w-2.5 h-2.5" />
+                        Full Name <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        placeholder="Enter your full name"
+                        className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2"
+                      />
+                      {errors.name && (
+                        <p className="text-xs text-red-500">{errors.name}</p>
+                      )}
+                    </div>
+
+                    {/* Bio */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <FileText className="w-2.5 h-2.5" />
+                        Bio <span className="text-red-500">*</span>
+                      </label>
+                      <Textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        placeholder="Tell us about yourself"
+                        rows={3}
+                        className="bg-white border-gray-300 focus:border-blue-500 resize-none text-xs py-1 px-2"
+                      />
+                      {errors.description && (
+                        <p className="text-xs text-red-500">
+                          {errors.description}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Phone Number */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <Phone className="w-2.5 h-2.5" />
+                        Phone Number <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="tel"
+                        name="phone_number"
+                        value={formData.phone_number}
+                        onChange={handleInputChange}
+                        placeholder="+1 234 567 8900"
+                        className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2"
+                      />
+                      {errors.phone_number && (
+                        <p className="text-xs text-red-500">
+                          {errors.phone_number}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Country */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <Globe className="w-2.5 h-2.5" />
+                        Country <span className="text-red-500">*</span>
+                      </label>
+                      <Select
+                        value={formData.country}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, country: value })
+                        }
+                        disabled={isLoadingCountries}
+                      >
+                        <SelectTrigger className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2">
+                          <SelectValue placeholder="Select your country" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {countries.map((country) => (
+                            <SelectItem key={country.code} value={country.name}>
+                              {country.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {errors.country && (
+                        <p className="text-xs text-red-500">{errors.country}</p>
+                      )}
+                    </div>
+
+                    {/* City */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <MapPin className="w-2.5 h-2.5" />
+                        City <span className="text-red-500">*</span>
+                      </label>
+                      <Input
+                        type="text"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        placeholder="Enter your city"
+                        className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2"
+                      />
+                      {errors.city && (
+                        <p className="text-xs text-red-500">{errors.city}</p>
+                      )}
+                    </div>
+
+                    {/* Facebook */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <Globe className="w-2.5 h-2.5" />
+                        Facebook{" "}
+                        <span className="text-gray-500 font-normal">
+                          (Optional)
+                        </span>
+                      </label>
+                      <Input
+                        type="url"
+                        name="facebook_profile"
+                        value={formData.facebook_profile}
+                        onChange={handleInputChange}
+                        placeholder="https://facebook.com/yourprofile"
+                        className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2"
+                      />
+                    </div>
+
+                    {/* LinkedIn */}
+                    <div className="space-y-0.5">
+                      <label className="text-xs font-medium text-gray-700 flex items-center gap-1">
+                        <Linkedin className="w-2.5 h-2.5" />
+                        LinkedIn{" "}
+                        <span className="text-gray-500 font-normal">
+                          (Optional)
+                        </span>
+                      </label>
+                      <Input
+                        type="url"
+                        name="linkedin_profile"
+                        value={formData.linkedin_profile}
+                        onChange={handleInputChange}
+                        placeholder="https://linkedin.com/in/yourprofile"
+                        className="bg-white border-gray-300 focus:border-blue-500 h-7 text-xs py-0.5 px-2"
+                      />
+                    </div>
+
+                    {/* Error Message */}
+                    {errors.submit && (
+                      <div className="p-2 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-800">
+                        <AlertCircle className="w-3 h-3" />
+                        <span className="text-xs">{errors.submit}</span>
+                      </div>
+                    )}
+
+                    {/* Submit Button */}
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium h-7 text-xs mt-1"
                     >
-                      {lang}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveLanguage(index)}
-                        className="hover:text-green-600"
-                      >
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                      {isLoading ? (
+                        <>
+                          <LoadingLogo size={12} />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="w-3 h-3 mr-1.5" />
+                          Complete Profile
+                        </>
+                      )}
+                    </Button>
+
+                    <p className="text-xs text-gray-500 text-center mt-0.5 leading-tight">
+                      All fields marked with{" "}
+                      <span className="text-red-500">*</span> are required for
+                      verification
+                    </p>
+                  </form>
+                </CardContent>
+              </Card>
             </div>
-
-            {/* Documents Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Documents & Verification</h3>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Qualifications</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    {qualificationsPreview ? (
-                      <div className="space-y-2">
-                        <CheckCircle className="w-8 h-8 text-green-500 mx-auto" />
-                        <p className="text-xs text-gray-600">Document uploaded</p>
-                        <a href={qualificationsPreview} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View</a>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-600">Upload PDF</p>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleQualificationsUpload}
-                          className="hidden"
-                          disabled={isUploading === 'qualifications'}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {errors.qualifications && <p className="text-xs text-red-500 mt-1">{errors.qualifications}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">ID Document</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    {idDocumentPreview ? (
-                      <div className="space-y-2">
-                        <CheckCircle className="w-8 h-8 text-green-500 mx-auto" />
-                        <p className="text-xs text-gray-600">Document uploaded</p>
-                        <a href={idDocumentPreview} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View</a>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-600">Upload PDF/Image</p>
-                        <input
-                          type="file"
-                          accept=".pdf,.jpg,.jpeg,.png"
-                          onChange={handleIdDocumentUpload}
-                          className="hidden"
-                          disabled={isUploading === 'id_document'}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {errors.id_document && <p className="text-xs text-red-500 mt-1">{errors.id_document}</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">CV/Resume</label>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                    {cvDocumentPreview ? (
-                      <div className="space-y-2">
-                        <CheckCircle className="w-8 h-8 text-green-500 mx-auto" />
-                        <p className="text-xs text-gray-600">Document uploaded</p>
-                        <a href={cvDocumentPreview} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">View</a>
-                      </div>
-                    ) : (
-                      <label className="cursor-pointer">
-                        <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-xs text-gray-600">Upload PDF</p>
-                        <input
-                          type="file"
-                          accept=".pdf,.doc,.docx"
-                          onChange={handleCvDocumentUpload}
-                          className="hidden"
-                          disabled={isUploading === 'cv_document'}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {errors.cv_document && <p className="text-xs text-red-500 mt-1">{errors.cv_document}</p>}
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Information Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Payment Information</h3>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method</label>
-                  <select
-                    name="payment_method"
-                    value={formData.payment_method}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="">Select payment method</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="stripe">Stripe</option>
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="crypto">Cryptocurrency</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Payment Period</label>
-                  <select
-                    name="payment_period"
-                    value={formData.payment_period}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  >
-                    <option value="per_session">Per Session</option>
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly">Monthly</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Payment Details based on method */}
-              {formData.payment_method === 'paypal' || formData.payment_method === 'stripe' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    {formData.payment_method === 'paypal' ? 'PayPal' : 'Stripe'} Email
-                  </label>
-                  <input
-                    type="email"
-                    name="payment_email"
-                    value={formData.payment_email}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="email@example.com"
-                  />
-                </div>
-              ) : formData.payment_method === 'bank_transfer' ? (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Bank Name</label>
-                    <input
-                      type="text"
-                      name="bank_name"
-                      value={formData.bank_name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Bank Name"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Account Holder Name</label>
-                    <input
-                      type="text"
-                      name="account_holder_name"
-                      value={formData.account_holder_name}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Account Holder"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Account Number</label>
-                    <input
-                      type="text"
-                      name="account_number"
-                      value={formData.account_number}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Account Number"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Routing Number</label>
-                    <input
-                      type="text"
-                      name="routing_number"
-                      value={formData.routing_number}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Routing Number"
-                    />
-                  </div>
-                </div>
-              ) : formData.payment_method === 'crypto' ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Wallet Address</label>
-                  <input
-                    type="text"
-                    name="crypto_wallet"
-                    value={formData.crypto_wallet}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="0x..."
-                  />
-                </div>
-              ) : null}
-            </div>
-
-            {/* Social Media Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Social Media & Links</h3>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">LinkedIn</label>
-                  <input
-                    type="url"
-                    name="linkedin_profile"
-                    value={formData.linkedin_profile}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://linkedin.com/in/..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">GitHub</label>
-                  <input
-                    type="url"
-                    name="github_profile"
-                    value={formData.github_profile}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://github.com/..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Twitter</label>
-                  <input
-                    type="url"
-                    name="twitter_profile"
-                    value={formData.twitter_profile}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://twitter.com/..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Facebook</label>
-                  <input
-                    type="url"
-                    name="facebook_profile"
-                    value={formData.facebook_profile}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://facebook.com/..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Instagram</label>
-                  <input
-                    type="url"
-                    name="instagram_profile"
-                    value={formData.instagram_profile}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://instagram.com/..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Personal Website</label>
-                  <input
-                    type="url"
-                    name="personal_website"
-                    value={formData.personal_website}
-                    onChange={handleInputChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="https://..."
-                  />
-                </div>
-              </div>
-            </div>
-
-            {errors.submit && (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-800">
-                <AlertCircle className="w-5 h-5" />
-                <span className="text-sm">{errors.submit}</span>
-              </div>
-            )}
-
-            <div className="flex gap-4 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Complete Profile
-                  </>
-                )}
-              </button>
-            </div>
-          </form>
-        </motion.div>
-      </div>
+          </motion.div>
+        </div>
       )}
     </AnimatePresence>
-  )
+  );
 }

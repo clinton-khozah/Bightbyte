@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { DashboardLayout } from '@/components/dashboard/layout'
 import { MentorProfileCompletionForm } from '@/components/dashboard/mentor-profile-completion-form'
+import { LoadingLogo } from '@/components/loading-logo'
 
 export default function TutorDashboard() {
   const [userData, setUserData] = useState<any>(null)
@@ -145,10 +146,7 @@ export default function TutorDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <LoadingLogo size={48} />
       </div>
     )
   }

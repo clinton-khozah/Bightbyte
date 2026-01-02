@@ -3,9 +3,7 @@
 import * as React from "react"
 import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Calendar, Clock, Shield, CheckCircle, FileText } from "lucide-react"
-import { loadStripe, Stripe } from "@stripe/stripe-js"
-import { Elements } from "@stripe/react-stripe-js"
-import { StripePaymentForm } from "@/components/payment/stripe-payment-form"
+import { PayFastPaymentForm } from "@/components/payment/payfast-payment-form"
 
 interface Mentor {
   id: string
@@ -40,8 +38,6 @@ export default function BookSessionPage() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string>("")
   const [currentStep, setCurrentStep] = React.useState(1)
-  const [stripePromise, setStripePromise] = React.useState<Promise<Stripe | null> | null>(null)
-  const [clientSecret, setClientSecret] = React.useState<string>("")
   const [isCreatingPayment, setIsCreatingPayment] = React.useState(false)
 
   const [sessionData, setSessionData] = React.useState<SessionBooking>({
@@ -53,21 +49,7 @@ export default function BookSessionPage() {
     meetingType: "google-meet",
   })
 
-  // Load Stripe
-  React.useEffect(() => {
-    const loadStripeKey = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/api/v1/ai/payment/config/")
-        const data = await response.json()
-        if (data.success && data.publishable_key) {
-          setStripePromise(loadStripe(data.publishable_key))
-        }
-      } catch (error) {
-        console.error("Error loading Stripe:", error)
-      }
-    }
-    loadStripeKey()
-  }, [])
+  // PayFast doesn't require pre-loading like Stripe
 
   // Fetch mentor details
   React.useEffect(() => {
@@ -178,41 +160,9 @@ export default function BookSessionPage() {
 
   const handleNextStep = async () => {
     if (currentStep === 1) {
-      setIsCreatingPayment(true)
-      try {
-        const total = calculateTotal()
-        const response = await fetch("http://127.0.0.1:8000/api/v1/ai/payment/create-intent/", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: total,
-            currency: "usd",
-            description: `Mentoring Session: ${sessionData.topic}`,
-            metadata: {
-              mentor_id: mentorId,
-              mentor_name: mentor?.name,
-              session_date: sessionData.date,
-              session_time: sessionData.time,
-              session_topic: sessionData.topic,
-            },
-          }),
-        })
-
-        const data = await response.json()
-        if (data.success && data.client_secret) {
-          setClientSecret(data.client_secret)
-          setCurrentStep(2)
-        } else {
-          alert("Failed to initialize payment. Please try again.")
-        }
-      } catch (error) {
-        console.error("Error creating payment intent:", error)
-        alert("Failed to initialize payment. Please try again.")
-      } finally {
-        setIsCreatingPayment(false)
-      }
+      // For PayFast, we just move to the payment step
+      // The payment form will create the payment URL when it loads
+      setCurrentStep(2)
     } else if (currentStep < 3) {
       setCurrentStep(currentStep + 1)
     }
@@ -515,23 +465,22 @@ export default function BookSessionPage() {
               {currentStep === 2 && (
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-6">Payment Information</h2>
-                  {stripePromise && clientSecret ? (
-                    <Elements stripe={stripePromise} options={{ clientSecret }}>
-                      <StripePaymentForm
-                        amount={calculateTotal()}
-                        onSuccess={handlePaymentSuccess}
-                        onError={(error) => {
-                          console.error("Payment error:", error)
-                          alert("Payment failed. Please try again.")
-                        }}
-                        onBack={handlePrevStep}
-                      />
-                    </Elements>
-                  ) : (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                    </div>
-                  )}
+                  <PayFastPaymentForm
+                    amount={calculateTotal()}
+                    itemName={`Mentoring Session: ${sessionData.topic}`}
+                    metadata={{
+                      mentor_id: mentorId,
+                      session_date: sessionData.date,
+                      session_time: sessionData.time,
+                      session_topic: sessionData.topic,
+                    }}
+                    onSuccess={handlePaymentSuccess}
+                    onError={(error) => {
+                      console.error("Payment error:", error)
+                      alert("Payment failed. Please try again.")
+                    }}
+                    onBack={handlePrevStep}
+                  />
                 </div>
               )}
 

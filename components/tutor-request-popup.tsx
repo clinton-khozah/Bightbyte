@@ -10,13 +10,13 @@ import {
   Mail,
   User,
   Send,
-  Loader2,
   Phone,
   Check,
   ChevronsUpDown,
 } from "lucide-react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import { LoadingLogo } from "@/components/loading-logo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -803,7 +803,7 @@ export function TutorRequestPopup({
                 >
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                      <LoadingLogo size={12} />
                       Submitting...
                     </>
                   ) : (

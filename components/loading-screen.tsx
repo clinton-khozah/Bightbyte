@@ -1,37 +1,37 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import Image from "next/image"
-import { motion } from "framer-motion"
-import { cn } from "@/lib/utils"
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { cn } from "@/lib/utils";
 
 interface LoadingScreenProps {
-  className?: string
+  className?: string;
 }
 
 export function LoadingScreen({ className }: LoadingScreenProps) {
-  const [showLoader, setShowLoader] = useState(true)
+  const [showLoader, setShowLoader] = useState(true);
 
   useEffect(() => {
     // Hide loader after 2 seconds
     const timer = setTimeout(() => {
-      setShowLoader(false)
-    }, 2000)
+      setShowLoader(false);
+    }, 2000);
 
-    return () => clearTimeout(timer)
-  }, [])
+    return () => clearTimeout(timer);
+  }, []);
 
   // Disappear animation
   const containerVariants = {
     visible: { opacity: 1 },
-    hidden: { 
+    hidden: {
       opacity: 0,
-      transition: { 
+      transition: {
         duration: 0.5,
-        ease: "easeInOut" 
-      }
-    }
-  }
+        ease: "easeInOut",
+      },
+    },
+  };
 
   // Pulse animation for the glow effect
   const glowVariants = {
@@ -43,22 +43,22 @@ export function LoadingScreen({ className }: LoadingScreenProps) {
         duration: 2,
         ease: "easeInOut",
         repeat: Infinity,
-      }
-    }
-  }
+      },
+    },
+  };
 
-  // Rotation animation for the loader
-  const rotateVariants = {
-    initial: { rotate: 0 },
+  // Pulse animation for the loader
+  const pulseVariants = {
+    initial: { scale: 1 },
     animate: {
-      rotate: 360,
+      scale: [1, 1.2, 1],
       transition: {
-        duration: 4,
-        ease: "linear", 
-        repeat: Infinity
-      }
-    }
-  }
+        duration: 1.5,
+        ease: "easeInOut",
+        repeat: Infinity,
+      },
+    },
+  };
 
   // Additional particles that float around the loader
   const particleVariants = {
@@ -71,15 +71,15 @@ export function LoadingScreen({ className }: LoadingScreenProps) {
         ease: "easeInOut",
         repeat: Infinity,
         repeatType: "mirror",
-        repeatDelay: Math.random()
-      }
-    }
-  }
+        repeatDelay: Math.random(),
+      },
+    },
+  };
 
-  if (!showLoader) return null
+  if (!showLoader) return null;
 
   return (
-      <motion.div
+    <motion.div
       className={cn(
         "fixed inset-0 z-[100] flex items-center justify-center bg-gray-100/95 backdrop-blur-md",
         className
@@ -96,11 +96,11 @@ export function LoadingScreen({ className }: LoadingScreenProps) {
           initial="initial"
           animate="animate"
         />
-        
-        {/* Loader image with rotation */}
+
+        {/* Loader image with pulse */}
         <motion.div
           className="relative z-10"
-          variants={rotateVariants}
+          variants={pulseVariants}
           initial="initial"
           animate="animate"
         >
@@ -113,31 +113,29 @@ export function LoadingScreen({ className }: LoadingScreenProps) {
             priority
           />
         </motion.div>
-        
+
         {/* Floating particles */}
         <div className="absolute inset-0 w-full h-full">
           {[...Array(6)].map((_, i) => (
             <motion.div
               key={i}
               className="absolute w-2 h-2 bg-[#9575ff] rounded-full"
-            style={{
+              style={{
                 top: `${Math.random() * 100}%`,
                 left: `${Math.random() * 100}%`,
-                filter: "blur(1px)"
+                filter: "blur(1px)",
               }}
               variants={particleVariants}
               initial="initial"
               animate="animate"
               transition={{
                 delay: i * 0.2,
-                duration: 2 + Math.random() * 2
+                duration: 2 + Math.random() * 2,
               }}
             />
           ))}
         </div>
-        
       </div>
-      </motion.div>
-  )
+    </motion.div>
+  );
 }
-

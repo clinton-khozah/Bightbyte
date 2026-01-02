@@ -4,6 +4,7 @@ import * as React from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { LogOut, X, AlertCircle } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { useRouter } from "next/navigation"
 
 interface LogoutConfirmationModalProps {
   isOpen: boolean
@@ -11,6 +12,7 @@ interface LogoutConfirmationModalProps {
 }
 
 export function LogoutConfirmationModal({ isOpen, onClose }: LogoutConfirmationModalProps) {
+  const router = useRouter()
   const [isLoggingOut, setIsLoggingOut] = React.useState(false)
 
   const handleLogout = async () => {
@@ -20,11 +22,14 @@ export function LogoutConfirmationModal({ isOpen, onClose }: LogoutConfirmationM
       await supabase.auth.signOut()
       
       // Redirect to home page
-      window.location.href = "http://localhost:3000/"
+      router.push("/")
+      // Force a full page reload to clear all state
+      window.location.href = "/"
     } catch (error) {
       console.error("Logout error:", error)
       // Even if there's an error, redirect to home
-      window.location.href = "http://localhost:3000/"
+      router.push("/")
+      window.location.href = "/"
     } finally {
       setIsLoggingOut(false)
     }
@@ -40,7 +45,7 @@ export function LogoutConfirmationModal({ isOpen, onClose }: LogoutConfirmationM
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/50 z-50"
+            className="fixed inset-0 bg-black/50 z-[80]"
           />
 
           {/* Modal */}
@@ -48,7 +53,7 @@ export function LogoutConfirmationModal({ isOpen, onClose }: LogoutConfirmationM
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 z-[80] flex items-center justify-center p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">

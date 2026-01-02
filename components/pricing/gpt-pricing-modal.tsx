@@ -14,7 +14,6 @@ import {
   BookOpen,
   Info,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -25,6 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { LoadingLogo } from "@/components/loading-logo";
 import {
   calculateGPTPrice,
   GPTPriceBreakdown,
@@ -283,7 +283,7 @@ export function GPTPricingModal({
             </p>
           </DialogHeader>
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <LoadingLogo size={32} />
           </div>
         </DialogContent>
       </Dialog>
@@ -304,7 +304,7 @@ export function GPTPricingModal({
             </p>
           </DialogHeader>
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <LoadingLogo size={32} />
           </div>
         </DialogContent>
       </Dialog>

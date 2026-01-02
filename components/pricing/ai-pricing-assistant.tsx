@@ -3,9 +3,10 @@
 import * as React from "react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Sparkles, Loader2, TrendingUp, TrendingDown, AlertCircle } from "lucide-react"
+import { Sparkles, TrendingUp, TrendingDown, AlertCircle } from "lucide-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { LoadingLogo } from "@/components/loading-logo"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { PricingFactors, PriceBreakdown } from "@/lib/pricing-calculator"
@@ -176,8 +177,8 @@ Provide a JSON response with:
         <div className="space-y-4 mt-4">
           {loading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-500 mb-4" />
-              <p className="text-gray-600">Analyzing tutor's pricing and value...</p>
+              <LoadingLogo size={32} />
+              <p className="text-gray-600 mt-4">Analyzing tutor's pricing and value...</p>
             </div>
           )}
 

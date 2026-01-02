@@ -14,12 +14,11 @@ import {
   Check,
   Tag,
 } from "lucide-react";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
-import { StripePaymentForm } from "@/components/payment/stripe-payment-form";
+import { PayFastPaymentForm } from "@/components/payment/payfast-payment-form";
 import { convertAndFormatPrice } from "@/lib/currency";
 import { fetchTutorPricing, findMatchingPricing } from "@/lib/tutor-pricing";
 import { supabase } from "@/lib/supabase";
+import { LoadingLogo } from "@/components/loading-logo";
 
 interface Mentor {
   id: number | string;
@@ -74,9 +73,6 @@ export function BookingModal({
   onPaymentSuccess,
 }: BookingModalProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
-  const [stripePromise, setStripePromise] =
-    React.useState<Promise<Stripe | null> | null>(null);
-  const [clientSecret, setClientSecret] = React.useState<string>("");
   const [isCreatingPayment, setIsCreatingPayment] = React.useState(false);
   const [convertedRate, setConvertedRate] = useState<string>("");
   const [exchangeRate, setExchangeRate] = useState<number>(1);
@@ -94,66 +90,66 @@ export function BookingModal({
   // Helper function to parse time from preferred_time (e.g., "10:10 AM" -> "10:10")
   const parseTimeFromPreferred = (preferredTime?: string): string => {
     if (!preferredTime) return "";
-
+    
     // Try to parse formats like "10:10 AM", "10:10 PM", "10:10"
     const timeMatch = preferredTime.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
     if (timeMatch) {
       let hours = parseInt(timeMatch[1]);
       const minutes = timeMatch[2];
       const period = timeMatch[3]?.toUpperCase();
-
+      
       if (period === "PM" && hours !== 12) {
         hours += 12;
       } else if (period === "AM" && hours === 12) {
         hours = 0;
       }
-
+      
       // Round minutes to nearest 30 (0 or 30) to match available time slots
       const roundedMinutes = parseInt(minutes) >= 30 ? "30" : "00";
-
+      
       return `${hours.toString().padStart(2, "0")}:${roundedMinutes}`;
     }
-
+    
     // If already in 24-hour format, round to nearest 30 minutes
     if (preferredTime.match(/^\d{2}:\d{2}$/)) {
       const [hours, minutes] = preferredTime.split(":");
       const roundedMinutes = parseInt(minutes) >= 30 ? "30" : "00";
       return `${hours}:${roundedMinutes}`;
     }
-
+    
     return "";
   };
-
+  
   // Helper function to find closest matching time slot
   const findClosestTimeSlot = (
     targetTime: string,
     availableSlots: string[]
   ): string => {
     if (!targetTime || availableSlots.length === 0) return "";
-
+    
     // If exact match exists, return it
     if (availableSlots.includes(targetTime)) {
       return targetTime;
     }
-
+    
     // Find closest match
     const [targetHours, targetMinutes] = targetTime.split(":").map(Number);
     const targetTotalMinutes = targetHours * 60 + targetMinutes;
-
+    
     let closestSlot = availableSlots[0];
     let minDiff = Infinity;
-
+    
     for (const slot of availableSlots) {
       const [slotHours, slotMinutes] = slot.split(":").map(Number);
       const slotTotalMinutes = slotHours * 60 + slotMinutes;
       const diff = Math.abs(slotTotalMinutes - targetTotalMinutes);
-
+      
       if (diff < minDiff) {
         minDiff = diff;
         closestSlot = slot;
       }
     }
-
+    
     return closestSlot;
   };
 
@@ -170,7 +166,7 @@ export function BookingModal({
     }
     return slots;
   };
-
+  
   const timeSlots = React.useMemo(() => generateTimeSlots(), []);
 
   const [sessionData, setSessionData] = React.useState<SessionBooking>({
@@ -184,31 +180,13 @@ export function BookingModal({
     meetingType: "google-meet",
   });
 
-  // Load Stripe
-  React.useEffect(() => {
-    const loadStripeKey = async () => {
-      try {
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/ai/payment/config/"
-        );
-        const data = await response.json();
-        if (data.success && data.publishable_key) {
-          setStripePromise(loadStripe(data.publishable_key));
-        }
-      } catch (error) {
-        console.error("Error loading Stripe:", error);
-      }
-    };
-    if (isOpen) {
-      loadStripeKey();
-    }
-  }, [isOpen]);
+  // PayFast doesn't require pre-loading like Stripe
 
   // Generate meeting link when date/time/topic are filled and meeting type is selected
   React.useEffect(() => {
     const initializeMeetingLink = async () => {
       if (
-        sessionData.meetingType &&
+        sessionData.meetingType && 
         sessionData.meetingType !== "in-person" &&
         sessionData.date &&
         sessionData.time &&
@@ -246,12 +224,12 @@ export function BookingModal({
       const date = new Date(dateString);
       // Check if date is valid
       if (isNaN(date.getTime())) return "";
-
+      
       // Format as YYYY-MM-DD
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
-
+      
       return `${year}-${month}-${day}`;
     } catch (error) {
       console.error("Error formatting date:", error);
@@ -265,19 +243,19 @@ export function BookingModal({
       let parsedTime = requestData.preferred_time
         ? parseTimeFromPreferred(requestData.preferred_time)
         : "";
-
+      
       // Find closest matching time slot if parsed time doesn't match exactly
       if (parsedTime && timeSlots.length > 0) {
         parsedTime = findClosestTimeSlot(parsedTime, timeSlots);
       }
-
+      
       // Parse date from created_at, but use tomorrow as minimum (since bookings can't be in the past)
       let parsedDate = "";
       if (requestData.created_at) {
         const requestDate = new Date(requestData.created_at);
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
-
+        
         // Use the request date if it's in the future, otherwise use tomorrow
         const dateToUse = requestDate > tomorrow ? requestDate : tomorrow;
         parsedDate = formatDateForInput(dateToUse.toISOString());
@@ -287,7 +265,7 @@ export function BookingModal({
         tomorrow.setDate(tomorrow.getDate() + 1);
         parsedDate = formatDateForInput(tomorrow.toISOString());
       }
-
+      
       setSessionData({
         date: parsedDate,
         time: parsedTime,
@@ -311,7 +289,6 @@ export function BookingModal({
         notes: "",
         meetingType: "google-meet",
       });
-      setClientSecret("");
     }
   }, [isOpen]);
 
@@ -327,15 +304,15 @@ export function BookingModal({
       const response = await fetch(
         "http://127.0.0.1:8000/api/v1/ai/meetings/session/create/",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mentor_id: mentor?.id,
-            meeting_type: meetingType,
-            session_data: sessionData,
-          }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mentor_id: mentor?.id,
+          meeting_type: meetingType,
+          session_data: sessionData,
+        }),
         }
       );
 
@@ -412,7 +389,7 @@ export function BookingModal({
       if (hourlyRateUSD === 0) {
         try {
           const pricingData = await fetchTutorPricing();
-
+          
           // Get mentor's primary subject from specialization
           let primarySubject = "General";
           if (
@@ -657,7 +634,7 @@ export function BookingModal({
         const total = calculateTotal();
         setConvertedTotal(`$${total.toFixed(2)}`);
         setCurrencySymbol("$");
-      }
+  }
     };
 
     convertAmounts();
@@ -671,44 +648,9 @@ export function BookingModal({
 
   const handleNextStep = async () => {
     if (currentStep === 1) {
-      setIsCreatingPayment(true);
-      try {
-        const total = calculateTotal();
-        const response = await fetch(
-          "http://127.0.0.1:8000/api/v1/ai/payment/create-intent/",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              amount: total,
-              currency: "usd",
-              description: `Mentoring Session: ${sessionData.topic}`,
-              metadata: {
-                mentor_id: mentor?.id,
-                mentor_name: mentor?.name,
-                session_date: sessionData.date,
-                session_time: sessionData.time,
-                session_topic: sessionData.topic,
-              },
-            }),
-          }
-        );
-
-        const data = await response.json();
-        if (data.success && data.client_secret) {
-          setClientSecret(data.client_secret);
-          setCurrentStep(2);
-        } else {
-          alert("Failed to initialize payment. Please try again.");
-        }
-      } catch (error) {
-        console.error("Error creating payment intent:", error);
-        alert("Failed to initialize payment. Please try again.");
-      } finally {
-        setIsCreatingPayment(false);
-      }
+      // For PayFast, we just move to the payment step
+      // The payment form will create the payment URL when it loads
+      setCurrentStep(2);
     } else if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
     }
@@ -760,18 +702,18 @@ export function BookingModal({
       const bookingResponse = await fetch(
         "http://127.0.0.1:8000/api/v1/ai/bookings/save/",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mentor_id: mentor?.id,
-            learner_name: userName,
-            learner_email: userEmail,
-            session_data: finalSessionData,
-            payment_intent_id: paymentIntentId,
-            amount: calculateTotal(),
-          }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mentor_id: mentor?.id,
+          learner_name: userName,
+          learner_email: userEmail,
+          session_data: finalSessionData,
+          payment_intent_id: paymentIntentId,
+          amount: calculateTotal(),
+        }),
         }
       );
 
@@ -782,17 +724,17 @@ export function BookingModal({
       await fetch(
         "http://127.0.0.1:8000/api/v1/ai/send-booking-confirmation/",
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            mentor_name: mentor?.name,
-            session_data: finalSessionData,
-            amount: calculateTotal(),
-            user_email: userEmail,
-            meeting_link: finalSessionData.meetingLink || "",
-          }),
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          mentor_name: mentor?.name,
+          session_data: finalSessionData,
+          amount: calculateTotal(),
+          user_email: userEmail,
+          meeting_link: finalSessionData.meetingLink || "",
+        }),
         }
       );
 
@@ -1106,26 +1048,23 @@ export function BookingModal({
                         <h2 className="text-xl font-bold text-gray-900 mb-6">
                           Payment Information
                         </h2>
-                        {stripePromise && clientSecret ? (
-                          <Elements
-                            stripe={stripePromise}
-                            options={{ clientSecret }}
-                          >
-                            <StripePaymentForm
-                              amount={calculateTotal()}
-                              onSuccess={handlePaymentSuccess}
-                              onError={(error) => {
-                                console.error("Payment error:", error);
-                                alert("Payment failed. Please try again.");
-                              }}
-                              onBack={handlePrevStep}
-                            />
-                          </Elements>
-                        ) : (
-                          <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                          </div>
-                        )}
+                        <PayFastPaymentForm
+                          amount={calculateTotal()}
+                          itemName={`Mentoring Session: ${sessionData.topic}`}
+                          metadata={{
+                            mentor_id: mentor?.id,
+                            mentor_name: mentor?.name,
+                            session_date: sessionData.date,
+                            session_time: sessionData.time,
+                            session_topic: sessionData.topic,
+                          }}
+                          onSuccess={handlePaymentSuccess}
+                          onError={(error) => {
+                            console.error("Payment error:", error);
+                            alert("Payment failed. Please try again.");
+                          }}
+                          onBack={handlePrevStep}
+                        />
                       </div>
                     )}
 
@@ -1169,10 +1108,10 @@ export function BookingModal({
                                 {new Date(sessionData.date).toLocaleDateString(
                                   "en-US",
                                   {
-                                    weekday: "long",
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
+                                  weekday: "long",
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
                                   }
                                 )}
                               </span>

@@ -9,28 +9,41 @@ import {
   Calendar as CalendarIcon,
   Clock,
   DollarSign,
-  Video,
-  User,
-  Mail,
-  ArrowRight,
-  Copy,
+  Briefcase,
+  MapPin,
+  Users,
+  Eye,
+  FileText,
   Loader2,
   CheckCircle2,
   XCircle,
   AlertCircle,
+  ExternalLink,
+  Mail,
+  Filter,
+  Search,
+  GraduationCap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { JobDetailsModal } from "@/components/dashboard/job-details-modal"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar-client"
 
 export default function TutorSessionsPage() {
   const router = useRouter()
   const [userData, setUserData] = useState<any>(null)
-  const [mentorData, setMentorData] = useState<any>(null)
+  const [companyData, setCompanyData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [sessions, setSessions] = useState<any[]>([])
-  const [sessionsLoading, setSessionsLoading] = useState(false)
-  const [filter, setFilter] = useState<'all' | 'scheduled' | 'completed' | 'cancelled'>('all')
+  const [jobs, setJobs] = useState<any[]>([])
+  const [jobsLoading, setJobsLoading] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'open' | 'closed' | 'filled' | 'cancelled'>('all')
+  const [typeFilter, setTypeFilter] = useState<'all' | 'job' | 'learnership' | 'internship' | 'bursary'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedJob, setSelectedJob] = useState<any>(null)
+  const [isJobDetailsOpen, setIsJobDetailsOpen] = useState(false)
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -42,24 +55,43 @@ export default function TutorSessionsPage() {
           return
         }
 
-        // Fetch mentor data
-        const { data: mentor, error: mentorError } = await supabase
-          .from('mentors')
+        // Try to fetch company data first
+        let company = null
+        const { data: companyData, error: companyError } = await supabase
+          .from('companies')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle()
 
-        if (mentorError || !mentor) {
-          console.error('Error fetching mentor data:', mentorError)
-          setLoading(false)
-          return
+        if (!companyError && companyData) {
+          company = companyData
+        } else {
+          // Fallback to mentors table for backward compatibility
+          const { data: mentor, error: mentorError } = await supabase
+            .from('mentors')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle()
+
+          if (mentorError || !mentor) {
+            console.error('Error fetching company/mentor data:', mentorError || companyError)
+            setLoading(false)
+            return
+          }
+          // Convert mentor to company format
+          company = {
+            id: mentor.id,
+            company_name: mentor.name || mentor.company_name,
+            name: mentor.name,
+            user_id: mentor.user_id,
+          }
         }
 
-        setMentorData(mentor)
+        setCompanyData(company)
         setUserData({
           id: user.id,
           email: user.email,
-          full_name: mentor.name || user.email?.split('@')[0] || 'User',
+          full_name: company?.company_name || company?.name || user.email?.split('@')[0] || 'User',
         })
         setLoading(false)
       } catch (error) {
@@ -71,78 +103,175 @@ export default function TutorSessionsPage() {
     fetchUserData()
   }, [router])
 
-  // Fetch sessions for the mentor
+  // Fetch jobs for the company
   useEffect(() => {
-    const fetchSessions = async () => {
-      if (!mentorData?.id || !userData?.id) return
+    const fetchJobs = async () => {
+      if (!companyData?.id || !userData?.id) return
 
       try {
-        setSessionsLoading(true)
-        // Fetch sessions where this mentor is the mentor, including payment status
-        const { data: sessionsData, error: sessionsError } = await supabase
-          .from('sessions')
-          .select(`
-            *,
-            payments (
-              id,
-              status,
-              payment_intent_id,
-              paid_at
-            )
-          `)
-          .eq('mentor_id', mentorData.id)
-          .order('date', { ascending: false })
-          .order('time', { ascending: false })
+        setJobsLoading(true)
+        
+        // Try API first
+        try {
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/v1/jobs/list/?company_id=${companyData.id}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          )
 
-        if (sessionsError) {
-          console.error('Error fetching sessions:', sessionsError)
-          setSessions([])
-          return
+          if (response.ok) {
+            const data = await response.json()
+            if (data.success && data.jobs) {
+              setJobs(data.jobs)
+              setJobsLoading(false)
+              return
+            }
+          }
+        } catch (apiError) {
+          console.log("API fetch failed, trying Supabase directly:", apiError)
         }
 
-        // Transform sessions to include payment status
-        const transformedSessions = (sessionsData || []).map((session: any) => {
-          const payment = Array.isArray(session.payments) ? session.payments[0] : session.payments
-          const isPaid = payment && (payment.status === 'succeeded' || payment.status === 'completed')
-          
-          return {
-            ...session,
-            is_paid: isPaid,
-            payment_status: payment?.status || 'pending'
-          }
-        })
+        // Fallback to Supabase - also check for null company_id (jobs created before fix)
+        const { data: jobsData, error: jobsError } = await supabase
+          .from('jobs')
+          .select('*')
+          .or(`company_id.eq.${companyData.id},company_id.is.null`)
+          .order('created_at', { ascending: false })
+
+        if (jobsError) {
+          console.error('Error fetching jobs:', jobsError)
+          setJobs([])
+          return
+        }
         
-        setSessions(transformedSessions)
+        // Map jobs to include company_name from companyData
+        const jobsWithCompanyName = (jobsData || []).map((job: any) => ({
+          ...job,
+          company_name: job.company_name || 
+                       companyData?.company_name || 
+                       companyData?.name || 
+                       userData?.full_name ||
+                       'Company'
+        }))
+        
+        setJobs(jobsWithCompanyName)
       } catch (error) {
-        console.error('Error fetching sessions:', error)
-        setSessions([])
+        console.error('Error fetching jobs:', error)
+        setJobs([])
       } finally {
-        setSessionsLoading(false)
+        setJobsLoading(false)
       }
     }
 
-    fetchSessions()
-  }, [mentorData?.id, userData?.id])
+    fetchJobs()
+  }, [companyData?.id, userData?.id])
 
-  const filteredSessions = sessions.filter(session => {
-    if (filter === 'all') return true
-    const sessionDate = new Date(`${session.date}T${session.time}`)
-    const isPast = sessionDate < new Date()
+  const filteredJobs = jobs.filter(job => {
+    // Status filter
+    if (statusFilter !== 'all' && job.status !== statusFilter) {
+      return false
+    }
     
-    if (filter === 'scheduled') {
-      return session.status === 'scheduled' && !isPast
+    // Type filter
+    if (typeFilter !== 'all' && job.job_type !== typeFilter) {
+      return false
     }
-    if (filter === 'completed') {
-      return session.status === 'completed' || (isPast && session.status !== 'cancelled')
+    
+    // Search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      const searchableText = [
+        job.title,
+        job.description,
+        job.category,
+        job.location,
+        job.company_name || companyData?.company_name || '',
+      ].join(' ').toLowerCase()
+      
+      if (!searchableText.includes(query)) {
+        return false
+      }
     }
-    if (filter === 'cancelled') {
-      return session.status === 'cancelled'
-    }
+    
     return true
   })
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+  const getJobTypeColor = (type: string) => {
+    switch (type) {
+      case "learnership":
+        return "bg-purple-100 text-purple-700 border-purple-200"
+      case "internship":
+        return "bg-blue-100 text-blue-700 border-blue-200"
+      case "bursary":
+        return "bg-green-100 text-green-700 border-green-200"
+      default:
+        return "bg-gray-100 text-gray-700 border-gray-200"
+    }
+  }
+
+  const getJobTypeIcon = (type: string) => {
+    switch (type) {
+      case "learnership":
+        return <GraduationCap className="w-4 h-4" />
+      case "internship":
+        return <Briefcase className="w-4 h-4" />
+      case "bursary":
+        return <DollarSign className="w-4 h-4" />
+      default:
+        return <Briefcase className="w-4 h-4" />
+    }
+  }
+
+  const getCurrencySymbol = (currency: string) => {
+    const currencyMap: { [key: string]: string } = {
+      USD: "$",
+      ZAR: "R",
+      EUR: "€",
+      GBP: "£",
+      NGN: "₦",
+      KES: "KSh",
+      GHS: "GH₵",
+      EGP: "E£",
+      AUD: "A$",
+      CAD: "C$",
+      INR: "₹",
+      BRL: "R$",
+      MXN: "$",
+    }
+    return currencyMap[currency.toUpperCase()] || currency
+  }
+
+  const formatSalary = (job: any) => {
+    if (!job.is_salary_disclosed) {
+      return "Salary not disclosed"
+    }
+    const currencySymbol = getCurrencySymbol(job.salary_currency || "USD")
+    if (job.salary_min && job.salary_max) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`
+    }
+    if (job.salary_min) {
+      return `${currencySymbol}${job.salary_min.toLocaleString()}+`
+    }
+    return "Salary negotiable"
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open':
+        return 'bg-green-100 text-green-700 border-green-200'
+      case 'closed':
+        return 'bg-gray-100 text-gray-700 border-gray-200'
+      case 'filled':
+        return 'bg-blue-100 text-blue-700 border-blue-200'
+      case 'cancelled':
+        return 'bg-red-100 text-red-700 border-red-200'
+      default:
+        return 'bg-gray-100 text-gray-700 border-gray-200'
+    }
   }
 
   if (loading) {
@@ -151,7 +280,7 @@ export default function TutorSessionsPage() {
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
           <div className="text-center">
             <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
-            <p className="mt-4 text-gray-600">Loading your sessions...</p>
+            <p className="mt-4 text-gray-600">Loading your jobs...</p>
           </div>
         </div>
       </DashboardLayout>
@@ -163,272 +292,327 @@ export default function TutorSessionsPage() {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Sessions</h1>
-          <p className="text-lg text-gray-600">View and manage your scheduled sessions</p>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">My Jobs</h1>
+          <p className="text-lg text-gray-600">View and manage your posted jobs, learnerships, internships, and bursaries</p>
         </div>
 
-        {/* Filter Tabs */}
-        <div className="mb-6 flex gap-2 flex-wrap">
-          <Button
-            variant={filter === 'all' ? 'default' : 'outline'}
-            onClick={() => setFilter('all')}
-            className="rounded-lg"
-          >
-            All Sessions ({sessions.length})
-          </Button>
-          <Button
-            variant={filter === 'scheduled' ? 'default' : 'outline'}
-            onClick={() => setFilter('scheduled')}
-            className="rounded-lg"
-          >
-            Scheduled ({sessions.filter(s => {
-              const sessionDate = new Date(`${s.date}T${s.time}`)
-              return s.status === 'scheduled' && sessionDate >= new Date()
-            }).length})
-          </Button>
-          <Button
-            variant={filter === 'completed' ? 'default' : 'outline'}
-            onClick={() => setFilter('completed')}
-            className="rounded-lg"
-          >
-            Completed ({sessions.filter(s => {
-              const sessionDate = new Date(`${s.date}T${s.time}`)
-              return s.status === 'completed' || (sessionDate < new Date() && s.status !== 'cancelled')
-            }).length})
-          </Button>
-          <Button
-            variant={filter === 'cancelled' ? 'default' : 'outline'}
-            onClick={() => setFilter('cancelled')}
-            className="rounded-lg"
-          >
-            Cancelled ({sessions.filter(s => s.status === 'cancelled').length})
-          </Button>
+        {/* Search and Filters */}
+        <div className="mb-6 space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="Search jobs by title, description, category, or location..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-11"
+            />
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-gray-500" />
+              <span className="text-sm font-medium text-gray-700">Status:</span>
+            </div>
+            <Button
+              variant={statusFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('all')}
+              className="rounded-lg text-sm"
+            >
+              All ({jobs.length})
+            </Button>
+            <Button
+              variant={statusFilter === 'open' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('open')}
+              className="rounded-lg text-sm"
+            >
+              Open ({jobs.filter(j => j.status === 'open').length})
+            </Button>
+            <Button
+              variant={statusFilter === 'closed' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('closed')}
+              className="rounded-lg text-sm"
+            >
+              Closed ({jobs.filter(j => j.status === 'closed').length})
+            </Button>
+            <Button
+              variant={statusFilter === 'filled' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('filled')}
+              className="rounded-lg text-sm"
+            >
+              Filled ({jobs.filter(j => j.status === 'filled').length})
+            </Button>
+            <Button
+              variant={statusFilter === 'cancelled' ? 'default' : 'outline'}
+              onClick={() => setStatusFilter('cancelled')}
+              className="rounded-lg text-sm"
+            >
+              Cancelled ({jobs.filter(j => j.status === 'cancelled').length})
+            </Button>
+
+            <div className="flex items-center gap-2 ml-4">
+              <span className="text-sm font-medium text-gray-700">Type:</span>
+            </div>
+            <Select value={typeFilter} onValueChange={(value: any) => setTypeFilter(value)}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="job">Jobs</SelectItem>
+                <SelectItem value="learnership">Learnerships</SelectItem>
+                <SelectItem value="internship">Internships</SelectItem>
+                <SelectItem value="bursary">Bursaries</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* Sessions List */}
-        {sessionsLoading ? (
+        {/* Jobs List */}
+        {jobsLoading ? (
           <Card className="bg-white border rounded-xl shadow-sm">
             <CardContent className="py-12">
               <div className="flex items-center justify-center">
                 <div className="text-center">
                   <Loader2 className="h-8 w-8 animate-spin text-blue-600 mx-auto" />
-                  <p className="mt-4 text-gray-600">Loading sessions...</p>
+                  <p className="mt-4 text-gray-600">Loading jobs...</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ) : filteredSessions.length === 0 ? (
+        ) : filteredJobs.length === 0 ? (
           <Card className="bg-white border rounded-xl shadow-sm">
             <CardContent className="py-12">
               <div className="text-center">
-                <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 text-lg mb-2">
-                  {filter === 'all' 
-                    ? 'No sessions scheduled yet' 
-                    : `No ${filter} sessions found`}
+                  {jobs.length === 0
+                    ? 'No jobs posted yet'
+                    : 'No jobs match your filters'}
                 </p>
-                <p className="text-gray-500 text-sm">
-                  {filter === 'all' 
-                    ? 'Your scheduled sessions will appear here' 
-                    : 'Try selecting a different filter'}
+                <p className="text-gray-500 text-sm mb-4">
+                  {jobs.length === 0
+                    ? 'Click "Post a Job" to create your first job posting'
+                    : 'Try adjusting your search or filters'}
                 </p>
+                {jobs.length === 0 && (
+                  <Button
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('openCreateJobModal'))
+                    }}
+                    className="mt-4"
+                  >
+                    Post a Job
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-4">
-            {filteredSessions.map((session, index) => {
-              const sessionDate = new Date(`${session.date}T${session.time}`)
-              const isPast = sessionDate < new Date()
-              const statusColor = session.status === 'completed' 
-                ? 'bg-green-100 text-green-700 border-green-200'
-                : session.status === 'cancelled'
-                ? 'bg-red-100 text-red-700 border-red-200'
-                : session.status === 'in-progress'
-                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                : isPast
-                ? 'bg-gray-100 text-gray-700 border-gray-200'
-                : 'bg-blue-100 text-blue-700 border-blue-200'
-
-              const canJoinMeeting = session.meeting_link && sessionDate <= new Date() && !isPast && session.status !== 'completed' && session.status !== 'cancelled'
-              const meetingStartTime = new Date(sessionDate.getTime() + (session.duration * 60000))
-              const isMeetingActive = new Date() >= sessionDate && new Date() <= meetingStartTime
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredJobs.map((job, index) => {
+              const companyName = job.company_name || companyData?.company_name || ''
+              
               return (
                 <motion.div
-                  key={session.id}
+                  key={job.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all bg-white"
                 >
-                  <div className="flex items-start gap-4">
-                    {/* Profile Section */}
-                    <div className="flex-shrink-0">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-xl">
-                        {session.learner_name && session.learner_name !== 'TBD' 
-                          ? session.learner_name.charAt(0).toUpperCase() 
-                          : userData?.full_name?.charAt(0)?.toUpperCase() || 'M'}
+                  <Card className="min-h-[550px] bg-white border border-gray-200 shadow-sm hover:shadow-md transition-all flex flex-col">
+                    <CardContent className="p-5 flex flex-col flex-grow">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-16 w-16 border-2 border-gray-200">
+                            <AvatarImage
+                              src={job.company_logo}
+                              alt={companyName}
+                              className="object-cover"
+                            />
+                            <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-semibold">
+                              {companyName
+                                .split(" ")
+                                .map((n) => n[0])
+                                .join("")
+                                .slice(0, 2)
+                                .toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <h3 className="text-lg font-semibold text-gray-900 line-clamp-1">
+                              {job.title}
+                            </h3>
+                            {companyName && companyName !== "Unknown Company" && (
+                              <p className="text-sm text-gray-600">{companyName}</p>
+                            )}
+                          </div>
+                        </div>
+                        {job.is_featured && (
+                          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+                            Featured
+                          </Badge>
+                        )}
+                        {job.is_urgent && (
+                          <Badge className="bg-red-100 text-red-700 border-red-200">
+                            Urgent
+                          </Badge>
+                        )}
                       </div>
-                    </div>
 
-                    {/* Content Section */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="text-xl font-bold text-gray-900 mb-1">{session.topic}</h3>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <Badge className={`${statusColor} border`}>
-                              {session.status || (isPast ? 'completed' : 'scheduled')}
+                      <div className="mb-4 flex-grow">
+                        <div className="flex flex-wrap gap-2 mb-3">
+                          <Badge className={getJobTypeColor(job.job_type)}>
+                            {getJobTypeIcon(job.job_type)}
+                            <span className="ml-1 capitalize">{job.job_type}</span>
+                          </Badge>
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-700 border-gray-200">
+                            {job.category}
+                          </Badge>
+                          {job.experience_level && (
+                            <Badge variant="outline" className="text-xs">
+                              {job.experience_level}
                             </Badge>
-                            {session.is_paid && (
-                              <Badge className="bg-green-100 text-green-700 border-green-200">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Paid
-                              </Badge>
-                            )}
-                            {!session.is_paid && (
-                              <Badge className="bg-orange-100 text-orange-700 border-orange-200">
-                                <AlertCircle className="w-3 h-3 mr-1" />
-                                Awaiting Payment
-                              </Badge>
-                            )}
-                          </div>
+                          )}
                         </div>
-                      </div>
 
-                      {/* Student Info */}
-                      {session.is_paid && session.learner_name && session.learner_name !== 'TBD' ? (
-                        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                          <p className="text-xs font-semibold text-blue-900 mb-2">Student Information</p>
-                          <div className="flex items-center gap-3 flex-wrap">
-                            <div className="flex items-center gap-2">
-                              <User className="h-4 w-4 text-blue-600" />
-                              <span className="text-sm font-medium text-gray-900">{session.learner_name}</span>
+                        <p className="text-sm text-gray-700 leading-relaxed line-clamp-3 mb-3">
+                          {job.description}
+                        </p>
+
+                        <div className="space-y-2 mb-3">
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <MapPin className="w-4 h-4" />
+                            <span>{job.location}</span>
+                          </div>
+                          {job.application_deadline && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <CalendarIcon className="w-4 h-4" />
+                              <span>
+                                Deadline: {new Date(job.application_deadline).toLocaleDateString()}
+                              </span>
                             </div>
-                            {session.learner_email && (
-                              <div className="flex items-center gap-2">
-                                <Mail className="h-4 w-4 text-blue-600" />
-                                <span className="text-sm text-gray-700">{session.learner_email}</span>
-                              </div>
-                            )}
-                          </div>
+                          )}
+                          {job.duration && (
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Clock className="w-4 h-4" />
+                              <span>{job.duration}</span>
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <p className="text-xs font-semibold text-gray-600 mb-1">No student assigned yet</p>
-                          <p className="text-xs text-gray-500">Waiting for a student to book this session</p>
-                        </div>
-                      )}
 
-                      {/* Session Details */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <CalendarIcon className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium">
-                            {new Date(session.date).toLocaleDateString('en-US', {
-                              weekday: 'short',
-                              month: 'short',
-                              day: 'numeric',
-                              year: 'numeric',
-                            })}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <Clock className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium">
-                            {new Date(`2000-01-01T${session.time}`).toLocaleTimeString('en-US', {
-                              hour: 'numeric',
-                              minute: '2-digit',
-                              hour12: true,
-                            })} • {session.duration} min
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2 text-gray-700">
-                          <DollarSign className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-semibold">${parseFloat(session.amount || 0).toFixed(2)}</span>
-                        </div>
-                        {session.meeting_type && (
-                          <div className="flex items-center gap-2 text-gray-700">
-                            <Video className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm capitalize">{session.meeting_type.replace('-', ' ')}</span>
+                        {job.tags && job.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-3">
+                            {job.tags.slice(0, 3).map((tag: string, idx: number) => (
+                              <Badge
+                                key={idx}
+                                variant="outline"
+                                className="text-xs bg-blue-50 text-blue-700 border-blue-200"
+                              >
+                                {tag}
+                              </Badge>
+                            ))}
                           </div>
                         )}
                       </div>
 
-                      {/* Notes */}
-                      {session.notes && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <p className="text-xs font-semibold text-gray-700 mb-1">Notes</p>
-                          <p className="text-sm text-gray-600">{session.notes}</p>
+                      <div className="mb-4 mt-auto p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Compensation</p>
+                            <p className="text-lg font-bold text-blue-600">
+                              {formatSalary(job)}
+                            </p>
+                            {job.total_applications > 0 && (
+                              <p className="text-xs text-gray-500 mt-1">
+                                {job.total_applications} application{job.total_applications !== 1 ? "s" : ""}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Application Method Indicator */}
+                      {job.application_method === "external_link" && job.application_link && (
+                        <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-xs text-blue-700">
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span className="font-medium">Apply on company website</span>
+                          </div>
                         </div>
                       )}
-
-                      {/* Meeting Link - Only show if session is paid AND student is assigned */}
-                      {session.meeting_link && 
-                       session.is_paid === true && 
-                       session.learner_name && 
-                       session.learner_name !== 'TBD' && 
-                       session.learner_name.trim() !== '' && 
-                       session.learner_email && (
-                        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-gray-700 mb-1">Meeting Link</p>
-                              <p className="text-sm text-gray-600 truncate">{session.meeting_link}</p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => copyToClipboard(session.meeting_link)}
-                              className="ml-2 flex-shrink-0"
-                            >
-                              <Copy className="h-4 w-4" />
-                            </Button>
+                      {job.application_method === "email" && job.application_email && (
+                        <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                          <div className="flex items-center gap-2 text-xs text-green-700">
+                            <Mail className="h-3.5 w-3.5" />
+                            <span className="font-medium">Apply via email: {job.application_email}</span>
                           </div>
                         </div>
                       )}
 
-                      {/* Join Meeting Button - Only accessible when meeting starts and session is paid AND student is assigned */}
-                      {session.meeting_link && 
-                       session.is_paid === true && 
-                       session.learner_name && 
-                       session.learner_name !== 'TBD' && 
-                       session.learner_name.trim() !== '' && 
-                       session.learner_email && (
-                        <div className="mt-4 pt-4 border-t border-gray-200">
-                          {isMeetingActive ? (
-                            <a
-                              href={session.meeting_link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm"
-                            >
-                              <Video className="h-4 w-4" />
-                              Join Meeting Now
-                              <ArrowRight className="h-4 w-4" />
-                            </a>
-                          ) : sessionDate > new Date() ? (
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                              <Clock className="h-4 w-4" />
-                              Meeting starts {new Date(sessionDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at {new Date(`2000-01-01T${session.time}`).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
-                            </div>
-                          ) : (
-                            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                              <Clock className="h-4 w-4" />
-                              Meeting has ended
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                      <div className="flex gap-2">
+                        {job.application_method === "external_link" && job.application_link ? (
+                          <Button
+                            onClick={() => {
+                              window.open(job.application_link!, "_blank", "noopener,noreferrer")
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                          >
+                            <ExternalLink className="h-4 w-4 mr-2" />
+                            Apply
+                          </Button>
+                        ) : job.application_method === "email" && job.application_email ? (
+                          <Button
+                            onClick={() => {
+                              window.location.href = `mailto:${job.application_email}?subject=Application for ${encodeURIComponent(job.title)}`
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                          >
+                            <Mail className="h-4 w-4 mr-2" />
+                            Apply
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={() => {
+                              setSelectedJob(job)
+                              setIsJobDetailsOpen(true)
+                            }}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
+                          >
+                            Apply Now
+                          </Button>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedJob(job)
+                            setIsJobDetailsOpen(true)
+                          }}
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </motion.div>
               )
             })}
           </div>
         )}
       </div>
+
+      {/* Job Details Modal */}
+      <JobDetailsModal
+        isOpen={isJobDetailsOpen}
+        onClose={() => {
+          setIsJobDetailsOpen(false)
+          setSelectedJob(null)
+        }}
+        job={selectedJob}
+      />
     </DashboardLayout>
   )
 }

@@ -1,49 +1,49 @@
 "use client";
 
-import { Search, Calendar, CreditCard, CheckCircle } from "lucide-react";
+import { UserPlus, FileText, Search, Send } from "lucide-react";
 import RadialOrbitalTimeline from "./radial-orbital-timeline";
 
 const timelineData = [
   {
     id: 1,
-    title: "Browse Tutors",
+    title: "Sign Up with Us",
     date: "Step 1",
-    content: "Explore tutors and mentors across different subjects and expertise levels to find the perfect match for your learning needs.",
-    category: "For Students",
-    icon: Search,
+    content: "Create your free account and join our platform to access thousands of job opportunities, learnerships, internships, and bursaries.",
+    category: "For Job Seekers",
+    icon: UserPlus,
     relatedIds: [2],
     status: "completed" as const,
     energy: 100,
   },
   {
     id: 2,
-    title: "Select Time",
+    title: "Fix Your CV",
     date: "Step 2",
-    content: "Choose a convenient time slot from your tutor's available schedule that fits your learning timeline.",
-    category: "For Students",
-    icon: Calendar,
+    content: "Get professional help to optimize your CV and make it stand out to employers. Our tools and resources help you create a winning resume.\n\n💡 CV Tips to Get Hired:\n• Use keywords from job descriptions\n• Keep it concise (1-2 pages max)\n• Highlight achievements with numbers\n• Use a clean, professional format\n• Tailor your CV for each application\n• Include relevant skills and certifications\n• Proofread for spelling and grammar errors\n• Add a strong professional summary",
+    category: "For Job Seekers",
+    icon: FileText,
     relatedIds: [1, 3],
     status: "completed" as const,
     energy: 90,
   },
   {
     id: 3,
-    title: "Book Session",
+    title: "Browse Opportunities",
     date: "Step 3",
-    content: "Confirm your booking by selecting your preferred session duration and completing the secure payment process.",
-    category: "For Students",
-    icon: CreditCard,
+    content: "Search and filter through available jobs, learnerships, internships, and bursaries that match your skills, interests, and career goals.",
+    category: "For Job Seekers",
+    icon: Search,
     relatedIds: [2, 4],
     status: "in-progress" as const,
     energy: 60,
   },
   {
     id: 4,
-    title: "Attend & Learn",
+    title: "Apply & Get Hired",
     date: "Step 4",
-    content: "Join your scheduled session via video call and start learning from your expert tutor or mentor.",
-    category: "For Students",
-    icon: CheckCircle,
+    content: "Submit your application directly to companies or through our platform. Track your applications and get notified about new opportunities.",
+    category: "For Job Seekers",
+    icon: Send,
     relatedIds: [3],
     status: "pending" as const,
     energy: 30,
@@ -52,8 +52,8 @@ const timelineData = [
 
 export function HowItWorksTimeline() {
   return (
-    <div className="w-full h-[800px] flex flex-col items-center justify-center bg-transparent overflow-visible py-20">
-      <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible px-8">
+    <div className="w-full h-[450px] md:h-[800px] flex flex-col items-center justify-center bg-transparent overflow-visible py-8 md:py-20">
+      <div className="relative w-full max-w-5xl h-full flex items-center justify-center overflow-visible px-4 md:px-8">
         <RadialOrbitalTimeline timelineData={timelineData} />
       </div>
     </div>

@@ -191,12 +191,12 @@ export function VerificationModal({ isOpen, onClose, email, onVerificationComple
                       <AnimatedButton
                         onClick={onVerificationComplete}
                         variant="primary-gradient"
-                        className="flex-1"
+                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                         hoverScale={1.02}
                         glowOnHover={true}
                         sweep={true}
                       >
-                        Continue Registration
+                        Continue Login
                       </AnimatedButton>
                       <AnimatedButton
                         onClick={onSkip}

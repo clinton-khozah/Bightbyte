@@ -24,6 +24,8 @@ import {
   Users,
   Mail,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Megaphone,
   Activity,
   Clock,
@@ -43,6 +45,14 @@ import {
   BookOpen,
   Calendar,
   Pencil,
+  Briefcase,
+  MapPin,
+  Users as UsersIcon,
+  Share2,
+  Facebook,
+  MessageCircle,
+  Linkedin,
+  Twitter,
 } from "lucide-react";
 import Link from "next/link";
 import { AnimatedBorderCard } from "@/components/ui/animated-border-card";
@@ -64,6 +74,7 @@ import { useRouter } from "next/navigation";
 import { MentorProfileCompletionForm } from "@/components/dashboard/mentor-profile-completion-form";
 import { DashboardLayout } from "@/components/dashboard/layout";
 import { ProfileCompletionSuccessModal } from "@/components/dashboard/profile-completion-success-modal";
+import { MentorApplicationStatusPopup } from "@/components/dashboard/mentor-application-status-popup";
 import { TutorApplicationModal } from "@/components/dashboard/tutor-application-modal";
 import jsPDF from "jspdf";
 import {
@@ -78,11 +89,18 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { convertAndFormatPrice } from "@/lib/currency";
+import { LoadingLogo } from "@/components/loading-logo";
 import { fetchTutorPricing, findMatchingPricing } from "@/lib/tutor-pricing";
 import {
   convertUSDToLocal,
   getCurrencyForCountry,
 } from "@/lib/currency-exchange";
+import { RoleSelectionModal } from "@/components/auth/role-selection-modal";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@/components/ui/avatar-client";
 
 const cardVariants = {
   hidden: {
@@ -137,6 +155,96 @@ const topPerformingAdSpaces = [
   },
 ];
 
+// Helper functions for job cards
+const getCurrencySymbol = (currency: string) => {
+  const currencyMap: { [key: string]: string } = {
+    USD: "$",
+    ZAR: "R",
+    EUR: "€",
+    GBP: "£",
+    NGN: "₦",
+    KES: "KSh",
+    GHS: "GH₵",
+    EGP: "E£",
+    AUD: "A$",
+    CAD: "C$",
+    INR: "₹",
+    BRL: "R$",
+    MXN: "$",
+  };
+  return currencyMap[currency.toUpperCase()] || currency;
+};
+
+const getRelativeTime = (dateString: string) => {
+  const now = new Date();
+  const date = new Date(dateString);
+  const diffInMs = now.getTime() - date.getTime();
+  const diffInSeconds = Math.floor(diffInMs / 1000);
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  const diffInDays = Math.floor(diffInHours / 24);
+  const diffInMonths = Math.floor(diffInDays / 30);
+
+  if (diffInSeconds < 60) {
+    return "Just now";
+  } else if (diffInMinutes < 60) {
+    return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
+  } else if (diffInHours < 24) {
+    return `${diffInHours} hour${diffInHours !== 1 ? "s" : ""} ago`;
+  } else if (diffInDays < 30) {
+    return `${diffInDays} day${diffInDays !== 1 ? "s" : ""} ago`;
+  } else if (diffInMonths < 1) {
+    return "Less than a month ago";
+  } else {
+    return `${diffInMonths} month${diffInMonths !== 1 ? "s" : ""} ago`;
+  }
+};
+
+const formatSalary = (job: any) => {
+  if (!job.is_salary_disclosed) {
+    return "Salary not disclosed";
+  }
+  const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+  if (job.salary_min && job.salary_max) {
+    return `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+  }
+  if (job.salary_min) {
+    return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+  }
+  return "Salary negotiable";
+};
+
+// Share job function
+const handleShareJob = (job: any, platform: string) => {
+  const jobUrl = `${window.location.origin}/jobs/${job.id}`;
+  const shareText = encodeURIComponent(`Check out this job: ${job.title} at ${job.company_name || 'Company'}`);
+
+  let shareUrl = "";
+
+  switch (platform) {
+    case "facebook":
+      shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
+      break;
+    case "whatsapp":
+      shareUrl = `https://wa.me/?text=${shareText}%20${encodeURIComponent(jobUrl)}`;
+      break;
+    case "linkedin":
+      shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+      break;
+    case "twitter":
+      shareUrl = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(jobUrl)}`;
+      break;
+    case "copy":
+      navigator.clipboard.writeText(jobUrl);
+      toast.success("Job link copied to clipboard!");
+      return;
+    default:
+      return;
+  }
+
+  window.open(shareUrl, "_blank", "width=600,height=400");
+};
+
 export default function DashboardPage() {
   const [userData, setUserData] = useState<any>(null);
   const [mentorData, setMentorData] = useState<any>(null);
@@ -144,8 +252,21 @@ export default function DashboardPage() {
   const [isProfileCompletionOpen, setIsProfileCompletionOpen] = useState(false);
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false);
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [isApplicationStatusOpen, setIsApplicationStatusOpen] = useState(false);
+  const [showRoleSelection, setShowRoleSelection] = useState(false);
+  const [googleUserData, setGoogleUserData] = useState<{
+    id: string;
+    email: string;
+    name?: string;
+    avatar?: string;
+  } | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 20;
+  const [companyData, setCompanyData] = useState<any>(null);
   const [userLocation, setUserLocation] = useState<{
     lat: number;
     lng: number;
@@ -153,6 +274,10 @@ export default function DashboardPage() {
   const [convertedAmounts, setConvertedAmounts] = useState<
     Record<string, string>
   >({});
+  const [currencyInfo, setCurrencyInfo] = useState<{
+    symbol: string;
+    code: string;
+  }>({ symbol: "$", code: "USD" });
   const [adAccount, setAdAccount] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -179,7 +304,35 @@ export default function DashboardPage() {
   const [processingRequestId, setProcessingRequestId] = useState<number | null>(
     null
   );
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [refreshJobsTrigger, setRefreshJobsTrigger] = useState(0);
   const router = useRouter();
+
+  // Helper function to format revenue with currency
+  const formatRevenue = (usdAmount: number): string => {
+    // Determine which currency to use
+    let currencyToUse: { symbol: string; rate: number };
+
+    if (currencyInfo.symbol && currencyInfo.code !== "USD") {
+      // Use currencyInfo state if it's not USD
+      const countryCurrency = mentorData?.country
+        ? getCurrencyForCountry(mentorData.country)
+        : { symbol: currencyInfo.symbol, rate: 1 };
+      currencyToUse = countryCurrency;
+    } else if (mentorData?.country) {
+      // Fallback to mentor's country
+      currencyToUse = getCurrencyForCountry(mentorData.country);
+    } else {
+      // Default to USD
+      currencyToUse = { symbol: "$", rate: 1 };
+    }
+
+    const convertedAmount = usdAmount * currencyToUse.rate;
+    return `${currencyToUse.symbol}${convertedAmount.toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
 
   // Calculate monthly revenue from paid sessions (memoized to recalculate when sessions change)
   const revenueData = useMemo(() => {
@@ -199,7 +352,7 @@ export default function DashboardPage() {
     ];
     const currentDate = new Date();
     const currentMonthIndex = currentDate.getMonth();
-    
+
     // Get last 6 months
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -213,7 +366,7 @@ export default function DashboardPage() {
         revenue: 0,
       });
     }
-    
+
     // Calculate revenue for each month from paid sessions
     sessions
       .filter((s) => s.is_paid)
@@ -225,18 +378,18 @@ export default function DashboardPage() {
         const monthData = months.find(
           (m) => m.monthIndex === sessionMonth && m.year === sessionYear
         );
-        
+
         if (monthData) {
           monthData.revenue += parseFloat(session.amount || 0);
         }
       });
-    
+
     return months;
   }, [sessions]);
-  
+
   const currentMonth = revenueData[revenueData.length - 1] || revenueData[0];
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  
+
   // Update selected month when revenueData changes
   useEffect(() => {
     if (
@@ -259,14 +412,53 @@ export default function DashboardPage() {
           return;
         }
 
-        // Fetch mentor data - use user_id column to match Supabase Auth UUID
+        // Store auth user ID (UUID) for use in news posts
+        setAuthUserId(user.id);
+
+        const userEmail = user.email?.trim().toLowerCase();
+
+        // Fetch mentor data - check by email first, then by user_id (UUID)
+        // Note: id is BIGINT, not UUID, so we only match by user_id and email
         const { data: mentor, error: mentorError } = await supabase
           .from("mentors")
           .select("*")
-          .eq("user_id", user.id)
+          .or(
+            userEmail
+              ? `email.ilike.${userEmail},user_id.eq.${user.id}`
+              : `user_id.eq.${user.id}`
+          )
           .maybeSingle();
 
+        console.log(
+          "Dashboard: Checking mentor by email:",
+          userEmail,
+          "or ID:",
+          user.id
+        );
+        console.log("Dashboard: Mentor query result:", { mentor, mentorError });
+
         if (mentorError || !mentor) {
+          // Check if user exists in students table by email
+          if (userEmail) {
+            const { data: studentData } = await supabase
+              .from("students")
+              .select("id, email")
+              .ilike("email", userEmail)
+              .maybeSingle();
+
+            console.log("Dashboard: Student query result:", { studentData });
+
+            if (studentData) {
+              // User is a student/applicant, redirect to applicant dashboard
+              console.log(
+                "Dashboard: User is a student/applicant, redirecting to applicant dashboard"
+              );
+              setLoading(false);
+              router.push("/dashboard/applicant");
+              return;
+            }
+          }
+
           // Check user metadata to see if they signed up as tutor/mentor/other
           const userType = user.user_metadata?.user_type;
 
@@ -305,6 +497,7 @@ export default function DashboardPage() {
                 latitude: null,
                 longitude: null,
                 sessions_conducted: 0,
+                is_complete: false, // Set to false so profile completion popup shows
                 qualifications: "",
                 id_document: "",
                 id_number: "",
@@ -330,8 +523,8 @@ export default function DashboardPage() {
 
             if (createError) {
               console.error("Error creating mentor record:", createError);
-              setUserData({ 
-                id: user.id, 
+              setUserData({
+                id: user.id,
                 email: user.email || "",
                 full_name:
                   user.user_metadata?.full_name ||
@@ -345,33 +538,96 @@ export default function DashboardPage() {
                 ...newMentor,
                 full_name: newMentor.name,
                 user_type: "mentor",
+                email: newMentor.email || user.email || "", // Always include email from auth user
               });
               console.log(
                 "New mentor created - is_complete:",
                 newMentor.is_complete
               );
-              
-              // Direct check - if incomplete, set modal to open after a short delay
+
+              // Direct check - if incomplete, check for application progress
               const isIncomplete =
                 newMentor.is_complete === false ||
                 newMentor.is_complete === "false" ||
                 String(newMentor.is_complete).toLowerCase() === "false" ||
-                                  newMentor.is_complete === null || 
+                newMentor.is_complete === null ||
                 newMentor.is_complete === undefined;
-              
+
               if (isIncomplete) {
-                console.log(
-                  "New mentor profile is incomplete - will open modal"
-                );
-                setTimeout(() => {
-                  setIsProfileCompletionOpen(true);
-                }, 1000);
+                // Check if application has been submitted
+                const { data: progressData } = await supabase
+                  .from("mentor_application_progress")
+                  .select("id, application_submitted")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+
+                if (progressData && progressData.application_submitted) {
+                  console.log(
+                    "New mentor - application submitted, showing status"
+                  );
+                  setTimeout(() => {
+                    setIsApplicationStatusOpen(true);
+                  }, 1000);
+                } else {
+                  console.log(
+                    "New mentor - no application, showing profile completion"
+                  );
+                  setTimeout(() => {
+                    setIsProfileCompletionOpen(true);
+                  }, 1000);
+                }
               }
             }
           } else {
-            // User is not a mentor, redirect to learner dashboard
+            // User is not a mentor and not in students table
+            // Check if they have an application in progress
+            const { data: progressData } = await supabase
+              .from("mentor_application_progress")
+              .select("id, application_submitted, mentor_id")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (progressData && progressData.application_submitted) {
+              // Application exists but mentor record might be missing - try to find mentor
+              if (progressData.mentor_id) {
+                const { data: mentorFromProgress } = await supabase
+                  .from("mentors")
+                  .select("*")
+                  .eq("id", progressData.mentor_id)
+                  .maybeSingle();
+
+                if (mentorFromProgress) {
+                  setMentorData(mentorFromProgress);
+                  setUserData({
+                    ...mentorFromProgress,
+                    full_name: mentorFromProgress.name,
+                    user_type: "mentor",
+                    email: mentorFromProgress.email || user.email || "", // Always include email from auth user
+                  });
+                  setLoading(false);
+                  setTimeout(() => {
+                    setIsApplicationStatusOpen(true);
+                  }, 500);
+                  return;
+                }
+              }
+            }
+
+            // No application found, show role selection modal
+            console.log(
+              "Dashboard: User not found in mentors or students table, showing role selection modal"
+            );
+            setGoogleUserData({
+              id: user.id,
+              email: user.email || "",
+              name: user.user_metadata?.name || user.user_metadata?.full_name,
+              avatar:
+                user.user_metadata?.avatar_url || user.user_metadata?.picture,
+            });
             setLoading(false);
-            router.push("/dashboard/learner");
+            setTimeout(() => {
+              setShowRoleSelection(true);
+            }, 500);
             return;
           }
         } else {
@@ -380,27 +636,66 @@ export default function DashboardPage() {
             ...mentor,
             full_name: mentor.name,
             user_type: "mentor",
+            email: mentor.email || user.email || "", // Always include email from auth user
           });
+
+          // Also try to fetch company data
+          const { data: company, error: companyError } = await supabase
+            .from("companies")
+            .select("*")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          if (!companyError && company) {
+            setCompanyData(company);
+          } else {
+            // Use mentor as company fallback
+            setCompanyData({
+              id: mentor.id,
+              company_name: mentor.name || mentor.company_name,
+              name: mentor.name,
+              user_id: mentor.user_id,
+            });
+          }
+
           console.log(
             "Mentor found - is_complete:",
             mentor.is_complete,
             "type:",
             typeof mentor.is_complete
           );
-          
-          // Direct check - if incomplete, set modal to open after a short delay
+
+          // Direct check - if incomplete, check for application progress
           const isIncomplete =
             mentor.is_complete === false ||
             mentor.is_complete === "false" ||
             String(mentor.is_complete).toLowerCase() === "false" ||
-                              mentor.is_complete === null || 
+            mentor.is_complete === null ||
             mentor.is_complete === undefined;
-          
+
           if (isIncomplete) {
-            console.log("Mentor profile is incomplete - will open modal");
-            setTimeout(() => {
-              setIsProfileCompletionOpen(true);
-            }, 1000);
+            // Check if application has been submitted
+            const { data: progressData } = await supabase
+              .from("mentor_application_progress")
+              .select("id, application_submitted")
+              .eq("user_id", user.id)
+              .maybeSingle();
+
+            if (progressData && progressData.application_submitted) {
+              console.log("Application submitted - showing application status");
+              // Show application status popup
+              setTimeout(() => {
+                setIsApplicationStatusOpen(true);
+              }, 1000);
+            } else {
+              console.log(
+                "No application submitted yet - showing profile completion"
+              );
+              // Show profile completion if no application submitted
+              setTimeout(() => {
+                setIsProfileCompletionOpen(true);
+              }, 1000);
+            }
           }
         }
       } catch (error) {
@@ -433,7 +728,7 @@ export default function DashboardPage() {
     };
 
     fetchUserData();
-    
+
     // Add timeout to prevent infinite loading
     const timeoutId = setTimeout(() => {
       console.warn("Loading timeout - setting loading to false");
@@ -444,43 +739,81 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Check profile completion after component mounts - exactly like student dashboard
+  // Ensure email is always set from auth user
   useEffect(() => {
+    const ensureEmail = async () => {
+      if (userData && !userData.email) {
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+          if (user?.email) {
+            setUserData({ ...userData, email: user.email });
+          }
+        } catch (error) {
+          console.error("Error fetching email:", error);
+        }
+      }
+    };
+    ensureEmail();
+  }, [userData]);
+
+  // Check profile completion after component mounts - but only if no application is in progress
+  useEffect(() => {
+    console.log("=== PROFILE COMPLETION CHECK ===");
+    console.log("Loading:", loading);
+    console.log("MentorData:", mentorData);
+    console.log("UserData:", userData);
+    
     if (!loading && mentorData && userData && userData.id) {
-      console.log("=== PROFILE COMPLETION CHECK ===");
-      console.log("Loading:", loading);
-      console.log("MentorData:", mentorData);
-      console.log("UserData:", userData);
       console.log("is_complete value:", mentorData.is_complete);
       console.log("is_complete type:", typeof mentorData.is_complete);
+
+      // Show popup if is_complete is NOT true (false, null, undefined, or "false")
+      // is_complete will be true after completing the profile
+      const isComplete = mentorData.is_complete === true || mentorData.is_complete === "true";
       
-      // Check if profile is incomplete - handle boolean false, string "false", null, undefined
-      const isIncomplete =
-        mentorData.is_complete === false ||
-        mentorData.is_complete === "false" ||
-        String(mentorData.is_complete).toLowerCase() === "false" ||
-                          mentorData.is_complete === null || 
-        mentorData.is_complete === undefined;
-      
-      console.log("Is incomplete?", isIncomplete);
+      console.log("Is complete?", isComplete);
       console.log("Current modal state:", isProfileCompletionOpen);
-      
-      if (isIncomplete) {
-        console.log("✅ Profile is incomplete - Opening modal in 500ms");
-        // Small delay to ensure component is fully rendered
-        const timer = setTimeout(() => {
-          console.log("🚀 Setting modal to open NOW");
-          setIsProfileCompletionOpen(true);
-        }, 500);
-        return () => clearTimeout(timer);
+
+      if (!isComplete) {
+        // Check if application has been submitted - if so, don't show profile completion
+        const checkApplicationProgress = async () => {
+          const { data: progressData } = await supabase
+            .from("mentor_application_progress")
+            .select("id, application_submitted")
+            .eq("user_id", userData.id)
+            .maybeSingle();
+
+          console.log("Application progress data:", progressData);
+
+          if (progressData && progressData.application_submitted) {
+            console.log(
+              "✅ Application submitted - showing application status instead"
+            );
+            // Application is in progress, show status popup (handled by other useEffect)
+            setIsApplicationStatusOpen(true);
+            setIsProfileCompletionOpen(false); // Ensure profile completion is closed
+          } else {
+            console.log("✅ Profile is incomplete - Opening modal in 500ms");
+            // No application submitted, show profile completion
+            const timer = setTimeout(() => {
+              console.log("🚀 Setting modal to open NOW");
+              setIsProfileCompletionOpen(true);
+            }, 500);
+            return () => clearTimeout(timer);
+          }
+        };
+
+        checkApplicationProgress();
       } else {
         console.log("❌ Profile is complete, not opening modal");
       }
     } else {
       console.log("⚠️ Conditions not met for profile check:", {
-        loading, 
-        hasMentorData: !!mentorData, 
-        hasUserData: !!userData, 
+        loading,
+        hasMentorData: !!mentorData,
+        hasUserData: !!userData,
         userId: userData?.id,
       });
     }
@@ -525,7 +858,7 @@ export default function DashboardPage() {
           const isPaid =
             payment &&
             (payment.status === "succeeded" || payment.status === "completed");
-          
+
           return {
             ...session,
             is_paid: isPaid,
@@ -544,6 +877,270 @@ export default function DashboardPage() {
 
     fetchSessions();
   }, [mentorData?.id, userData?.id]);
+
+  // Fetch jobs for the company/mentor
+  useEffect(() => {
+    const fetchJobs = async () => {
+      if (!companyData?.id && !mentorData?.id) {
+        console.log("⚠️ No company or mentor ID available for fetching jobs");
+        return;
+      }
+
+      try {
+        setJobsLoading(true);
+        const companyId = companyData?.id;
+        const mentorId = mentorData?.id;
+
+        console.log("🔍 Fetching jobs with:", {
+          companyId,
+          mentorId,
+          companyData: companyData?.id,
+          mentorData: mentorData?.id,
+        });
+
+        // Try API first
+        try {
+          const apiCompanyId = companyId || mentorId;
+          const response = await fetch(
+            `http://127.0.0.1:8000/api/v1/jobs/list/?company_id=${apiCompanyId}`,
+            {
+              method: "GET",
+              headers: {
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.jobs) {
+              console.log("✅ Jobs fetched from API:", data.jobs.length);
+              setJobs(data.jobs);
+              setJobsLoading(false);
+              return;
+            }
+          }
+        } catch (apiError) {
+          console.log("API fetch failed, trying Supabase directly:", apiError);
+        }
+
+        // Fallback to Supabase - fetch jobs for this company OR mentor ID
+        // This handles cases where:
+        // 1. Jobs are posted with company_id = company ID
+        // 2. Jobs are posted with company_id = mentor ID (when no company exists)
+        let jobsData, jobsError;
+
+        // Build array of IDs to search for (remove duplicates)
+        const idsToSearch: number[] = [];
+        if (companyId && !idsToSearch.includes(companyId))
+          idsToSearch.push(companyId);
+        if (mentorId && !idsToSearch.includes(mentorId))
+          idsToSearch.push(mentorId);
+
+        console.log("🔍 Searching for jobs with company_id in:", idsToSearch);
+        console.log("📊 Company data:", { companyId, companyData });
+        console.log("👤 Mentor data:", { mentorId, mentorData });
+
+        if (idsToSearch.length === 0) {
+          console.warn("⚠️ No IDs to search for jobs");
+          // As a last resort, try fetching all jobs to see what's in the database
+          const { data: allJobs } = await supabase
+            .from("jobs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(10);
+          console.log(
+            "📋 Sample of all jobs in database:",
+            allJobs?.map((j: any) => ({
+              id: j.id,
+              title: j.title,
+              company_id: j.company_id,
+              created_at: j.created_at,
+            }))
+          );
+          setJobs([]);
+          setJobsLoading(false);
+          return;
+        }
+
+        // Get current user ID for posted_by filtering
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+        const currentUserId = authUser?.id || null;
+
+        console.log("👤 Current user ID:", currentUserId);
+        console.log("🔍 IDs to search:", idsToSearch);
+
+        // Build query conditions: company_id OR posted_by
+        const conditions: string[] = [];
+
+        if (idsToSearch.length > 0) {
+          const uniqueIds = [...new Set(idsToSearch)];
+          if (uniqueIds.length === 1) {
+            conditions.push(`company_id.eq.${uniqueIds[0]}`);
+          } else {
+            const companyIdConditions = uniqueIds
+              .map((id) => `company_id.eq.${id}`)
+              .join(",");
+            conditions.push(`(${companyIdConditions})`);
+          }
+        }
+
+        // Also include jobs posted by the current user (even if company_id is null)
+        // Try to query by posted_by, but if column doesn't exist, fall back to company_id only
+        if (currentUserId) {
+          // First try with posted_by
+          const conditionsWithPostedBy = [
+            ...conditions,
+            `posted_by.eq.${currentUserId}`,
+          ];
+          const orConditionWithPostedBy = conditionsWithPostedBy.join(",");
+
+          console.log(
+            "🔍 Trying query with posted_by:",
+            orConditionWithPostedBy
+          );
+          const { data: dataWithPostedBy, error: errorWithPostedBy } =
+            await supabase
+              .from("jobs")
+              .select("*")
+              .or(orConditionWithPostedBy)
+              .order("created_at", { ascending: false });
+
+          // Check if error is due to missing column
+          if (errorWithPostedBy) {
+            console.warn(
+              "⚠️ Error querying with posted_by (column may not exist):",
+              errorWithPostedBy.message
+            );
+            // If column doesn't exist, fall back to company_id only
+            if (
+              errorWithPostedBy.message?.includes("column") ||
+              errorWithPostedBy.message?.includes("does not exist")
+            ) {
+              console.log("📋 Falling back to company_id only query");
+              if (conditions.length > 0) {
+                const orCondition = conditions.join(",");
+                console.log(
+                  "🔍 Querying jobs with company_id only:",
+                  orCondition
+                );
+                const { data, error } = await supabase
+                  .from("jobs")
+                  .select("*")
+                  .or(orCondition)
+                  .order("created_at", { ascending: false });
+                jobsData = data;
+                jobsError = error;
+              } else {
+                console.warn("⚠️ No company IDs to search for jobs");
+                jobsData = [];
+              }
+            } else {
+              // Other error, use it
+              jobsData = dataWithPostedBy;
+              jobsError = errorWithPostedBy;
+            }
+          } else {
+            // Success with posted_by
+            jobsData = dataWithPostedBy;
+            jobsError = errorWithPostedBy;
+          }
+        } else {
+          // No user ID, use company_id only
+          if (conditions.length > 0) {
+            const orCondition = conditions.join(",");
+            console.log("🔍 Querying jobs with company_id only:", orCondition);
+            const { data, error } = await supabase
+              .from("jobs")
+              .select("*")
+              .or(orCondition)
+              .order("created_at", { ascending: false });
+            jobsData = data;
+            jobsError = error;
+          } else {
+            console.warn("⚠️ No IDs or user ID to search for jobs");
+            jobsData = [];
+          }
+        }
+
+        // Also fetch jobs with null company_id (these might be the user's jobs created before fix)
+        // Merge them with existing results
+        if (currentUserId && !jobsError) {
+          console.log("📋 Also checking for null company_id jobs...");
+          const { data: nullCompanyJobs, error: nullError } = await supabase
+            .from("jobs")
+            .select("*")
+            .is("company_id", null)
+            .order("created_at", { ascending: false })
+            .limit(50);
+
+          if (!nullError && nullCompanyJobs && nullCompanyJobs.length > 0) {
+            console.log(
+              "📋 Found null company_id jobs:",
+              nullCompanyJobs.length
+            );
+            // Merge with existing jobs and remove duplicates
+            const allJobs = [...(jobsData || []), ...nullCompanyJobs];
+            const uniqueJobs = allJobs.filter(
+              (job: any, index: number, self: any[]) =>
+                index === self.findIndex((j: any) => j.id === job.id)
+            );
+            jobsData = uniqueJobs;
+            console.log("✅ Total jobs after merge:", jobsData.length);
+          }
+        }
+
+        if (jobsError) {
+          console.error("❌ Error fetching jobs:", jobsError);
+          setJobs([]);
+          return;
+        }
+
+        console.log(
+          "✅ Jobs fetched from Supabase:",
+          jobsData?.length || 0,
+          "jobs"
+        );
+        console.log(
+          "📋 Job details:",
+          jobsData?.map((j: any) => ({
+            id: j.id,
+            company_id: j.company_id,
+            posted_by: j.posted_by,
+            company_name: j.company_name,
+            title: j.title,
+          }))
+        );
+        console.log("👤 Current user ID:", currentUserId);
+        console.log("🔍 IDs searched:", idsToSearch);
+
+        setJobs(jobsData || []);
+      } catch (error) {
+        console.error("❌ Error fetching jobs:", error);
+        setJobs([]);
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, [companyData?.id, mentorData?.id, refreshJobsTrigger]);
+
+  // Listen for job posted event to refresh jobs list
+  useEffect(() => {
+    const handleJobPosted = () => {
+      console.log("🔄 Refreshing jobs list after job posted");
+      // Small delay to ensure database has updated
+      setTimeout(() => {
+        setRefreshJobsTrigger((prev) => prev + 1);
+      }, 300);
+    };
+
+    window.addEventListener("jobPosted", handleJobPosted);
+    return () => window.removeEventListener("jobPosted", handleJobPosted);
+  }, []);
 
   // Fetch tasks for grading
   useEffect(() => {
@@ -819,6 +1416,14 @@ export default function DashboardPage() {
     fetchAdData();
   }, [mentorData?.id]);
 
+  // Initialize currency from mentor's country if available
+  useEffect(() => {
+    if (mentorData?.country && !userLocation) {
+      const currencyInfo = getCurrencyForCountry(mentorData.country);
+      setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+    }
+  }, [mentorData?.country, userLocation]);
+
   // Auto-detect user location on page load for currency conversion
   useEffect(() => {
     if (!userLocation && navigator.geolocation) {
@@ -834,6 +1439,14 @@ export default function DashboardPage() {
             "Error getting location for currency conversion:",
             error
           );
+          // If geolocation fails, use mentor's country if available
+          if (mentorData?.country) {
+            const currencyInfo = getCurrencyForCountry(mentorData.country);
+            setCurrencyInfo({
+              symbol: currencyInfo.symbol,
+              code: currencyInfo.code,
+            });
+          }
         },
         {
           enableHighAccuracy: false,
@@ -842,7 +1455,7 @@ export default function DashboardPage() {
         }
       );
     }
-  }, [userLocation]);
+  }, [userLocation, mentorData?.country]);
 
   // Convert all session amounts when sessions or user location changes
   useEffect(() => {
@@ -851,9 +1464,9 @@ export default function DashboardPage() {
         setConvertedAmounts({});
         return;
       }
-      
+
       const conversions: Record<string, string> = {};
-      
+
       for (const session of sessions) {
         try {
           // Assume amount in database is in USD
@@ -862,10 +1475,10 @@ export default function DashboardPage() {
             conversions[session.id] = "$0.00";
             continue;
           }
-          
+
           // Try to use user location first, then fallback to mentor's country
           let locationToUse = userLocation;
-          
+
           // If no user location but mentor has country, try to use mentor's country
           if (!locationToUse && mentorData?.country) {
             const countryLower = mentorData.country.toLowerCase();
@@ -920,7 +1533,7 @@ export default function DashboardPage() {
               locationToUse = { lat: 5.6037, lng: -0.187 }; // Accra, Ghana
             }
           }
-          
+
           if (locationToUse) {
             const result = await convertAndFormatPrice(
               usdAmount,
@@ -942,30 +1555,62 @@ export default function DashboardPage() {
           )}`;
         }
       }
-      
+
       setConvertedAmounts(conversions);
     };
-    
+
     convertAllAmounts();
-    
-    // Also convert total revenue for display
-    if (sessions.length > 0 && userLocation) {
-      const totalRevenue = sessions
-        .filter((s) => s.is_paid)
-        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-      
-      if (totalRevenue > 0) {
-        convertAndFormatPrice(totalRevenue, userLocation)
-          .then((result) => {
+
+    // Also convert total revenue for display (always convert, even if 0)
+    const totalRevenue = sessions
+      .filter((s) => s.is_paid)
+      .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
+
+    // Determine location to use: userLocation first, then mentor's country
+    if (userLocation) {
+      convertAndFormatPrice(totalRevenue, userLocation)
+        .then((result) => {
+          setCurrencyInfo({ symbol: result.symbol, code: result.currency });
+          setConvertedAmounts((prev) => ({
+            ...prev,
+            total: result.formatted,
+          }));
+        })
+        .catch(() => {
+          // Fallback to mentor's country or USD
+          if (mentorData?.country) {
+            const currencyInfo = getCurrencyForCountry(mentorData.country);
+            setCurrencyInfo({
+              symbol: currencyInfo.symbol,
+              code: currencyInfo.code,
+            });
+            const convertedTotal = totalRevenue * currencyInfo.rate;
             setConvertedAmounts((prev) => ({
               ...prev,
-              total: result.formatted,
+              total: `${currencyInfo.symbol}${convertedTotal.toFixed(2)}`,
             }));
-          })
-          .catch(() => {
-            // Fallback handled in display
-          });
-      }
+          } else {
+            setConvertedAmounts((prev) => ({
+              ...prev,
+              total: `$${totalRevenue.toFixed(2)}`,
+            }));
+          }
+        });
+    } else if (mentorData?.country) {
+      // Use mentor's country for currency conversion
+      const currencyInfo = getCurrencyForCountry(mentorData.country);
+      setCurrencyInfo({ symbol: currencyInfo.symbol, code: currencyInfo.code });
+      const convertedTotal = totalRevenue * currencyInfo.rate;
+      setConvertedAmounts((prev) => ({
+        ...prev,
+        total: `${currencyInfo.symbol}${convertedTotal.toFixed(2)}`,
+      }));
+    } else {
+      // No location available, use USD
+      setConvertedAmounts((prev) => ({
+        ...prev,
+        total: `$${totalRevenue.toFixed(2)}`,
+      }));
     }
   }, [sessions, userLocation, mentorData?.country]);
 
@@ -1261,7 +1906,7 @@ export default function DashboardPage() {
 
     doc.save(`Audience_Demographics_Q${quarter}_${year}.pdf`);
   };
-  
+
   const stats = [
     {
       title: "Total Revenue",
@@ -1305,16 +1950,10 @@ export default function DashboardPage() {
     revenueData.reduce((acc, curr) => acc + curr.revenue, 0);
 
   if (loading) {
-  return (
+    return (
       <DashboardLayout role="mentor">
         <div className="flex items-center justify-center min-h-screen bg-gray-50">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading your dashboard...</p>
-            <p className="mt-2 text-sm text-gray-500">
-              This may take a few moments
-            </p>
-          </div>
+          <LoadingLogo size={48} />
         </div>
       </DashboardLayout>
     );
@@ -1322,1836 +1961,824 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout role="mentor">
-      <div className="space-y-6 p-6">
+      <div className="space-y-3 md:space-y-6 p-3 md:p-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Dashboard</h2>
-          <p className="text-gray-600 mt-1">
-            Welcome back! Here's an overview of your sessions and advertising.
+          <h2 className="text-lg md:text-2xl font-bold text-gray-900">
+            Dashboard
+          </h2>
+          <p className="text-xs md:text-base text-gray-600 mt-1">
+            Welcome back! Here's an overview of your jobs and advertising.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-white border rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Pending Sessions
-              </CardTitle>
-              <Clock className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {
-                  sessions.filter(
-                    (s) => !s.is_paid && (s.status === "scheduled" || !s.status)
-                  ).length
-                }
-              </div>
-              <p className="text-xs text-gray-600">Awaiting payment</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Total Revenue
-              </CardTitle>
-              <DollarSign className="h-4 w-4 text-green-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {(() => {
-                  const totalRevenue = sessions
-                    .filter((s) => s.is_paid)
-                    .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-                  return (
-                    convertedAmounts["total"] || `$${totalRevenue.toFixed(2)}`
-                  );
-                })()}
-              </div>
-              <p className="text-xs text-gray-600">
-                {sessions.filter((s) => s.is_paid).length} paid{" "}
-                {sessions.filter((s) => s.is_paid).length === 1
-                  ? "session"
-                  : "sessions"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Ad Clicks
-              </CardTitle>
-              <Activity className="h-4 w-4 text-blue-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                {campaigns.reduce(
-                  (sum: number, c: any) => sum + (c.total_clicks || 0),
-                  0
-                )}
-              </div>
-              <p className="text-xs text-gray-600">
-                {campaigns.filter((c: any) => c.status === "active").length}{" "}
-                active{" "}
-                {campaigns.filter((c: any) => c.status === "active").length ===
-                1
-                  ? "campaign"
-                  : "campaigns"}
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="bg-white border rounded-xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                Ad Balance
-              </CardTitle>
-              <Megaphone className="h-4 w-4 text-purple-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-gray-900">
-                $
-                {adAccount?.balance
-                  ? parseFloat(adAccount.balance).toFixed(2)
-                  : "0.00"}
-              </div>
-              <p className="text-xs text-gray-600">
-                {adAccount?.lifetime_spent
-                  ? `$${parseFloat(adAccount.lifetime_spent).toFixed(2)} spent`
-                  : "No spending yet"}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 flex-1 w-full md:w-auto">
+            <Card className="bg-white border rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
+                <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                  Posted Jobs
+                </CardTitle>
+                <Briefcase className="h-3 w-3 md:h-4 md:w-4 text-orange-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl md:text-2xl font-bold text-gray-900">
+                  {jobs.filter((j) => j.status === "open").length}
+                </div>
+                <p className="text-[10px] md:text-xs text-gray-600">
+                  Open positions
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
+                <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                  Views
+                </CardTitle>
+                <Eye className="h-3 w-3 md:h-4 md:w-4 text-blue-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl md:text-2xl font-bold text-gray-900">
+                  {jobs.reduce(
+                    (sum: number, j: any) => sum + (j.total_views || 0),
+                    0
+                  )}
+                </div>
+                <p className="text-[10px] md:text-xs text-gray-600">
+                  {jobs.length} {jobs.length === 1 ? "job" : "jobs"} posted
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="border-2 border-blue-500/50 bg-transparent h-9 w-[600px] grid grid-cols-4 rounded-none p-1 shadow-[inset_0_0_35px_rgba(59,130,246,0.3)]">
-          <TabsTrigger 
-            value="overview" 
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
+        <Tabs defaultValue="jobs" className="space-y-2 md:space-y-4">
+          <TabsList
+            className={`border-2 border-blue-500/50 bg-transparent h-7 md:h-9 ${(() => {
+              const email = userData?.email?.trim().toLowerCase();
+              return email === "clintonkhozah@gmail.com"
+                ? "w-full md:w-[400px] grid grid-cols-2"
+                : "w-full md:w-[200px] grid grid-cols-1";
+            })()} rounded-none p-0.5 md:p-1 shadow-[inset_0_0_35px_rgba(59,130,246,0.3)]`}
           >
-            Overview
-          </TabsTrigger>
-          <TabsTrigger 
-            value="analytics"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            Analytics
-          </TabsTrigger>
-          <TabsTrigger 
-            value="sessions"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            My Sessions
-          </TabsTrigger>
-          <TabsTrigger 
-            value="tasks"
-            className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-sm"
-          >
-            Tasks
-          </TabsTrigger>
+            <TabsTrigger
+              value="jobs"
+              className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-xs md:text-sm"
+            >
+              My Jobs
+            </TabsTrigger>
+            {(() => {
+              const email = userData?.email?.trim().toLowerCase();
+              return (
+                email === "clintonkhozah@gmail.com" && (
+                  <TabsTrigger
+                    value="analytics"
+                    className="ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border data-[state=active]:border-orange-500 data-[state=active]:rounded-none data-[state=active]:shadow-[inset_0_0_30px_rgba(34,197,94,0.5)] data-[state=active]:text-white data-[state=active]:bg-transparent hover:bg-transparent px-2 py-[2px] text-xs md:text-sm"
+                  >
+                    Analytics
+                  </TabsTrigger>
+                )
+              );
+            })()}
           </TabsList>
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-            <Card className="lg:col-span-4 bg-white border rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-gray-900">
-                    Revenue Overview
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    Click on a month to view details
-                  </CardDescription>
-                </CardHeader>
-              <CardContent className="flex gap-6">
-                        <div className="space-y-2 w-1/3 border-r border-gray-200 pr-4">
-                  {revenueData.map((data, index) => {
-                      const currentDate = new Date();
-                      const currentMonthIndex = currentDate.getMonth();
-                      const currentYear = currentDate.getFullYear();
-                      const monthIndex = data.monthIndex;
-                      const monthYear = data.year;
-                    
-                    // Check if this is a future month
-                      const isFutureMonth =
-                        monthYear > currentYear ||
-                        (monthYear === currentYear &&
-                          monthIndex > currentMonthIndex);
-                      const isPastMonth =
-                        !isFutureMonth && data.month !== selectedMonth.month;
-                    return (
-                      <div key={data.month} className="relative group">
-                        {isFutureMonth && (
-                          <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 w-48 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
-                            {(() => {
-                                const currentDate = new Date();
-                                const currentMonthName =
-                                  currentDate.toLocaleDateString("en-US", {
-                                    month: "long",
-                                  });
-                                return `We're currently in ${currentMonthName}. This is a future month.`;
-                            })()}
-                          </div>
-                        )}
-                        {isPastMonth && (
-                          <div className="absolute -right-2 translate-x-full top-1/2 -translate-y-1/2 bg-white text-gray-700 text-xs rounded-lg px-3 py-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-10 border border-gray-200 shadow-lg">
-                            <div className="space-y-1">
-                                <p className="font-medium">
-                                  Revenue: ${data.revenue.toLocaleString()}
-                                </p>
-                              <p className="text-gray-600">
-                                  {Math.round(
-                                    (data.revenue / getTotalRevenue()) * 100
-                                  )}
-                                  % of total revenue
-                              </p>
-                              {index < revenueData.length - 1 && (
-                                <p className="text-green-600">
-                                  {Math.round(
-                                      ((revenueData[index + 1].revenue -
-                                        data.revenue) /
-                                        data.revenue) *
-                                        100
-                                    )}
-                                    % growth next month
-                                </p>
-                              )}
-                  </div>
-                        </div>
-                        )}
-                        <button
-                            onClick={() =>
-                              !isFutureMonth && setSelectedMonth(data)
-                            }
-                          className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors
-                            ${
-                              selectedMonth.month === data.month
-                                ? "bg-blue-50 text-blue-600"
-                              : isFutureMonth
-                                ? "text-gray-400 cursor-not-allowed"
-                                : "hover:bg-gray-50 text-gray-600 hover:text-blue-600"
-                            }`}
-                          disabled={isFutureMonth}
-                        >
-                            <div
-                              className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                            isFutureMonth 
-                                  ? "bg-gray-100"
-                              : selectedMonth.month === data.month
-                                  ? "bg-blue-100"
-                                  : "bg-gray-100"
-                              }`}
-                            >
-                              <span
-                                className={`text-sm font-medium ${
-                                  isFutureMonth
-                                    ? "text-gray-400"
-                                    : selectedMonth.month === data.month
-                                    ? "text-blue-600"
-                                    : "text-gray-600"
-                                }`}
-                              >
-                                {data.month}
-                              </span>
-                        </div>
-                            <span
-                              className={`text-sm font-medium ${
-                                selectedMonth.month === data.month
-                                  ? "text-gray-900"
-                                  : "text-gray-600"
-                              }`}
-                            >
-                              {selectedMonth.month === data.month
-                                ? `$${data.revenue.toLocaleString()}`
-                                : ""}
-                          </span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <div className="flex-1 flex items-center justify-center">
-                  <div className="relative w-72 h-72">
-                    <div 
-                      className="absolute inset-0 rounded-full border-2 border-blue-200 bg-blue-50"
-                        style={{
-                          animation: "rotateCircle 10s linear infinite",
-                        }}
-                    >
-                      <div className="absolute inset-0 rounded-full shadow-[inset_0_0_45px_rgba(59,130,246,0.1)]" />
-                    </div>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="space-y-6 text-center p-8">
-                        <div>
-                          <p className="text-sm text-gray-600">Revenue</p>
-                          <p className="text-4xl font-bold text-gray-900 mt-2">
-                            ${selectedMonth.revenue.toLocaleString()}
+          {(() => {
+            const email = userData?.email?.trim().toLowerCase();
+            return (
+              email === "clintonkhozah@gmail.com" && (
+                <TabsContent value="analytics" className="space-y-4">
+                  <Card className="bg-white border rounded-xl shadow-sm">
+                    <CardContent>
+                      <div className="space-y-6">
+                        <div className="text-center py-12">
+                          <BarChart3 className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+                          <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                            Google Analytics Dashboard
+                          </h3>
+                          <p className="text-gray-600 mb-6 max-w-md mx-auto">
+                            Access your comprehensive website analytics,
+                            including visitor statistics, traffic sources, user
+                            behavior, and conversion metrics.
                           </p>
-                        </div>
-                        <div className="space-y-4">
-                          <div>
-                            <div className="flex items-center justify-center gap-2">
-                              <TrendingUp className="h-4 w-4 text-green-600" />
-                              <span className="text-base text-green-600">
-                                {getGrowthPercentage(selectedMonth)}%
-                              </span>
-                        </div>
-                              <p className="text-sm text-gray-600 mt-1">
-                                vs prev month
-                              </p>
-                      </div>
-                          <div>
-                            <p className="text-base font-medium text-gray-900">
-                                {Math.round(
-                                  (selectedMonth.revenue / getTotalRevenue()) *
-                                    100
-                                )}
-                                %
-                              </p>
-                              <p className="text-sm text-gray-600">
-                                of total revenue
-                              </p>
-                        </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="lg:col-span-3 bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-                  <CardTitle className="text-gray-900">
-                    Tutor Requests
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {requestsLoading
-                      ? "Loading requests..."
-                      : tutorRequests.length > 0
-                      ? `You have ${tutorRequests.length} ${
-                          tutorRequests.length === 1 ? "request" : "requests"
-                        } (pending and accepted)`
-                      : "No tutor requests"}
-                  </CardDescription>
-              </CardHeader>
-                <CardContent>
-                  {requestsLoading ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                  </div>
-                  ) : tutorRequests.length > 0 ? (
-                    <div className="flex gap-4 overflow-x-auto pb-2 -mx-2 px-2">
-                      {tutorRequests.map((request) => {
-                        const getStatusBadge = (status: string) => {
-                          switch (status) {
-                            case "pending":
-                              return (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-yellow-50 text-yellow-700 border border-yellow-200">
-                                  Pending
-                                </span>
+                          <Button
+                            onClick={() => {
+                              window.open(
+                                "https://analytics.google.com/analytics/web/",
+                                "_blank"
                               );
-                            case "accepted":
-                              return (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-green-50 text-green-700 border border-green-200">
-                                  Accepted
-                                </span>
-                              );
-                            case "rejected":
-                              return (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-red-50 text-red-700 border border-red-200">
-                                  Rejected
-                                </span>
-                              );
-                            default:
-                              return (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-gray-50 text-gray-700 border border-gray-200">
-                                  {status}
-                                </span>
-                              );
-                          }
-                        };
-
-                        const requestDate = new Date(request.created_at);
-                        const formattedDate = requestDate.toLocaleDateString(
-                          "en-US",
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          }
-                        );
-
-                        return (
-                          <div
-                            key={request.id}
-                            className="bg-gradient-to-br from-white to-gray-50 border-2 border-blue-200 rounded-xl p-4 shadow-lg overflow-hidden relative group min-w-[320px] max-w-[320px] flex-shrink-0 cursor-pointer"
-                            style={{
-                              boxShadow:
-                                "0 10px 25px -5px rgba(59, 130, 246, 0.1), 0 4px 6px -2px rgba(59, 130, 246, 0.05)",
                             }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
                           >
-                            {/* Gradient accent */}
-                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
-
-                            {/* Notification badge */}
-                            <div className="absolute top-2 right-2 w-3 h-3 bg-green-500 rounded-full" />
-
-                            <div className="flex flex-col gap-3">
-                              {/* Learner Profile Section */}
-                              {request.student_name && (
-                                <div className="flex items-center gap-3 pb-2 border-b border-gray-100">
-                                  <div>
-                                    <img
-                                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                        request.student_name
-                                      )}&background=3B82F6&color=fff&size=128`}
-                                      alt={request.student_name}
-                                      className="w-12 h-12 rounded-full object-cover border-2 border-blue-200 shadow-md"
-                                      onError={(e) => {
-                                        const target =
-                                          e.target as HTMLImageElement;
-                                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                          request.student_name
-                                        )}&background=3B82F6&color=fff&size=128`;
-                                      }}
-                                    />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <h5 className="text-sm font-bold text-gray-900 truncate">
-                                      {request.student_name}
-                                    </h5>
-                                    {request.grade_level && (
-                                      <p className="text-xs text-gray-500 capitalize">
-                                        {request.grade_level}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {/* Header with Subject, Status */}
-                              <div className="flex items-start justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                                    <h4 className="text-base font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-                                      {request.subject}
-                                    </h4>
-                                    <div>
-                                      {getStatusBadge(request.status)}
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 text-xs text-gray-500">
-                                    <Calendar className="w-3 h-3" />
-                                    <span>{formattedDate}</span>
-                                  </div>
-                                </div>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Open Google Analytics
+                          </Button>
+                        </div>
+                        <div className="border-t pt-6">
+                          <h4 className="text-sm font-semibold text-gray-700 mb-4">
+                            Quick Stats
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div className="p-4 bg-blue-50 rounded-lg">
+                              <div className="text-2xl font-bold text-blue-900">
+                                {jobs.reduce(
+                                  (sum: number, j: any) =>
+                                    sum + (j.total_views || 0),
+                                  0
+                                )}
                               </div>
-
-                              {/* Description - Compact */}
-                              {request.description && (
-                                <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-2.5 border border-blue-100">
-                                  <div className="flex items-start gap-2">
-                                    <MessageSquare className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-                                    <p className="text-xs text-gray-700 line-clamp-2">
-                                      {request.description}
-                    </p>
-                      </div>
-                    </div>
-                              )}
-
-                              {/* Request Details - Compact */}
-                              <div className="space-y-1.5">
-                                {request.preferred_time && (
-                                  <div className="flex items-center gap-2 text-xs">
-                                    <div className="w-6 h-6 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                                      <Clock className="w-3 h-3 text-indigo-600" />
-                        </div>
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-gray-500 text-xs">
-                                        Preferred Time:{" "}
-                                      </span>
-                                      <span className="text-gray-900 font-medium">
-                                        {request.preferred_time}
-                                      </span>
-                      </div>
-                                  </div>
+                              <div className="text-sm text-blue-700 mt-1">
+                                Total Job Views
+                              </div>
+                            </div>
+                            <div className="p-4 bg-green-50 rounded-lg">
+                              <div className="text-2xl font-bold text-green-900">
+                                {jobs.reduce(
+                                  (sum: number, j: any) =>
+                                    sum + (j.total_applications || 0),
+                                  0
                                 )}
-
-                                {/* Pricing Display */}
-                                {requestPricing[request.id] && (
-                                  <div className="flex items-center gap-2 text-xs bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2 border border-green-200">
-                                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                      <DollarSign className="w-3 h-3 text-green-600" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <span className="text-gray-500 text-xs">
-                                        Hourly Rate:{" "}
-                                      </span>
-                                      <span className="text-gray-900 font-bold text-sm">
-                                        {
-                                          requestPricing[request.id]
-                                            .hourlyRateLocal
-                                        }
-                                      </span>
-                                    </div>
-                                  </div>
-                                )}
-
-                                <div className="flex items-center gap-2 text-xs">
-                                  <div
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${
-                                      request.payment_status === "paid"
-                                        ? "bg-green-100"
-                                        : request.payment_status === "pending"
-                                        ? "bg-yellow-100"
-                                        : "bg-gray-100"
-                                    }`}
-                                  >
-                                    <DollarSign
-                                      className={`w-3 h-3 ${
-                                        request.payment_status === "paid"
-                                          ? "text-green-600"
-                                          : request.payment_status === "pending"
-                                          ? "text-yellow-600"
-                                          : "text-gray-600"
-                                      }`}
-                                    />
-                        </div>
-                                  <div className="flex-1 min-w-0">
-                                    <span className="text-gray-500 text-xs">
-                                      Payment Status:{" "}
-                                    </span>
-                                    <span
-                                      className={`font-medium capitalize ${
-                                        request.payment_status === "paid"
-                                          ? "text-green-600"
-                                          : request.payment_status === "pending"
-                                          ? "text-yellow-600"
-                                          : "text-gray-600"
-                                      }`}
-                                    >
-                                      {request.payment_status || "pending"}
-                                    </span>
-                      </div>
-                    </div>
-                  </div>
-
-                              {/* Accept/Reject Buttons */}
-                              {request.status === "pending" && (
-                                <div className="flex gap-2 pt-2 border-t border-gray-100">
-                                  <div className="flex-1">
-                                    <Button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleAcceptRequest(request.id);
-                                      }}
-                                      disabled={
-                                        processingRequestId === request.id
-                                      }
-                                      className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-xs py-1.5 h-auto shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      size="sm"
-                                    >
-                                      {processingRequestId === request.id ? (
-                                        <>
-                                          <Loader2 className="w-3.5 h-3.5 mr-1.5 inline animate-spin" />
-                                          Accepting...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5 inline" />
-                                          Accept
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                  <div className="flex-1">
-                                    <Button
-                                      onClick={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleRejectRequest(request.id);
-                                      }}
-                                      disabled={
-                                        processingRequestId === request.id
-                                      }
-                                      variant="outline"
-                                      className="w-full border-red-300 text-red-700 hover:bg-red-50 text-xs py-1.5 h-auto transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                      size="sm"
-                                    >
-                                      {processingRequestId === request.id ? (
-                                        <>
-                                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
-                                          Rejecting...
-                                        </>
-                                      ) : (
-                                        <>
-                                          <XCircle className="w-3.5 h-3.5 mr-1.5" />
-                                          Reject
-                                        </>
-                                      )}
-                                    </Button>
-                                  </div>
-                                </div>
-                              )}
+                              </div>
+                              <div className="text-sm text-green-700 mt-1">
+                                Total Applications
+                              </div>
+                            </div>
+                            <div className="p-4 bg-purple-50 rounded-lg">
+                              <div className="text-2xl font-bold text-purple-900">
+                                {jobs.length}
+                              </div>
+                              <div className="text-sm text-purple-700 mt-1">
+                                Jobs Posted
+                              </div>
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-gray-200">
-                      <BookOpen className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                      <p className="text-gray-600 mb-2">No tutor requests</p>
-                      <p className="text-sm text-gray-500">
-                        New tutor requests will appear here
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-gray-900">
-                    Session Requests
-                  </CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {(() => {
-                      const now = new Date();
-                      const seventyTwoHoursAgo = new Date(
-                        now.getTime() - 72 * 60 * 60 * 1000
-                      );
-                      const recentRequests = sessions.filter((s) => {
-                        const sessionDate = new Date(`${s.date}T${s.time}`);
-                        return (
-                          !s.is_paid &&
-                          sessionDate >= seventyTwoHoursAgo &&
-                          sessionDate <= now
-                        );
-                      });
-                      return `You have ${recentRequests.length} pending ${
-                        recentRequests.length === 1 ? "request" : "requests"
-                      } (last 72 hours)`;
-                    })()}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(() => {
-                    const now = new Date();
-                    const seventyTwoHoursAgo = new Date(
-                      now.getTime() - 72 * 60 * 60 * 1000
-                    );
-                    const recentRequests = sessions
-                      .filter((s) => {
-                        const sessionDate = new Date(`${s.date}T${s.time}`);
-                        return (
-                          !s.is_paid &&
-                          sessionDate >= seventyTwoHoursAgo &&
-                          sessionDate <= now
-                        );
-                      })
-                      .sort((a, b) => {
-                        const dateA = new Date(`${a.date}T${a.time}`);
-                        const dateB = new Date(`${b.date}T${b.time}`);
-                        return dateB.getTime() - dateA.getTime();
-                      })
-                      .slice(0, 5);
-
-                    if (recentRequests.length === 0) {
-                      return (
-                        <div className="text-center py-8">
-                          <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600 mb-2">
-                            No session requests
-                          </p>
-                          <p className="text-sm text-gray-500">
-                            New session requests from the last 72 hours will
-                            appear here
-                          </p>
                         </div>
-                      );
-                    }
+                      </div>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              )
+            );
+          })()}
+          <TabsContent value="jobs" className="space-y-2 md:space-y-4">
+            <Card className="bg-white border rounded-xl shadow-sm">
+              <CardHeader className="p-3 md:p-6">
+                <div>
+                  <CardTitle className="text-base md:text-lg text-gray-900">
+                    My Jobs
+                  </CardTitle>
+                  <CardDescription className="text-xs md:text-sm text-gray-600">
+                    View and manage your posted jobs, learnerships, internships,
+                    and bursaries
+                  </CardDescription>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 md:p-6">
+                {jobsLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <LoadingLogo size={32} />
+                  </div>
+                ) : jobs.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <p className="text-gray-600 mb-4">No jobs posted yet</p>
+                    <Button
+                      onClick={() => {
+                        window.dispatchEvent(
+                          new CustomEvent("openCreateJobModal")
+                        );
+                      }}
+                    >
+                      Post a Job
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
+                      {jobs
+                        .slice(
+                          (currentPage - 1) * jobsPerPage,
+                          currentPage * jobsPerPage
+                        )
+                        .map((job) => {
+                          const getJobTypeColor = (type: string) => {
+                            switch (type) {
+                              case "job":
+                                return "bg-blue-100 text-blue-700 border-blue-200";
+                              case "learnership":
+                                return "bg-purple-100 text-purple-700 border-purple-200";
+                              case "internship":
+                                return "bg-green-100 text-green-700 border-green-200";
+                              case "bursary":
+                                return "bg-orange-100 text-orange-700 border-orange-200";
+                              default:
+                                return "bg-gray-100 text-gray-700 border-gray-200";
+                            }
+                          };
 
-                    return (
-                  <div className="space-y-4">
-                        {recentRequests.map((session) => {
-                          const sessionDate = new Date(
-                            `${session.date}T${session.time}`
-                          );
-                          const hoursAgo = Math.floor(
-                            (now.getTime() - sessionDate.getTime()) /
-                              (1000 * 60 * 60)
-                          );
-                          const timeAgo =
-                            hoursAgo < 1
-                              ? "Just now"
-                            : hoursAgo === 1 
-                              ? "1 hour ago"
-                            : hoursAgo < 24
-                            ? `${hoursAgo} hours ago`
-                              : `${Math.floor(hoursAgo / 24)} day${
-                                  Math.floor(hoursAgo / 24) > 1 ? "s" : ""
-                                } ago`;
+                          const getJobTypeIcon = (type: string) => {
+                            switch (type) {
+                              case "learnership":
+                                return <GraduationCap className="w-4 h-4" />;
+                              case "internship":
+                                return <Briefcase className="w-4 h-4" />;
+                              case "bursary":
+                                return <DollarSign className="w-4 h-4" />;
+                              default:
+                                return <Briefcase className="w-4 h-4" />;
+                            }
+                          };
 
                           return (
-                            <div
-                              key={session.id}
-                              className="flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:shadow-md transition-shadow"
+                            <motion.div
+                              key={job.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="flex-shrink-0"
                             >
-                              <div className="flex-shrink-0">
-                                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                  {session.topic.charAt(0).toUpperCase()}
-                        </div>
-                      </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-gray-900 truncate">
-                                  {session.topic}
-                                </p>
-                                <p className="text-xs text-gray-600">
-                                  {new Date(session.date).toLocaleDateString(
-                                    "en-US",
-                                    { month: "short", day: "numeric" }
-                                  )}{" "}
-                                  at{" "}
-                                  {new Date(
-                                    `2000-01-01T${session.time}`
-                                  ).toLocaleTimeString("en-US", {
-                                    hour: "numeric",
-                                    minute: "2-digit",
-                                    hour12: true,
-                                  })}{" "}
-                                  • {timeAgo}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-1">
-                                  {convertedAmounts[session.id] ||
-                                    `$${parseFloat(session.amount || 0).toFixed(
-                                      2
-                                    )}`}{" "}
-                                  • {session.duration} min
-                                </p>
-                    </div>
-                              <Button 
-                                size="sm" 
-                                className="bg-gradient-to-r from-blue-500 to-green-500 hover:from-blue-600 hover:to-green-600 text-white"
-                                onClick={() => {
-                                  // Navigate to sessions page or open accept modal
-                                  window.location.href = `/dashboard/tutor/sessions`;
-                                }}
-                              >
-                                Accept Session
-                              </Button>
-                        </div>
+                              <Card className="min-h-[400px] md:min-h-[550px] bg-gradient-to-br from-blue-50 via-white to-blue-50 border-2 border-blue-200 shadow-sm hover:shadow-xl transition-all flex flex-col rounded-xl relative overflow-hidden">
+                                <CardContent className="p-3 md:p-6 flex flex-col flex-grow relative">
+                                  {/* Blue accent bar */}
+                                  <motion.div
+                                    initial={{ width: 0 }}
+                                    animate={{ width: "100%" }}
+                                    transition={{ duration: 0.6, delay: 0.2 }}
+                                    className="absolute top-0 left-0 h-1 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-500"
+                                  />
+
+                                  <div className="flex items-start gap-2 md:gap-4 mb-2 md:mb-4">
+                                    <div className="relative flex-shrink-0">
+                                      <Avatar className="h-10 w-10 md:h-16 md:w-16 border-2 border-blue-400 shadow-lg shadow-blue-200">
+                                        <AvatarImage
+                                          src={job.company_logo}
+                                          alt={
+                                            job.company_name ||
+                                            companyData?.company_name ||
+                                            "Company"
+                                          }
+                                          className="object-cover"
+                                        />
+                                        <AvatarFallback className="bg-gray-100 text-gray-600 text-sm font-semibold">
+                                          {job.company_name ||
+                                          companyData?.company_name
+                                            ? (
+                                                job.company_name ||
+                                                companyData?.company_name
+                                              )
+                                                .split(" ")
+                                                .map((n: string) => n[0])
+                                                .join("")
+                                                .slice(0, 2)
+                                                .toUpperCase()
+                                            : "C"}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-white shadow-sm"></div>
+                                    </div>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 md:gap-3 mb-1 md:mb-2 flex-wrap">
+                                        <h3 className="text-sm md:text-xl font-bold text-blue-900 line-clamp-1">
+                                          {job.title}
+                                        </h3>
+                                        {job.is_featured && (
+                                          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[10px] md:text-xs font-semibold border shadow-sm">
+                                            Featured
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {(job.company_name ||
+                                        companyData?.company_name) && (
+                                        <p className="text-xs md:text-sm font-semibold text-blue-800 mb-0.5 md:mb-1">
+                                          {job.company_name ||
+                                            companyData?.company_name}
+                                        </p>
+                                      )}
+                                      {job.created_at && (
+                                        <p className="text-[10px] md:text-xs text-gray-500 mt-0.5 md:mt-1">
+                                          Posted{" "}
+                                          {getRelativeTime(job.created_at)}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="mb-2 md:mb-4 flex-grow">
+                                    <p className="text-gray-700 text-xs md:text-sm mb-2 md:mb-3 text-left line-clamp-2 leading-snug">
+                                      {job.description}
+                                    </p>
+
+                                    {/* Job Details in Blue Gradient Box */}
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-2 md:p-3.5 text-xs md:text-sm text-gray-700 mb-2 md:mb-3 w-full space-y-1.5 md:space-y-2 border border-blue-200">
+                                      <div className="flex items-center gap-1.5 md:gap-2">
+                                        <MapPin className="h-3 w-3 md:h-4 md:w-4 text-blue-600 flex-shrink-0" />
+                                        <div>
+                                          <span className="font-semibold text-gray-900 text-[10px] md:text-sm">
+                                            Location:{" "}
+                                          </span>
+                                          <span className="text-[10px] md:text-sm">
+                                            {job.location}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      {job.application_deadline && (
+                                        <div className="flex items-start gap-1.5 md:gap-2">
+                                          <CalendarIcon className="h-3 w-3 md:h-4 md:w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                                          <div className="flex-1 leading-tight">
+                                            <span className="font-semibold text-gray-900 text-[10px] md:text-sm">
+                                              Deadline:{" "}
+                                            </span>
+                                            <span className="text-[10px] md:text-sm">
+                                              {new Date(
+                                                job.application_deadline
+                                              ).toLocaleDateString("en-US", {
+                                                year: "numeric",
+                                                month: "short",
+                                                day: "numeric",
+                                              })}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {job.duration && (
+                                        <div className="flex items-center gap-1.5 md:gap-2">
+                                          <Clock className="h-3 w-3 md:h-4 md:w-4 text-blue-600 flex-shrink-0" />
+                                          <div>
+                                            <span className="font-semibold text-gray-900 text-[10px] md:text-sm">
+                                              Duration:{" "}
+                                            </span>
+                                            <span className="text-[10px] md:text-sm">
+                                              {job.duration}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Tags */}
+                                    <div className="flex flex-wrap gap-1 md:gap-1.5 mb-2 md:mb-3">
+                                      <Badge
+                                        className={`${getJobTypeColor(
+                                          job.job_type
+                                        )} px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-medium border`}
+                                      >
+                                        {getJobTypeIcon(job.job_type)}
+                                        <span className="ml-0.5 md:ml-1 capitalize">
+                                          {job.job_type}
+                                        </span>
+                                      </Badge>
+                                      <Badge
+                                        variant="secondary"
+                                        className="bg-blue-100 text-blue-700 border border-blue-300 px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-medium"
+                                      >
+                                        {job.category}
+                                      </Badge>
+                                      {job.experience_level && (
+                                        <Badge
+                                          variant="secondary"
+                                          className="bg-purple-100 text-purple-700 border border-purple-300 px-1.5 md:px-2 py-0.5 md:py-1 text-[10px] md:text-xs font-medium"
+                                        >
+                                          {job.experience_level}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Salary at bottom */}
+                                  <div className="mt-auto pt-2 md:pt-4 border-t border-blue-200">
+                                    <div className="flex items-center justify-between mb-2 md:mb-3">
+                                      <div className="text-right flex-1">
+                                        <div className="text-lg md:text-2xl font-bold text-gray-900">
+                                          {formatSalary(job)}
+                                        </div>
+                                        <div className="text-[10px] md:text-xs text-gray-600">
+                                          SALARY
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Stats */}
+                                  <div className="flex items-center gap-2 md:gap-4 text-[10px] md:text-xs text-gray-600 mb-2 md:mb-3">
+                                    <div className="flex items-center gap-0.5 md:gap-1">
+                                      <Eye className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                      <span>{job.total_views || 0} views</span>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 md:gap-1">
+                                      <UsersIcon className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                                      <span>
+                                        {job.total_applications || 0}{" "}
+                                        applications
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex gap-1.5 md:gap-2 mt-2 md:mt-3">
+                                    <Button
+                                      onClick={() => {
+                                        window.location.href = `/jobs/${job.id}`;
+                                      }}
+                                      variant="outline"
+                                      className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 h-7 md:h-10"
+                                    >
+                                      View More
+                                    </Button>
+                                    <Button
+                                      onClick={() => {
+                                        window.location.href = `/jobs/${job.id}#apply`;
+                                      }}
+                                      className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs md:text-sm px-2 md:px-4 py-1 md:py-2 h-7 md:h-10"
+                                    >
+                                      Apply
+                                    </Button>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          variant="outline"
+                                          size="icon"
+                                          className="h-7 md:h-10 w-7 md:w-10 border-gray-300 hover:bg-gray-50"
+                                        >
+                                          <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end" className="w-48">
+                                        <DropdownMenuItem
+                                          onClick={() => handleShareJob(job, "facebook")}
+                                          className="cursor-pointer"
+                                        >
+                                          <Facebook className="h-4 w-4 mr-2 text-blue-600" />
+                                          Facebook
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleShareJob(job, "whatsapp")}
+                                          className="cursor-pointer"
+                                        >
+                                          <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
+                                          WhatsApp
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleShareJob(job, "linkedin")}
+                                          className="cursor-pointer"
+                                        >
+                                          <Linkedin className="h-4 w-4 mr-2 text-blue-700" />
+                                          LinkedIn
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleShareJob(job, "twitter")}
+                                          className="cursor-pointer"
+                                        >
+                                          <Twitter className="h-4 w-4 mr-2 text-blue-400" />
+                                          Twitter
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem
+                                          onClick={() => handleShareJob(job, "copy")}
+                                          className="cursor-pointer"
+                                        >
+                                          <Copy className="h-4 w-4 mr-2" />
+                                          Copy Link
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
                           );
                         })}
-                      </div>
-                    );
-                  })()}
-                </CardContent>
-                <CardFooter>
-                <Button 
-                  className="w-full bg-gradient-to-r from-blue-500/80 to-green-500/80 hover:from-blue-500/90 hover:to-green-500/90 transition-all duration-300 text-white border-0 shadow-lg shadow-blue-500/20" 
-                  asChild
-                >
-                    <Link
-                      href="/dashboard/tutor/sessions"
-                      className="flex items-center justify-center"
-                    >
-                      View all sessions
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            </div>
-          </TabsContent>
-          <TabsContent value="analytics" className="space-y-4">
-            {/* Analytics Overview Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Total Ad Clicks
-                  </CardTitle>
-                  <MousePointer className="h-4 w-4 text-blue-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {campaigns.reduce(
-                      (sum: number, c: any) => sum + (c.total_clicks || 0),
-                      0
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {adClicks.length} detailed records
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Total Impressions
-                  </CardTitle>
-                  <Eye className="h-4 w-4 text-purple-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {campaigns.reduce(
-                      (sum: number, c: any) => sum + (c.total_impressions || 0),
-                      0
-                    )}
-            </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {adImpressions.length} detailed records
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Click-Through Rate
-                  </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {(() => {
-                      const totalClicks = campaigns.reduce(
-                        (sum: number, c: any) => sum + (c.total_clicks || 0),
-                        0
-                      );
-                      const totalImpressions = campaigns.reduce(
-                        (sum: number, c: any) =>
-                          sum + (c.total_impressions || 0),
-                        0
-                      );
-                      return totalImpressions > 0
-                        ? ((totalClicks / totalImpressions) * 100).toFixed(2)
-                        : "0.00";
-                    })()}
-                    %
-                            </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    Clicks per 100 impressions
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    Paid Students
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {(() => {
-                      const paidSessions = sessions.filter(
-                        (s) =>
-                          s.is_paid &&
-                          s.learner_name &&
-                          s.learner_name !== "TBD"
-                      );
-                      const uniqueStudents = new Set(
-                        paidSessions.map((s) => s.learner_email).filter(Boolean)
-                      );
-                      return uniqueStudents.size;
-                    })()}
-                  </div>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {sessions.filter((s) => s.is_paid).length} paid sessions
-                  </p>
-                </CardContent>
-              </Card>
-                              </div>
-
-            {/* Conversion Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-900">
-                    Conversion Rate
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
-                    {(() => {
-                      const totalSessions = sessions.length;
-                      const paidSessions = sessions.filter(
-                        (s) => s.is_paid
-                      ).length;
-                      return totalSessions > 0
-                        ? ((paidSessions / totalSessions) * 100).toFixed(1)
-                        : "0.0";
-                    })()}
-                    %
-                            </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    {sessions.filter((s) => s.is_paid).length} of{" "}
-                    {sessions.length} sessions paid
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-900">
-                    Revenue per Click
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
-                    {(() => {
-                      const totalClicks = campaigns.reduce(
-                        (sum: number, c: any) => sum + (c.total_clicks || 0),
-                        0
-                      );
-                      const totalRevenue = sessions
-                        .filter((s) => s.is_paid)
-                        .reduce((sum, s) => sum + parseFloat(s.amount || 0), 0);
-                      return totalClicks > 0
-                        ? `$${(totalRevenue / totalClicks).toFixed(2)}`
-                        : "$0.00";
-                    })()}
-                            </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Average revenue generated per click
-                  </p>
-                </CardContent>
-              </Card>
-              <Card className="bg-white border rounded-xl shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-sm font-medium text-gray-900">
-                    Cost per Acquisition
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-gray-900">
-                    {(() => {
-                      const totalSpent = campaigns.reduce(
-                        (sum: number, c: any) =>
-                          sum + parseFloat(c.total_spent || 0),
-                        0
-                      );
-                      const paidSessions = sessions.filter(
-                        (s) => s.is_paid
-                      ).length;
-                      return paidSessions > 0
-                        ? `$${(totalSpent / paidSessions).toFixed(2)}`
-                        : "$0.00";
-                    })()}
-                        </div>
-                  <p className="text-xs text-gray-600 mt-2">
-                    Ad spend per paid session
-                  </p>
-                </CardContent>
-              </Card>
-                  </div>
-
-            {/* Geographic Analytics */}
-            <Card className="bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-gray-900">
-                  Geographic Analytics
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Clicks and impressions by location
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {analyticsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                      </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div>
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                        Top Countries (Clicks)
-                      </h4>
-                      <div className="space-y-2">
-                        {(() => {
-                          const countryClicks: Record<string, number> = {};
-                          adClicks.forEach((click) => {
-                            if (click.country) {
-                              countryClicks[click.country] =
-                                (countryClicks[click.country] || 0) + 1;
-                            }
-                          });
-                          const sorted = Object.entries(countryClicks)
-                            .sort(([, a], [, b]) => b - a)
-                            .slice(0, 5);
-                          return sorted.length > 0 ? (
-                            sorted.map(([country, count]) => (
-                              <div
-                                key={country}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                              >
-                                <span className="text-sm text-gray-700">
-                                  {country}
-                                </span>
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {count}
-                                </span>
-                          </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">
-                              No geographic data available
-                            </p>
-                          );
-                        })()}
-                      </div>
                     </div>
-                            <div>
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3">
-                        Top Countries (Impressions)
-                      </h4>
-                      <div className="space-y-2">
-                        {(() => {
-                          const countryImpressions: Record<string, number> = {};
-                          adImpressions.forEach((impression) => {
-                            if (impression.country) {
-                              countryImpressions[impression.country] =
-                                (countryImpressions[impression.country] || 0) +
-                                1;
-                            }
-                          });
-                          const sorted = Object.entries(countryImpressions)
-                            .sort(([, a], [, b]) => b - a)
-                            .slice(0, 5);
-                          return sorted.length > 0 ? (
-                            sorted.map(([country, count]) => (
-                              <div
-                                key={country}
-                                className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
-                              >
-                                <span className="text-sm text-gray-700">
-                                  {country}
-                                </span>
-                                <span className="text-sm font-semibold text-gray-900">
-                                  {count}
-                                </span>
-                              </div>
-                            ))
-                          ) : (
-                            <p className="text-sm text-gray-500">
-                              No geographic data available
-                            </p>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
 
-            {/* Students Who Paid */}
-            <Card className="bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-gray-900">
-                  Students Who Paid for Sessions
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  List of students who have completed payment
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {sessionsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {(() => {
-                      const paidSessions = sessions.filter(
-                        (s) =>
-                          s.is_paid &&
-                          s.learner_name &&
-                          s.learner_name !== "TBD"
-                      );
-                      const uniqueStudents = new Map();
-                      paidSessions.forEach((session) => {
-                        if (
-                          session.learner_email &&
-                          !uniqueStudents.has(session.learner_email)
-                        ) {
-                          uniqueStudents.set(session.learner_email, {
-                            name: session.learner_name,
-                            email: session.learner_email,
-                            sessions: [],
-                          });
-                        }
-                        if (session.learner_email) {
-                          uniqueStudents
-                            .get(session.learner_email)
-                            .sessions.push({
-                            topic: session.topic,
-                            date: session.date,
-                              amount: session.amount,
-                            });
-                        }
-                      });
-                      const studentsArray = Array.from(uniqueStudents.values());
-                      return studentsArray.length > 0 ? (
-                        studentsArray.map((student, index) => (
-                          <div
-                            key={index}
-                            className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                          >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-3 mb-2">
-                                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold">
-                                    {student.name.charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                                    <h4 className="font-semibold text-gray-900">
-                                      {student.name}
-                                    </h4>
-                                    <p className="text-sm text-gray-600">
-                                      {student.email}
-                                    </p>
-                                  </div>
-                                </div>
-                                <div className="ml-13 mt-2">
-                                  <p className="text-xs text-gray-500 mb-1">
-                                    {student.sessions.length}{" "}
-                                    {student.sessions.length === 1
-                                      ? "session"
-                                      : "sessions"}{" "}
-                                    booked
-                                  </p>
-                                  <div className="space-y-1">
-                                    {student.sessions.map(
-                                      (s: any, idx: number) => (
-                                        <div
-                                          key={idx}
-                                          className="text-xs text-gray-600"
-                                        >
-                                          • {s.topic} - $
-                                          {parseFloat(s.amount || 0).toFixed(2)}{" "}
-                                          (
-                                          {new Date(
-                                            s.date
-                                          ).toLocaleDateString()}
-                                          )
-                            </div>
-                                      )
-                                    )}
-                          </div>
-                        </div>
-                      </div>
-                              <Badge className="bg-green-100 text-green-700 border-green-200">
-                                Paid
-                              </Badge>
-                    </div>
-                  </div>
-                        ))
-                      ) : (
-                        <div className="text-center py-12">
-                          <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                          <p className="text-gray-600">No paid students yet</p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            Students who pay for sessions will appear here
-                          </p>
-                </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity */}
-            <Card className="bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-gray-900">
-                  Recent Ad Activity
-                </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Latest clicks and impressions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {adClicks.slice(0, 10).map((click, index) => (
-                    <div
-                      key={click.id || index}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-                    >
-                      <div className="flex items-center gap-3">
-                        <MousePointer className="h-4 w-4 text-blue-600" />
-                        <div>
-                          <p className="text-sm font-medium text-gray-900">
-                            Ad Click
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {click.country || "Unknown"} •{" "}
-                            {click.city || "Unknown"} •{" "}
-                            {new Date(click.clicked_at).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                      <span className="text-sm font-semibold text-gray-900">
-                        ${parseFloat(click.click_cost || 0).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                  {adClicks.length === 0 && (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No ad clicks recorded yet
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          <TabsContent value="sessions" className="space-y-4">
-            <Card className="bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-gray-900">My Sessions</CardTitle>
-                <CardDescription className="text-gray-600">
-                  View and manage your scheduled sessions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {sessionsLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                      <p className="mt-4 text-gray-600">Loading sessions...</p>
-                    </div>
-                  </div>
-                ) : sessions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <CalendarIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No sessions scheduled yet</p>
-                  </div>
-                ) : (
-                <div className="space-y-4">
-                    {sessions.map((session) => {
-                      const sessionDate = new Date(
-                        `${session.date}T${session.time}`
-                      );
-                      const isPast = sessionDate < new Date();
-                      const statusColor =
-                        session.status === "completed"
-                          ? "bg-green-100 text-green-700 border-green-200"
-                          : session.status === "cancelled"
-                          ? "bg-red-100 text-red-700 border-red-200"
-                          : session.status === "in-progress"
-                          ? "bg-yellow-100 text-yellow-700 border-yellow-200"
-                        : isPast
-                          ? "bg-gray-100 text-gray-700 border-gray-200"
-                          : "bg-blue-100 text-blue-700 border-blue-200";
-
-                      const canJoinMeeting =
-                        session.meeting_link &&
-                        sessionDate <= new Date() &&
-                        !isPast &&
-                        session.status !== "completed" &&
-                        session.status !== "cancelled";
-                      const meetingStartTime = new Date(
-                        sessionDate.getTime() + session.duration * 60000
-                      );
-                      const isMeetingActive =
-                        new Date() >= sessionDate &&
-                        new Date() <= meetingStartTime;
-
-                      return (
-                        <motion.div
-                          key={session.id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all bg-white"
+                    {/* Pagination Controls */}
+                    {jobs.length > jobsPerPage && (
+                      <div className="flex items-center justify-center gap-2 mt-8">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((prev) => Math.max(1, prev - 1))
+                          }
+                          disabled={currentPage === 1}
+                          className="flex items-center gap-1"
                         >
-                          <div className="flex items-start gap-4">
-                            {/* Profile Section */}
-                            <div className="flex-shrink-0">
-                              {session.learner_name &&
-                              session.learner_name !== "TBD" ? (
-                                <img
-                                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                    session.learner_name
-                                  )}&background=3B82F6&color=fff&size=128`}
-                                  alt={session.learner_name}
-                                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                      session.learner_name
-                                    )}&background=3B82F6&color=fff&size=128`;
-                                  }}
-                                />
-                              ) : (
-                                <img
-                                  src={
-                                    mentorData?.avatar ||
-                                    `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                      mentorData?.name ||
-                                        userData?.full_name ||
-                                        "M"
-                                    )}&background=3B82F6&color=fff&size=128`
-                                  }
-                                  alt={
-                                    mentorData?.name ||
-                                    userData?.full_name ||
-                                    "Mentor"
-                                  }
-                                  className="w-16 h-16 rounded-full object-cover border-2 border-blue-200"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                                      mentorData?.name ||
-                                        userData?.full_name ||
-                                        "M"
-                                    )}&background=3B82F6&color=fff&size=128`;
-                                  }}
-                                />
-                              )}
-                            </div>
+                          <ChevronLeft className="h-4 w-4" />
+                          Previous
+                        </Button>
 
-                            {/* Content Section */}
-                    <div className="flex-1 min-w-0">
-                              <div className="flex items-start justify-between mb-3">
-                                <div className="flex-1">
-                                  <h3 className="text-xl font-bold text-gray-900 mb-1">
-                                    {session.topic}
-                                  </h3>
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span
-                                      className={`px-3 py-1 text-xs font-semibold rounded-full border ${statusColor}`}
-                                    >
-                                      {session.status ||
-                                        (isPast ? "completed" : "scheduled")}
+                        <div className="flex items-center gap-1">
+                          {Array.from(
+                            { length: Math.ceil(jobs.length / jobsPerPage) },
+                            (_, i) => i + 1
+                          )
+                            .filter((page) => {
+                              // Show first page, last page, current page, and pages around current
+                              if (
+                                page === 1 ||
+                                page === Math.ceil(jobs.length / jobsPerPage)
+                              )
+                                return true;
+                              if (Math.abs(page - currentPage) <= 1)
+                                return true;
+                              return false;
+                            })
+                            .map((page, index, array) => {
+                              // Add ellipsis if there's a gap
+                              const showEllipsis =
+                                index > 0 && page - array[index - 1] > 1;
+                              return (
+                                <div
+                                  key={page}
+                                  className="flex items-center gap-1"
+                                >
+                                  {showEllipsis && (
+                                    <span className="px-2 text-gray-500">
+                                      ...
                                     </span>
-                                    {session.is_paid && (
-                                      <span className="px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-700 border border-green-200">
-                                        Paid
-                                      </span>
-                                    )}
-                                    {!session.is_paid && (
-                                      <span className="px-3 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-700 border border-orange-200">
-                                        Awaiting Payment
-                                      </span>
-                                )}
-                    </div>
-                  </div>
-                    </div>
-
-                              {/* Student Info */}
-                              {session.is_paid &&
-                              session.learner_name &&
-                              session.learner_name !== "TBD" ? (
-                                <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                                  <p className="text-xs font-semibold text-blue-900 mb-2">
-                                    Student Information
-                                  </p>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-2">
-                                      <User className="h-4 w-4 text-blue-600" />
-                                      <span className="text-sm font-medium text-gray-900">
-                                        {session.learner_name}
-                                      </span>
-                  </div>
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="h-4 w-4 text-blue-600" />
-                                      <span className="text-sm text-gray-700">
-                                        {session.learner_email}
-                                      </span>
-                    </div>
-                  </div>
-                </div>
-                              ) : (
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <p className="text-xs font-semibold text-gray-600 mb-1">
-                                    No student assigned yet
-                                  </p>
-                                  <p className="text-xs text-gray-500">
-                                    Waiting for a student to book this session
-                                  </p>
-                            </div>
-                          )}
-
-                              {/* Session Details */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-                                <div className="flex items-center gap-2 text-gray-700">
-                                  <CalendarIcon className="h-4 w-4 text-blue-600" />
-                                  <span className="text-sm font-medium">
-                                    {new Date(session.date).toLocaleDateString(
-                                      "en-US",
-                                      {
-                                        weekday: "short",
-                                        month: "short",
-                                        day: "numeric",
-                                        year: "numeric",
-                                      }
-                                    )}
-                                  </span>
-                            </div>
-                                <div className="flex items-center gap-2 text-gray-700">
-                                  <Clock className="h-4 w-4 text-blue-600" />
-                            <span className="text-sm font-medium">
-                                    {new Date(
-                                      `2000-01-01T${session.time}`
-                                    ).toLocaleTimeString("en-US", {
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                      hour12: true,
-                                    })}{" "}
-                                    • {session.duration} min
-                            </span>
+                                  )}
+                                  <Button
+                                    variant={
+                                      currentPage === page
+                                        ? "default"
+                                        : "outline"
+                                    }
+                                    size="sm"
+                                    onClick={() => setCurrentPage(page)}
+                                    className={
+                                      currentPage === page
+                                        ? "bg-blue-600 hover:bg-blue-700 text-white"
+                                        : ""
+                                    }
+                                  >
+                                    {page}
+                                  </Button>
+                                </div>
+                              );
+                            })}
                         </div>
-                                <div className="flex items-center gap-2 text-gray-700">
-                                  <span className="text-sm font-semibold">
-                                    {convertedAmounts[session.id] ||
-                                      `$${parseFloat(
-                                        session.amount || 0
-                                      ).toFixed(2)}`}
-                                  </span>
-                  </div>
-                                {session.meeting_type && (
-                                  <div className="flex items-center gap-2 text-gray-700">
-                                    <Video className="h-4 w-4 text-blue-600" />
-                                    <span className="text-sm capitalize">
-                                      {session.meeting_type.replace("-", " ")}
-                                    </span>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setCurrentPage((prev) =>
+                              Math.min(
+                                Math.ceil(jobs.length / jobsPerPage),
+                                prev + 1
+                              )
+                            )
+                          }
+                          disabled={
+                            currentPage === Math.ceil(jobs.length / jobsPerPage)
+                          }
+                          className="flex items-center gap-1"
+                        >
+                          Next
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
                       </div>
-                                )}
-                          </div>
+                    )}
 
-                              {/* Notes */}
-                              {session.notes && (
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <p className="text-xs font-semibold text-gray-700 mb-1">
-                                    Notes
-                                  </p>
-                                  <p className="text-sm text-gray-600">
-                                    {session.notes}
-                                  </p>
-                              </div>
-                              )}
-
-                              {/* Meeting Link - Only show if session is paid AND student is assigned */}
-                              {session.meeting_link && 
-                               session.is_paid === true && 
-                               session.learner_name && 
-                                session.learner_name !== "TBD" &&
-                                session.learner_name.trim() !== "" &&
-                               session.learner_email && (
-                                <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                  <div className="flex items-center justify-between">
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-700 mb-1">
-                                          Meeting Link
-                                        </p>
-                                        <p className="text-sm text-gray-600 truncate">
-                                          {session.meeting_link}
-                                        </p>
-                            </div>
-                <Button 
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                          navigator.clipboard.writeText(
-                                            session.meeting_link
-                                          );
-                                      }}
-                                      className="ml-2 flex-shrink-0"
-                                    >
-                                      <Copy className="h-4 w-4" />
-                </Button>
-          </div>
-              </div>
-                              )}
-
-                              {/* Join Meeting Button - Only accessible when meeting starts and session is paid AND student is assigned */}
-                              {session.meeting_link && 
-                               session.is_paid === true && 
-                               session.learner_name && 
-                                session.learner_name !== "TBD" &&
-                                session.learner_name.trim() !== "" &&
-                               session.learner_email && (
-                                <div className="mt-4 pt-4 border-t border-gray-200">
-                                  {isMeetingActive ? (
-                                    <a
-                                      href={session.meeting_link}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium text-sm shadow-sm"
-                                    >
-                                      <Video className="h-4 w-4" />
-                                      Join Meeting Now
-                                      <ArrowRight className="h-4 w-4" />
-                                    </a>
-                                  ) : sessionDate > new Date() ? (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                                      <Clock className="h-4 w-4" />
-                                        Meeting starts{" "}
-                                        {new Date(
-                                          sessionDate
-                                        ).toLocaleDateString("en-US", {
-                                          month: "short",
-                                          day: "numeric",
-                                        })}{" "}
-                                        at{" "}
-                                        {new Date(
-                                          `2000-01-01T${session.time}`
-                                        ).toLocaleTimeString("en-US", {
-                                          hour: "numeric",
-                                          minute: "2-digit",
-                                          hour12: true,
-                                        })}
-                    </div>
-                                  ) : (
-                                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-500 rounded-lg font-medium text-sm">
-                                      <Clock className="h-4 w-4" />
-                                      Meeting has ended
-                  </div>
-                                  )}
-                    </div>
-                              )}
-                  </div>
-                    </div>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
+                    {/* Page Info */}
+                    {jobs.length > jobsPerPage && (
+                      <div className="text-center text-sm text-gray-600 mt-4">
+                        Showing {(currentPage - 1) * jobsPerPage + 1} to{" "}
+                        {Math.min(currentPage * jobsPerPage, jobs.length)} of{" "}
+                        {jobs.length} jobs
+                      </div>
+                    )}
+                  </>
                 )}
-              </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="tasks" className="space-y-4">
-          <Card className="bg-white border rounded-xl shadow-sm">
-              <CardHeader>
-              <CardTitle className="text-gray-900">Tasks & Grading</CardTitle>
-                <CardDescription className="text-gray-600">
-                  View and grade student task submissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-              {tasksLoading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-                    </div>
-              ) : tasks.length === 0 ? (
-                <div className="text-center py-12">
-                  <ClipboardList className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-lg font-medium text-gray-600 mb-2">
-                      No tasks yet
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Tasks you create will appear here for grading
-                    </p>
-                  </div>
-              ) : (
-                <div className="space-y-4">
-                  {tasks.map((task: any) => {
-                      const dueDate = new Date(task.due_date);
-                    
-                    return (
-                      <motion.div
-                        key={task.id}
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-shadow bg-white"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                                {task.title}
-                              </h3>
-                            <div className="flex items-center gap-2 flex-wrap mb-2">
-                                <Badge
-                                  className={
-                                    task.status === "graded"
-                                      ? "bg-green-100 text-green-700 border-green-200"
-                                      : task.status === "submitted"
-                                      ? "bg-purple-100 text-purple-700 border-purple-200"
-                                      : task.status === "assigned"
-                                      ? "bg-blue-100 text-blue-700 border-blue-200"
-                                      : "bg-gray-100 text-gray-700 border-gray-200"
-                                  }
-                                >
-                                  {task.status === "graded" && (
-                                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                                  )}
-                                  {task.status.charAt(0).toUpperCase() +
-                                    task.status.slice(1)}
-                              </Badge>
-                              {task.session && (
-                                  <Badge variant="outline">
-                                    {task.session.topic}
-                                  </Badge>
-                              )}
-                    </div>
-                  </div>
-                            {task.status === "graded" &&
-                              task.score !== null && (
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-green-600">
-                                {task.score}/{task.max_score}
-                    </div>
-                              <div className="text-sm text-gray-500">
-                                    {(
-                                      (task.score / task.max_score) *
-                                      100
-                                    ).toFixed(1)}
-                                    %
-                  </div>
-                </div>
-                          )}
-          </div>
-
-                        <div className="space-y-3 mb-4">
-                            <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                              {task.description}
-                            </p>
-                          
-                          {task.instructions && (
-                            <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <p className="text-xs font-semibold text-blue-900 mb-1">
-                                  Instructions:
-                                </p>
-                                <p className="text-sm text-blue-800 whitespace-pre-wrap">
-                                  {task.instructions}
-                                </p>
-              </div>
-                          )}
-
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2 text-gray-600">
-                              <CalendarIcon className="h-4 w-4" />
-                              <span>Due: {dueDate.toLocaleDateString()}</span>
-                    </div>
-                            {task.learner && (
-                              <div className="flex items-center gap-2 text-gray-600">
-                                <User className="h-4 w-4" />
-                                  <span>
-                                    {task.learner.full_name ||
-                                      task.learner.email}
-                                  </span>
-                  </div>
-                            )}
-                    </div>
-
-                          {task.submission_text && (
-                            <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                <p className="text-xs font-semibold text-gray-700 mb-1">
-                                  Student Submission:
-                                </p>
-                                <p className="text-sm text-gray-600 whitespace-pre-wrap">
-                                  {task.submission_text}
-                                </p>
-                              {task.submission_file_url && (
-                                <a
-                                  href={task.submission_file_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-1 text-sm text-blue-600 hover:underline mt-2"
-                                >
-                                  <Download className="h-3 w-3" />
-                                    {task.submission_file_name ||
-                                      "Download file"}
-                                </a>
-                              )}
-                              {task.submitted_at && (
-                                <p className="text-xs text-gray-500 mt-2">
-                                    Submitted:{" "}
-                                    {new Date(
-                                      task.submitted_at
-                                    ).toLocaleString()}
-                                </p>
-                              )}
-                  </div>
-                          )}
-
-                            {task.status === "graded" && task.feedback && (
-                            <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                                <p className="text-xs font-semibold text-green-900 mb-1">
-                                  Your Feedback:
-                                </p>
-                                <p className="text-sm text-green-800 whitespace-pre-wrap">
-                                  {task.feedback}
-                                </p>
-                    </div>
-                          )}
-                  </div>
-
-                        <div className="flex justify-end gap-2 pt-4 border-t">
-                            {task.status === "submitted" && (
-                            <Button
-                              onClick={() => {
-                                  setSelectedTask(task);
-                                setGradeData({
-                                  score: task.max_score.toString(),
-                                    feedback: "",
-                                  });
-                                  setIsGradeModalOpen(true);
-                              }}
-                            >
-                              <Star className="h-4 w-4 mr-2" />
-                              Grade Task
-                      </Button>
-                          )}
-                            {task.status === "graded" && (
-                            <Button
-                              variant="outline"
-                              onClick={() => {
-                                  setSelectedTask(task);
-                                setGradeData({
-                                    score:
-                                      task.score?.toString() ||
-                                      task.max_score.toString(),
-                                    feedback: task.feedback || "",
-                                  });
-                                  setIsGradeModalOpen(true);
-                              }}
-                            >
-                              <Star className="h-4 w-4 mr-2" />
-                              Update Grade
-                            </Button>
-                          )}
-                </div>
-                      </motion.div>
-                      );
-                  })}
-                </div>
-              )}
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
 
-      {/* Debug: Test button to manually open modal */}
-      {userData && userData.id && mentorData && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <button
-            onClick={() => {
-                console.log("Manual test: Opening modal");
-                console.log(
-                  "Current state - isProfileCompletionOpen:",
-                  isProfileCompletionOpen
-                );
-                console.log(
-                  "Mentor data - is_complete:",
-                  mentorData.is_complete
-                );
-                setIsProfileCompletionOpen(true);
-            }}
-            className="bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg"
-          >
-            Test Modal (Debug)
-          </button>
-    </div>
-      )}
-
-      {/* Mentor Profile Completion Form */}
-      {userData && userData.id && (
-        <MentorProfileCompletionForm
-          isOpen={isProfileCompletionOpen}
-          onClose={() => {
+        {/* Mentor Profile Completion Form - Only show if application status is not open */}
+        {userData && userData.id && !isApplicationStatusOpen && (
+          <MentorProfileCompletionForm
+            isOpen={isProfileCompletionOpen}
+            onClose={() => {
               console.log("Closing profile completion modal");
               setIsProfileCompletionOpen(false);
-          }}
-          userId={userData.id}
-          onComplete={() => {
+            }}
+            userId={userData.id}
+            onComplete={async () => {
               console.log("Profile completion finished");
               setIsProfileCompletionOpen(false);
-            // Show success modal
-              setIsSuccessModalOpen(true);
-            // Refresh user data
-            const fetchUserData = async () => {
+              // Check if application has been submitted
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+              if (user) {
+                const { data: progressData } = await supabase
+                  .from("mentor_application_progress")
+                  .select("id, application_submitted")
+                  .eq("user_id", user.id)
+                  .maybeSingle();
+
+                if (progressData && progressData.application_submitted) {
+                  // Application already submitted, show status popup
+                  setIsApplicationStatusOpen(true);
+                } else {
+                  // No application submitted, show success modal
+                  setIsSuccessModalOpen(true);
+                }
+              }
+              // Refresh user data
+              const fetchUserData = async () => {
                 const {
                   data: { user },
                 } = await supabase.auth.getUser();
-              if (user) {
-                const { data: mentor } = await supabase
+                if (user) {
+                  const { data: mentor } = await supabase
                     .from("mentors")
                     .select("*")
                     .eq("user_id", user.id)
                     .single();
-                if (mentor) {
+                  if (mentor) {
                     setMentorData(mentor);
                     setUserData({
                       ...mentor,
                       full_name: mentor.name,
                       user_type: "mentor",
+                      email: mentor.email || user.email || "", // Always include email from auth user
                     });
                   }
                 }
               };
               fetchUserData();
+            }}
+          />
+        )}
+        <ProfileCompletionSuccessModal
+          isOpen={isSuccessModalOpen}
+          onClose={() => setIsSuccessModalOpen(false)}
+          onContinue={async () => {
+            setIsSuccessModalOpen(false);
+            // Check if application has already been submitted
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
+            if (user) {
+              const { data: progressData } = await supabase
+                .from("mentor_application_progress")
+                .select("id, application_submitted")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+              if (progressData && progressData.application_submitted) {
+                // Application already submitted, show status popup
+                setIsApplicationStatusOpen(true);
+              } else {
+                // No application submitted, show application form
+                setIsApplicationModalOpen(true);
+              }
+            } else {
+              setIsApplicationModalOpen(true);
+            }
           }}
         />
-      )}
-      <ProfileCompletionSuccessModal
-        isOpen={isSuccessModalOpen}
-        onClose={() => setIsSuccessModalOpen(false)}
-        onContinue={() => {
-            setIsSuccessModalOpen(false);
-            setIsApplicationModalOpen(true);
-        }}
-      />
-      <TutorApplicationModal
-        isOpen={isApplicationModalOpen}
-        onClose={() => setIsApplicationModalOpen(false)}
+        <TutorApplicationModal
+          isOpen={isApplicationModalOpen}
+          onClose={() => setIsApplicationModalOpen(false)}
           userEmail={userData?.email || ""}
           userName={userData?.full_name || userData?.name || ""}
-      />
+          onComplete={() => {
+            setIsApplicationModalOpen(false);
+            // Show application status popup after submission
+            setTimeout(() => {
+              setIsApplicationStatusOpen(true);
+            }, 500);
+          }}
+        />
+        {/* Application Status Popup - Shows when is_complete is FALSE */}
+        {mentorData &&
+          (mentorData.is_complete === false ||
+            mentorData.is_complete === "false" ||
+            mentorData.is_complete === null ||
+            mentorData.is_complete === undefined) && (
+            <MentorApplicationStatusPopup
+              isOpen={isApplicationStatusOpen}
+              mentorId={mentorData.id}
+              userId={userData?.id || null}
+              onClose={() => {
+                setIsApplicationStatusOpen(false);
+                // Use router refresh instead of full reload
+                router.refresh();
+              }}
+            />
+          )}
+        {googleUserData && (
+          <RoleSelectionModal
+            isOpen={showRoleSelection}
+            onClose={() => {
+              setShowRoleSelection(false);
+              setGoogleUserData(null);
+            }}
+            userId={googleUserData.id}
+            userEmail={googleUserData.email}
+            userName={googleUserData.name}
+            userAvatar={googleUserData.avatar}
+            onTutorSelected={() => {
+              // Close role selection modal
+              setShowRoleSelection(false);
+              setGoogleUserData(null);
+              // Refresh user data to get the newly created mentor record
+              const refreshUserData = async () => {
+                try {
+                  const {
+                    data: { user },
+                  } = await supabase.auth.getUser();
+                  if (!user) return;
 
-      {/* Grade Task Modal */}
-      <Dialog open={isGradeModalOpen} onOpenChange={setIsGradeModalOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Grade Task: {selectedTask?.title}</DialogTitle>
-            <DialogDescription>
-              Provide a score and feedback for the student's submission
-            </DialogDescription>
-          </DialogHeader>
-                <div className="space-y-4">
-            <div>
+                  const { data: mentor } = await supabase
+                    .from("mentors")
+                    .select("*")
+                    .eq("user_id", user.id)
+                    .maybeSingle();
+
+                  if (mentor) {
+                    setMentorData(mentor);
+                    setUserData({
+                      ...mentor,
+                      full_name: mentor.name,
+                      user_type: "mentor",
+                      email: mentor.email || user.email || "", // Always include email from auth user
+                    });
+                    // Check if application has been submitted
+                    const { data: progressData } = await supabase
+                      .from("mentor_application_progress")
+                      .select("id, application_submitted")
+                      .eq("user_id", user.id)
+                      .maybeSingle();
+
+                    if (progressData && progressData.application_submitted) {
+                      // Application submitted, show status popup
+                      setTimeout(() => {
+                        setIsApplicationStatusOpen(true);
+                      }, 300);
+                    } else {
+                      // No application, show profile completion
+                      setTimeout(() => {
+                        setIsProfileCompletionOpen(true);
+                      }, 300);
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error refreshing user data:", error);
+                }
+              };
+              refreshUserData();
+            }}
+          />
+        )}
+
+        {/* Grade Task Modal */}
+        <Dialog open={isGradeModalOpen} onOpenChange={setIsGradeModalOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Grade Task: {selectedTask?.title}</DialogTitle>
+              <DialogDescription>
+                Provide a score and feedback for the student's submission
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
                 <Label htmlFor="score">
                   Score (out of {selectedTask?.max_score || 100})
                 </Label>
-              <Input
-                id="score"
-                type="number"
-                value={gradeData.score}
+                <Input
+                  id="score"
+                  type="number"
+                  value={gradeData.score}
                   onChange={(e) =>
                     setGradeData({ ...gradeData, score: e.target.value })
                   }
-                min="0"
-                max={selectedTask?.max_score || 100}
-                step="0.01"
-              />
-                  </div>
-            <div>
-              <Label htmlFor="feedback">Feedback</Label>
-              <Textarea
-                id="feedback"
-                value={gradeData.feedback}
+                  min="0"
+                  max={selectedTask?.max_score || 100}
+                  step="0.01"
+                />
+              </div>
+              <div>
+                <Label htmlFor="feedback">Feedback</Label>
+                <Textarea
+                  id="feedback"
+                  value={gradeData.feedback}
                   onChange={(e) =>
                     setGradeData({ ...gradeData, feedback: e.target.value })
                   }
-                placeholder="Provide detailed feedback for the student..."
-                rows={8}
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
+                  placeholder="Provide detailed feedback for the student..."
+                  rows={8}
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => {
                     setIsGradeModalOpen(false);
                     setSelectedTask(null);
                     setGradeData({ score: "", feedback: "" });
-                }}
-                disabled={grading}
-              >
-                Cancel
-                      </Button>
-              <Button
-                onClick={async () => {
+                  }}
+                  disabled={grading}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={async () => {
                     if (!selectedTask) return;
                     if (
                       !gradeData.score ||
@@ -3164,14 +2791,14 @@ export default function DashboardPage() {
                     }
 
                     setGrading(true);
-                  try {
-                    const { error } = await supabase
+                    try {
+                      const { error } = await supabase
                         .from("tasks")
-                      .update({
-                        score: parseFloat(gradeData.score),
-                        feedback: gradeData.feedback || null,
-                        graded_at: new Date().toISOString(),
-                        graded_by: mentorData?.id,
+                        .update({
+                          score: parseFloat(gradeData.score),
+                          feedback: gradeData.feedback || null,
+                          graded_at: new Date().toISOString(),
+                          graded_by: mentorData?.id,
                           status: "graded",
                         })
                         .eq("id", selectedTask.id);
@@ -3182,9 +2809,9 @@ export default function DashboardPage() {
                       setIsGradeModalOpen(false);
                       setSelectedTask(null);
                       setGradeData({ score: "", feedback: "" });
-                    
-                    // Refresh tasks
-                    const { data, error: fetchError } = await supabase
+
+                      // Refresh tasks
+                      const { data, error: fetchError } = await supabase
                         .from("tasks")
                         .select(
                           `
@@ -3204,32 +2831,32 @@ export default function DashboardPage() {
                         .order("created_at", { ascending: false });
 
                       if (!fetchError) setTasks(data || []);
-                  } catch (error: any) {
+                    } catch (error: any) {
                       console.error("Error grading task:", error);
                       toast.error(error.message || "Failed to grade task");
-                  } finally {
+                    } finally {
                       setGrading(false);
-                  }
-                }}
-                disabled={grading}
-              >
-                {grading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Grading...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Submit Grade
-                  </>
-                )}
-              </Button>
-                </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+                    }
+                  }}
+                  disabled={grading}
+                >
+                  {grading ? (
+                    <>
+                      <LoadingLogo size={16} />
+                      Grading...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="h-4 w-4 mr-2" />
+                      Submit Grade
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 }

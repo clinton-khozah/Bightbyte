@@ -41,9 +41,19 @@ export default function RadialOrbitalTimeline({
   const [activeNodeId, setActiveNodeId] = useState<number | null>(null);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const orbitRef = useRef<HTMLDivElement>(null);
   const nodeRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const handleContainerClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === containerRef.current || e.target === orbitRef.current) {
@@ -107,7 +117,7 @@ export default function RadialOrbitalTimeline({
 
   const calculateNodePosition = (index: number, total: number) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 250;
+    const radius = isMobile ? 120 : 250;
     const radian = (angle * Math.PI) / 180;
 
     const x = radius * Math.cos(radian) + centerOffset.x;
@@ -148,7 +158,7 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full h-[70vh] min-h-[600px] flex flex-col items-center justify-center overflow-visible p-8"
+      className="w-full h-[70vh] min-h-[350px] md:min-h-[600px] flex flex-col items-center justify-center overflow-visible p-4 md:p-8"
       ref={containerRef}
       onClick={handleContainerClick}
     >
@@ -161,19 +171,19 @@ export default function RadialOrbitalTimeline({
             transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
           }}
         >
-          <div className="absolute w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 via-blue-400 to-blue-600 flex items-center justify-center z-10 shadow-lg">
-            <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center">
+          <div className="absolute w-12 h-12 md:w-24 md:h-24 rounded-full bg-gradient-to-br from-blue-500 via-blue-400 to-blue-600 flex items-center justify-center z-10 shadow-lg">
+            <div className="w-10 h-10 md:w-20 md:h-20 rounded-full bg-white flex items-center justify-center">
               <Image
                 src="/images/logo1.png"
                 alt="Brightbyt Logo"
-                width={56}
-                height={56}
-                className="object-contain"
+                width={32}
+                height={32}
+                className="object-contain w-8 h-8 md:w-14 md:h-14"
               />
             </div>
           </div>
 
-          <div className="absolute w-[500px] h-[500px] rounded-full border-[3px] border-blue-200"></div>
+          <div className="absolute w-[250px] h-[250px] md:w-[500px] md:h-[500px] rounded-full border-2 md:border-[3px] border-blue-200"></div>
 
           {timelineData.map((item, index) => {
             const position = calculateNodePosition(index, timelineData.length);
@@ -202,7 +212,19 @@ export default function RadialOrbitalTimeline({
                 <div
                   className={`absolute rounded-full -inset-1 ${
                     isPulsing ? "animate-pulse duration-1000" : ""
-                  }`}
+                  } md:hidden`}
+                  style={{
+                    background: `radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 70%)`,
+                    width: `${item.energy * 0.25 + 20}px`,
+                    height: `${item.energy * 0.25 + 20}px`,
+                    left: `-${(item.energy * 0.25 + 20 - 20) / 2}px`,
+                    top: `-${(item.energy * 0.25 + 20 - 20) / 2}px`,
+                  }}
+                ></div>
+                <div
+                  className={`absolute rounded-full -inset-1 ${
+                    isPulsing ? "animate-pulse duration-1000" : ""
+                  } hidden md:block`}
                   style={{
                     background: `radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, rgba(59, 130, 246, 0) 70%)`,
                     width: `${item.energy * 0.5 + 40}px`,
@@ -214,7 +236,7 @@ export default function RadialOrbitalTimeline({
 
                 <div
                   className={`
-                  w-20 h-20 rounded-full flex items-center justify-center
+                  w-10 h-10 md:w-20 md:h-20 rounded-full flex items-center justify-center
                   ${
                     isExpanded
                       ? "bg-blue-600 text-white"
@@ -222,7 +244,7 @@ export default function RadialOrbitalTimeline({
                       ? "bg-blue-100 text-blue-600"
                       : "bg-white text-blue-600"
                   }
-                  border-[3px] 
+                  border-2 md:border-[3px] 
                   ${
                     isExpanded
                       ? "border-blue-600 shadow-lg shadow-blue-200"
@@ -231,16 +253,16 @@ export default function RadialOrbitalTimeline({
                       : "border-blue-300"
                   }
                   transition-all duration-300 transform
-                  ${isExpanded ? "scale-150" : ""}
+                  ${isExpanded ? "scale-150 md:scale-150" : ""}
                 `}
                 >
-                  <Icon size={28} />
+                  <Icon className="w-4 h-4 md:w-7 md:h-7" />
                 </div>
 
                 <div
                   className={`
-                  absolute top-24 whitespace-nowrap
-                  text-base font-semibold tracking-wider
+                  absolute top-12 md:top-24 whitespace-nowrap
+                  text-[10px] md:text-base font-semibold tracking-wider
                   transition-all duration-300
                   ${isExpanded ? "text-white scale-125" : "text-white"}
                 `}
@@ -249,8 +271,8 @@ export default function RadialOrbitalTimeline({
                 </div>
                 <div
                   className={`
-                  absolute top-36 whitespace-nowrap
-                  text-sm font-medium tracking-wider
+                  absolute top-16 md:top-36 whitespace-nowrap
+                  text-[9px] md:text-sm font-medium tracking-wider
                   transition-all duration-300
                   ${isExpanded ? "text-white scale-110" : "text-white/80"}
                 `}
@@ -259,12 +281,12 @@ export default function RadialOrbitalTimeline({
                 </div>
 
                 {isExpanded && (
-                  <Card className="absolute top-32 left-1/2 -translate-x-1/2 w-80 bg-white border border-gray-200 shadow-lg rounded-2xl overflow-visible">
+                  <Card className="absolute top-24 md:top-32 left-1/2 -translate-x-1/2 w-64 md:w-80 bg-white border border-gray-200 shadow-lg rounded-xl md:rounded-2xl overflow-visible">
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-px h-3 bg-gray-200"></div>
-                    <CardHeader className="pb-2">
+                    <CardHeader className="pb-2 p-4 md:p-6">
                       <div className="flex justify-between items-center">
                         <Badge
-                          className={`px-2 text-xs ${getStatusStyles(
+                          className={`px-1.5 md:px-2 text-[10px] md:text-xs ${getStatusStyles(
                             item.status
                           )}`}
                         >
@@ -274,23 +296,43 @@ export default function RadialOrbitalTimeline({
                             ? "IN PROGRESS"
                             : "PENDING"}
                         </Badge>
-                        <span className="text-xs font-mono text-gray-500">
+                        <span className="text-[10px] md:text-xs font-mono text-gray-500">
                           {item.date}
                         </span>
                       </div>
-                      <CardTitle className="text-lg mt-2 font-bold text-gray-900">
+                      <CardTitle className="text-sm md:text-lg mt-2 font-bold text-gray-900">
                         {item.title}
                       </CardTitle>
                     </CardHeader>
-                    <CardContent className="text-sm text-gray-700">
-                      <p className="mb-4">{item.content}</p>
+                    <CardContent className="text-xs md:text-sm text-gray-700 p-4 md:p-6 pt-0">
+                      <div className="mb-3 md:mb-4 whitespace-pre-line leading-relaxed">
+                        {item.content.split('\n').map((line, idx) => {
+                          // Check if line is a tip bullet point
+                          if (line.trim().startsWith('•') || line.trim().startsWith('💡')) {
+                            return (
+                              <div key={idx} className="mb-1.5 md:mb-2 flex items-start gap-2">
+                                <span className="text-blue-600 font-semibold mt-0.5 flex-shrink-0">
+                                  {line.trim().startsWith('💡') ? '💡' : '•'}
+                                </span>
+                                <span className="flex-1">{line.replace(/^[•💡]\s*/, '').trim()}</span>
+                              </div>
+                            );
+                          }
+                          // Regular paragraph
+                          return (
+                            <p key={idx} className={idx === 0 ? "mb-2 md:mb-3" : "mb-1.5 md:mb-2"}>
+                              {line}
+                            </p>
+                          );
+                        })}
+                      </div>
                       {item.id === 1 && (
                         <Button
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsSignInOpen(true);
                           }}
-                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs md:text-sm h-8 md:h-10"
                         >
                           Sign In
                         </Button>
