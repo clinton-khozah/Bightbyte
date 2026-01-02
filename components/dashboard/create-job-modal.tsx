@@ -861,7 +861,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue placeholder="Select job type" />
                             </SelectTrigger>
-                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
+                            <SelectContent className="z-[10000] bg-white border shadow-lg">
                               <SelectItem value="job">
                                 <div className="flex items-center gap-2">
                                   <Briefcase className="h-3.5 w-3.5" />
@@ -907,7 +907,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue placeholder="Select category" />
                             </SelectTrigger>
-                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
+                            <SelectContent className="z-[10000] bg-white border shadow-lg">
                               <SelectItem value="IT">IT</SelectItem>
                               <SelectItem value="Engineering">Engineering</SelectItem>
                               <SelectItem value="Finance">Finance</SelectItem>
@@ -1054,7 +1054,7 @@ export function CreateJobModal({
                             <SelectTrigger className="h-10 text-sm">
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="z-[10000] bg-white" position="item-aligned">
+                            <SelectContent className="z-[10000] bg-white border shadow-lg">
                               <SelectItem value="USD">USD ($)</SelectItem>
                               <SelectItem value="ZAR">ZAR (R)</SelectItem>
                               <SelectItem value="EUR">EUR (€)</SelectItem>
