@@ -14,7 +14,8 @@ export default function AboutPage() {
           width: "100vw",
           height: "100vh",
           backgroundImage: "url('/images/adspace.png')",
-          backgroundSize: "120%",
+          backgroundSize: "cover",
+          backgroundRepeat: "no-repeat",
           backgroundPosition: "center",
           zIndex: 0,
         }}

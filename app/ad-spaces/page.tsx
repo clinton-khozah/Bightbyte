@@ -251,8 +251,9 @@ export default function FindTutorsPage() {
           width: "100vw",
           height: "100vh",
           backgroundImage: "url('/images/adspace.png')",
-          backgroundSize: "120%",
+          backgroundSize: "cover",
           backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
           zIndex: 0,
         }}
         aria-hidden="true"
