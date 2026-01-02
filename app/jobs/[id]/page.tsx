@@ -306,7 +306,7 @@ export default function JobDetailsPage() {
         </Button>
 
         {/* Job Card */}
-        <div className="bg-white rounded-lg md:rounded-xl shadow-lg border-2 border-blue-200 p-4 md:p-8">
+        <div className="bg-white rounded-lg md:rounded-xl shadow-lg border-2 border-blue-200 p-4 md:p-8 break-words overflow-wrap-anywhere">
           {/* Header */}
           <div className="flex items-start gap-3 md:gap-6 mb-4 md:mb-6">
             <Avatar className="h-12 w-12 md:h-20 md:w-20 border-2 border-blue-400 shadow-lg shadow-blue-200">
