@@ -557,25 +557,20 @@ export default function MyJobsPage() {
                             <MapPin className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
                             <span className="line-clamp-1">{job.location}</span>
                           </div>
-                          {job.application_deadline && (
+                          {companyName && (
                             <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-600">
-                              <CalendarIcon className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                              <Briefcase className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
                               <span className="line-clamp-1">
-                                Deadline:{" "}
-                                {new Date(
-                                  job.application_deadline
-                                ).toLocaleDateString()}
+                                Company: {companyName}
                               </span>
                             </div>
                           )}
-                          {job.duration && (
-                            <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-600">
-                              <Clock className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
-                              <span className="line-clamp-1">
-                                {job.duration}
-                              </span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-1.5 md:gap-2 text-xs md:text-sm text-gray-600">
+                            <Briefcase className="w-3 h-3 md:w-4 md:h-4 flex-shrink-0" />
+                            <span className="line-clamp-1 capitalize">
+                              Type: {job.job_type}
+                            </span>
+                          </div>
                         </div>
 
                         {job.tags && job.tags.length > 0 && (

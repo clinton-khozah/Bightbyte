@@ -486,20 +486,16 @@ export default function TutorSessionsPage() {
                             <MapPin className="w-4 h-4" />
                             <span>{job.location}</span>
                           </div>
-                          {job.application_deadline && (
+                          {companyName && (
                             <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <CalendarIcon className="w-4 h-4" />
-                              <span>
-                                Deadline: {new Date(job.application_deadline).toLocaleDateString()}
-                              </span>
+                              <Briefcase className="w-4 h-4" />
+                              <span className="truncate">Company: {companyName}</span>
                             </div>
                           )}
-                          {job.duration && (
-                            <div className="flex items-center gap-2 text-sm text-gray-600">
-                              <Clock className="w-4 h-4" />
-                              <span>{job.duration}</span>
-                            </div>
-                          )}
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Briefcase className="w-4 h-4" />
+                            <span className="capitalize">Type: {job.job_type}</span>
+                          </div>
                         </div>
 
                         {job.tags && job.tags.length > 0 && (

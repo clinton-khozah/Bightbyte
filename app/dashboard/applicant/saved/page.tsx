@@ -485,21 +485,16 @@ export default function SuggestedJobsPage() {
                         <Clock className="h-4 w-4" />
                         <span>Posted {getTimeAgo(job.created_at)}</span>
                       </div>
-                      {job.application_deadline && (
+                      {job.company_name && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Calendar className="h-4 w-4" />
-                          <span>
-                            Deadline:{" "}
-                            {new Date(job.application_deadline).toLocaleDateString()}
-                          </span>
+                          <Briefcase className="h-4 w-4" />
+                          <span className="truncate">Company: {job.company_name}</span>
                         </div>
                       )}
-                      {job.duration && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Clock className="h-4 w-4" />
-                          <span>Duration: {job.duration}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Briefcase className="h-4 w-4" />
+                        <span className="capitalize">Type: {job.job_type}</span>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-2 mb-4">
