@@ -131,19 +131,75 @@ export function JobNotificationPopup({
     e.preventDefault();
     if (!email) return;
 
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      alert("Please enter a valid email address.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
-      // Insert into job_notifications table
-      const { error } = await supabase.from("job_notifications").insert({
-        email: email,
-        categories: selectedCategories.length > 0 ? selectedCategories : null,
-        is_active: true,
-      });
+      // Check if email already exists
+      const { data: existing } = await supabase
+        .from("job_notifications")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
 
-      if (error) {
-        console.error("Error submitting notification:", error);
-        alert("Something went wrong. Please try again.");
-        return;
+      // Prepare categories - ensure it's in the correct format (array or null)
+      const categoriesData = selectedCategories.length > 0 ? selectedCategories : null;
+
+      if (existing) {
+        // Update existing subscription
+        const { error: updateError } = await supabase
+          .from("job_notifications")
+          .update({
+            categories: categoriesData,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("email", email);
+
+        if (updateError) {
+          console.error("Error updating notification:", updateError);
+          alert(`Error: ${updateError.message || "Something went wrong. Please try again."}`);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // Insert new subscription
+        const { error: insertError } = await supabase.from("job_notifications").insert({
+          email: email.trim().toLowerCase(),
+          categories: categoriesData,
+          is_active: true,
+        });
+
+        if (insertError) {
+          console.error("Error submitting notification:", insertError);
+          // Check for specific error types
+          if (insertError.code === "23505") {
+            // Duplicate key error - try updating instead
+            const { error: updateError } = await supabase
+              .from("job_notifications")
+              .update({
+                categories: categoriesData,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("email", email.trim().toLowerCase());
+
+            if (updateError) {
+              alert(`Error: ${updateError.message || "Something went wrong. Please try again."}`);
+              setIsSubmitting(false);
+              return;
+            }
+          } else {
+            alert(`Error: ${insertError.message || "Something went wrong. Please try again."}`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
       }
 
       // Send welcome email via Django API
