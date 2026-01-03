@@ -148,26 +148,11 @@ export default function BookingsPage() {
   }, [userData?.email])
 
   // Auto-detect user location on page load for currency conversion
+  // DISABLED: Removed automatic location request to prevent permission popup
+  // Location will only be requested when user explicitly clicks a button
   React.useEffect(() => {
-    if (!userLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          })
-        },
-        (error) => {
-          console.error("Error getting location for currency conversion:", error)
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 3600000 // Cache for 1 hour
-        }
-      )
-    }
-  }, [userLocation])
+    // Location detection disabled to prevent permission popup
+  }, [])
 
   // Convert all session amounts when sessions or user location changes
   React.useEffect(() => {

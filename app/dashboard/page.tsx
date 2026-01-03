@@ -1425,37 +1425,18 @@ export default function DashboardPage() {
   }, [mentorData?.country, userLocation]);
 
   // Auto-detect user location on page load for currency conversion
+  // DISABLED: Removed automatic location request to prevent permission popup
+  // Location will only be requested when user explicitly clicks a button
   useEffect(() => {
-    if (!userLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error(
-            "Error getting location for currency conversion:",
-            error
-          );
-          // If geolocation fails, use mentor's country if available
-          if (mentorData?.country) {
-            const currencyInfo = getCurrencyForCountry(mentorData.country);
-            setCurrencyInfo({
-              symbol: currencyInfo.symbol,
-              code: currencyInfo.code,
-            });
-          }
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 3600000, // Cache for 1 hour
-        }
-      );
+    // Use mentor's country for currency if available, without requesting location
+    if (mentorData?.country && !userLocation) {
+      const currencyInfo = getCurrencyForCountry(mentorData.country);
+      setCurrencyInfo({
+        symbol: currencyInfo.symbol,
+        code: currencyInfo.code,
+      });
     }
-  }, [userLocation, mentorData?.country]);
+  }, [mentorData?.country]);
 
   // Convert all session amounts when sessions or user location changes
   useEffect(() => {

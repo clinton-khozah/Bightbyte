@@ -141,30 +141,14 @@ export default function EarningsPage() {
   }, [router]);
 
   // Auto-detect user location for currency conversion
+  // DISABLED: Removed automatic location request to prevent permission popup
+  // Location will only be requested when user explicitly clicks a button
   useEffect(() => {
-    if (!userLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          if (mentorData?.country) {
-            // Use mentor's country as fallback
-            setUserLocation(null);
-          }
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 3600000,
-        }
-      );
+    // Use mentor's country for currency if available, without requesting location
+    if (mentorData?.country && !userLocation) {
+      // Location will be set manually if needed, but not automatically
     }
-  }, [userLocation, mentorData?.country]);
+  }, [mentorData?.country]);
 
   useEffect(() => {
     const fetchEarnings = async () => {

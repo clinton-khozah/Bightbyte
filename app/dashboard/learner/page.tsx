@@ -603,34 +603,14 @@ export default function LearnerDashboard() {
   }, [userData?.id, loading]);
 
   // Auto-detect user location on page load for currency conversion
+  // DISABLED: Removed automatic location request to prevent permission popup
+  // Location will only be requested when user explicitly clicks a button
   React.useEffect(() => {
-    if (!userLocation && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-        },
-        (error) => {
-          console.error(
-            "Error getting location for currency conversion:",
-            error
-          );
-          // Try to get location from user's country in their profile
-          if (userData?.country) {
-            // We can use a default location for the country, but for now just log
-            console.log("User country:", userData.country);
-          }
-        },
-        {
-          enableHighAccuracy: false,
-          timeout: 5000,
-          maximumAge: 3600000, // Cache for 1 hour
-        }
-      );
+    // Use user's country from profile if available, without requesting location
+    if (userData?.country) {
+      console.log("User country:", userData.country);
     }
-  }, [userLocation, userData?.country]);
+  }, [userData?.country]);
 
   // Lazy load mentors - only fetch when overview tab is active or when needed
   React.useEffect(() => {
