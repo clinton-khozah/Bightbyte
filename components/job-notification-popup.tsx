@@ -202,32 +202,33 @@ export function JobNotificationPopup({
         }
       }
 
-      // Send welcome email via Django API
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
-        const response = await fetch(`${apiUrl}/ai/email/send/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            type: "welcome",
-            to: email,
-            name: email.split("@")[0] || "there",
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
+      // Send welcome email via Django API (non-blocking)
+      // Don't wait for this to complete - subscription is already successful
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000/api/v1";
+      fetch(`${apiUrl}/ai/email/send/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: "welcome",
+          to: email.trim().toLowerCase(),
+          name: email.split("@")[0] || "there",
+        }),
+      })
+        .then((response) => {
+          if (response.ok) {
+            return response.json();
+          }
+          throw new Error(`HTTP ${response.status}`);
+        })
+        .then((data) => {
           console.log("✅ Welcome email sent to", email, data);
-        } else {
-          const error = await response.text();
-          console.error("Error sending welcome email:", error);
-        }
-      } catch (emailError) {
-        console.error("Error sending welcome email:", emailError);
-        // Don't fail the subscription if email fails
-      }
+        })
+        .catch((emailError) => {
+          console.error("Error sending welcome email (non-critical):", emailError);
+          // Don't fail the subscription if email fails
+        });
 
       // Mark as submitted in localStorage (also marks as seen)
       localStorage.setItem("jobNotificationSubmitted", "true");
