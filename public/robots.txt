@@ -1,0 +1,25 @@
+# robots.txt for Brightbyt
+# Allow all search engines to crawl the site
+
+User-agent: *
+Allow: /
+
+# Disallow admin and private areas
+Disallow: /dashboard/
+Disallow: /api/
+Disallow: /_next/
+Disallow: /test-email
+
+# Allow important pages
+Allow: /
+Allow: /jobs
+Allow: /about
+Allow: /company
+Allow: /resources
+
+# Sitemap location
+Sitemap: https://brightbyt.com/sitemap.xml
+
+# Crawl delay (optional, helps prevent server overload)
+Crawl-delay: 1
+
