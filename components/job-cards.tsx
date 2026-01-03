@@ -1058,7 +1058,7 @@ export function JobCards({
             )}
 
             {/* Page Info */}
-            <div className="text-center text-sm text-gray-600 mt-4 mb-2">
+            <div className="text-center text-sm text-white mt-4 mb-2">
               Showing {startIndex + 1} - {Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
             </div>
           </div>
