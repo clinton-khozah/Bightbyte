@@ -1734,28 +1734,11 @@ export default function LearnerDashboard() {
                   // Use userLocation if available, otherwise try to detect from browser
                   let locationToUse = userLocation;
 
-                  // If userLocation is not set, try to get it from geolocation
-                  if (!locationToUse && navigator.geolocation) {
-                    try {
-                      const position = await new Promise<GeolocationPosition>(
-                        (resolve, reject) => {
-                          navigator.geolocation.getCurrentPosition(
-                            resolve,
-                            reject,
-                            { timeout: 5000 }
-                          );
-                        }
-                      );
-                      locationToUse = {
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude,
-                      };
-                    } catch (error) {
-                      console.warn(
-                        "Could not get user location for currency conversion:",
-                        error
-                      );
-                    }
+                  // DISABLED: Removed automatic location request to prevent permission popup
+                  // Location will only be requested when user explicitly clicks a button
+                  // If userLocation is not set, skip location-based conversion
+                  if (!locationToUse) {
+                    console.log("Location not available, skipping location-based conversion");
                   }
 
                   const convertedPrice = await convertAndFormatPrice(
