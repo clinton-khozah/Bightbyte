@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -87,6 +88,7 @@ export function JobCards({
   searchQuery = "",
   selectedCategory = null,
 }: JobCardsProps) {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
@@ -638,7 +640,7 @@ export function JobCards({
                           onClick={() => {
                             trackJobEvent.click(job.id, job.title, "view_more");
                             trackButtonClick("View More", "job_card");
-                            window.location.href = `/jobs/${job.id}`;
+                            router.push(`/jobs/${job.id}`);
                           }}
                           variant="outline"
                           className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50 text-xs h-8 px-2"
@@ -894,7 +896,7 @@ export function JobCards({
                           onClick={() => {
                             trackJobEvent.click(job.id, job.title, "view_more");
                             trackButtonClick("View More", "job_card");
-                            window.location.href = `/jobs/${job.id}`;
+                            router.push(`/jobs/${job.id}`);
                           }}
                           variant="outline"
                           className="flex-1 border-blue-200 text-blue-700 hover:bg-blue-50"
