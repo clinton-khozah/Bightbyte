@@ -98,6 +98,53 @@ export function JobCards({
   const jobsPerPage = 100;
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Format job for social media copy
+  const formatJobForSocialMedia = (job: Job): string => {
+    const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+    let salaryText = "Salary not disclosed";
+    
+    if (job.is_salary_disclosed) {
+      if (job.salary_min && job.salary_max) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+      } else if (job.salary_min) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+      } else {
+        salaryText = "Salary negotiable";
+      }
+    }
+
+    const jobTypeText = job.job_type.charAt(0).toUpperCase() + job.job_type.slice(1);
+    const experienceLevel = job.experience_level || "Not specified";
+    
+    let formattedText = `🏢 ${job.title}\n`;
+    formattedText += `📍 ${job.company_name || "Company Not Specified"}\n\n`;
+    
+    // Description (first 300 characters)
+    const description = job.description || "No description available.";
+    const shortDescription = description.length > 300 
+      ? description.substring(0, 300) + "..." 
+      : description;
+    formattedText += `${shortDescription}\n\n`;
+    
+    formattedText += `📍 Location: ${job.location}\n`;
+    formattedText += `💼 Job Type: ${jobTypeText}\n`;
+    formattedText += `📊 Category: ${job.category}\n`;
+    formattedText += `💵 Salary: ${salaryText}\n`;
+    formattedText += `🎯 Experience Level: ${experienceLevel}\n`;
+    
+    if (job.requirements && job.requirements.trim()) {
+      formattedText += `\n📋 Requirements:\n${job.requirements}\n`;
+    }
+    
+    if (job.qualifications && job.qualifications.trim()) {
+      formattedText += `\n🎓 Qualifications:\n${job.qualifications}\n`;
+    }
+    
+    formattedText += `\n🔗 Apply: ${window.location.origin}/jobs/${job.id}`;
+    
+    return formattedText;
+  };
+
   // Share job function
   const handleShare = (job: Job, platform: string) => {
     const jobUrl = `${window.location.origin}/jobs/${job.id}`;
@@ -123,6 +170,12 @@ export function JobCards({
       case "copy":
         navigator.clipboard.writeText(jobUrl);
         trackButtonClick("Copy Link", "job_card");
+        return;
+      case "copy-job":
+        const formattedJob = formatJobForSocialMedia(job);
+        navigator.clipboard.writeText(formattedJob);
+        trackButtonClick("Copy Job", "job_card");
+        toast.success("Job details copied to clipboard! Ready to paste on Facebook, WhatsApp, or Instagram.");
         return;
       default:
         return;
