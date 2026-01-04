@@ -52,7 +52,7 @@ export default function PendingJobsPage() {
     try {
       setLoading(true);
       
-      // Fetch jobs with status 'pending' and is_automated = true or source = 'automation'
+      // Fetch ALL jobs with status 'pending' (more lenient - show all pending jobs)
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
@@ -62,17 +62,40 @@ export default function PendingJobsPage() {
       if (error) {
         console.error("Error fetching pending jobs:", error);
         toast.error("Failed to load pending jobs");
+        console.log("Full error details:", JSON.stringify(error, null, 2));
         return;
       }
 
-      // Filter for automated jobs (is_automated = true OR source = 'automation' OR company_id is null with external link)
+      console.log("📋 All pending jobs fetched:", data?.length || 0);
+      console.log("📋 Sample pending job:", data?.[0]);
+
+      // Filter for automated jobs (more lenient filter)
+      // Include jobs that are:
+      // 1. Explicitly marked as automated (is_automated = true)
+      // 2. Have source = 'automation' 
+      // 3. Have null company_id (likely automated)
+      // 4. Have external application_link (likely scraped)
       const automatedJobs = (data || []).filter((job: any) => {
-        return (
-          job.is_automated === true ||
-          job.source === "automation" ||
-          (job.company_id === null && job.application_link)
-        );
+        const isAutomated = job.is_automated === true;
+        const hasAutomationSource = job.source === "automation" || job.source === "linkedin" || job.source === "indeed";
+        const hasNullCompanyId = job.company_id === null;
+        const hasExternalLink = job.application_link && job.application_link.length > 0;
+        
+        // More lenient: if company_id is null OR has external link, consider it automated
+        const likelyAutomated = hasNullCompanyId || hasExternalLink;
+        
+        return isAutomated || hasAutomationSource || likelyAutomated;
       });
+
+      console.log("✅ Filtered automated pending jobs:", automatedJobs.length);
+      console.log("📋 Automated jobs details:", automatedJobs.map((j: any) => ({
+        id: j.id,
+        title: j.title,
+        company_id: j.company_id,
+        is_automated: j.is_automated,
+        source: j.source,
+        has_external_link: !!j.application_link
+      })));
 
       setPendingJobs(automatedJobs);
     } catch (error) {
