@@ -217,10 +217,25 @@ export default function PendingJobsPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 No Pending Jobs
               </h3>
-              <p className="text-gray-600">
-                All automated jobs have been reviewed. New jobs will appear here
-                when automation runs.
+              <p className="text-gray-600 mb-4">
+                No jobs with status "pending" found. This could mean:
               </p>
+              <ul className="text-sm text-gray-600 mb-4 list-disc list-inside space-y-1 text-left max-w-md mx-auto">
+                <li>Automation hasn't run yet</li>
+                <li>All pending jobs have been reviewed</li>
+                <li>Jobs are being posted with status "open" instead of "pending"</li>
+              </ul>
+              <div className="mt-4 space-y-2">
+                <a
+                  href="/dashboard/test-pending-job"
+                  className="inline-block text-blue-600 hover:underline text-sm font-semibold"
+                >
+                  → Create Test Job to Verify System
+                </a>
+                <p className="text-xs text-gray-500 mt-2">
+                  Check browser console (F12) for debugging information about jobs in database
+                </p>
+              </div>
             </CardContent>
           </Card>
         ) : (
