@@ -50,12 +50,7 @@ export default function AutomationControlPage() {
       const data = await response.json();
       setResults(data);
       
-      toast.success(`Automation completed! Check pending jobs page.`);
-      
-      // Refresh pending jobs page after 2 seconds
-      setTimeout(() => {
-        window.location.href = "/dashboard/pending-jobs";
-      }, 2000);
+      toast.success(`Automation completed! ${data.results?.posted_jobs?.length || 0} jobs posted. Check pending jobs page to review them.`);
     } catch (error: any) {
       console.error("Error running automation:", error);
       toast.error(`Error: ${error.message || "Failed to run automation"}`);
