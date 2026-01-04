@@ -98,7 +98,7 @@ export function JobCards({
   const jobsPerPage = 100;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Format job for social media copy
+  // Format job for social media copy - matches exact format requested
   const formatJobForSocialMedia = (job: Job): string => {
     const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
     let salaryText = "Salary negotiable";
@@ -113,11 +113,11 @@ export function JobCards({
       }
     }
 
-    const jobTypeText = job.job_type.charAt(0).toUpperCase() + job.job_type.slice(1);
-    const experienceLevel = job.experience_level || "entry";
+    const jobTypeText = job.job_type.toLowerCase();
+    const experienceLevel = (job.experience_level || "entry").toLowerCase();
     const postedTime = job.created_at ? getRelativeTime(job.created_at) : "Recently";
     
-    // Format exactly as requested
+    // Format exactly as shown in user's examples
     let formattedText = `${job.title}\n`;
     formattedText += `${job.company_name || "Company Not Specified"}\n\n`;
     formattedText += `Posted ${postedTime}\n\n`;
@@ -134,8 +134,8 @@ export function JobCards({
     formattedText += `SALARY\n`;
     formattedText += `${job.total_views || 0} views\n`;
     formattedText += `${job.total_applications || 0} applications\n`;
-    
-    formattedText += `\nView More\nApply\n`;
+    formattedText += `View More\n`;
+    formattedText += `Apply\n`;
     formattedText += `\n🔗 ${window.location.origin}/jobs/${job.id}`;
     
     return formattedText;
