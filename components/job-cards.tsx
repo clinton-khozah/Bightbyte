@@ -762,27 +762,6 @@ export function JobCards({
                               WhatsApp
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleShare(job, "linkedin")}
-                              className="cursor-pointer"
-                            >
-                              <Linkedin className="h-4 w-4 mr-2 text-blue-700" />
-                              LinkedIn
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleShare(job, "twitter")}
-                              className="cursor-pointer"
-                            >
-                              <Twitter className="h-4 w-4 mr-2 text-blue-400" />
-                              Twitter
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleShare(job, "copy")}
-                              className="cursor-pointer"
-                            >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Link
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
                               onClick={() => handleShare(job, "copy-job")}
                               className="cursor-pointer"
                             >
@@ -1023,27 +1002,6 @@ export function JobCards({
                             >
                               <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
                               WhatsApp
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleShare(job, "linkedin")}
-                              className="cursor-pointer"
-                            >
-                              <Linkedin className="h-4 w-4 mr-2 text-blue-700" />
-                              LinkedIn
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleShare(job, "twitter")}
-                              className="cursor-pointer"
-                            >
-                              <Twitter className="h-4 w-4 mr-2 text-blue-400" />
-                              Twitter
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleShare(job, "copy")}
-                              className="cursor-pointer"
-                            >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Link
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => handleShare(job, "copy-job")}
