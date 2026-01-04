@@ -101,11 +101,11 @@ export function JobCards({
   // Format job for social media copy
   const formatJobForSocialMedia = (job: Job): string => {
     const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
-    let salaryText = "Salary not disclosed";
+    let salaryText = "Salary negotiable";
     
     if (job.is_salary_disclosed) {
       if (job.salary_min && job.salary_max) {
-        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${currencySymbol}${job.salary_max.toLocaleString()}`;
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
       } else if (job.salary_min) {
         salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
       } else {
@@ -114,33 +114,29 @@ export function JobCards({
     }
 
     const jobTypeText = job.job_type.charAt(0).toUpperCase() + job.job_type.slice(1);
-    const experienceLevel = job.experience_level || "Not specified";
+    const experienceLevel = job.experience_level || "entry";
+    const postedTime = job.created_at ? getRelativeTime(job.created_at) : "Recently";
     
-    let formattedText = `🏢 ${job.title}\n`;
-    formattedText += `📍 ${job.company_name || "Company Not Specified"}\n\n`;
+    // Format exactly as requested
+    let formattedText = `${job.title}\n`;
+    formattedText += `${job.company_name || "Company Not Specified"}\n\n`;
+    formattedText += `Posted ${postedTime}\n\n`;
     
-    // Description (first 300 characters)
+    // Full description
     const description = job.description || "No description available.";
-    const shortDescription = description.length > 300 
-      ? description.substring(0, 300) + "..." 
-      : description;
-    formattedText += `${shortDescription}\n\n`;
+    formattedText += `${description}\n\n`;
     
-    formattedText += `📍 Location: ${job.location}\n`;
-    formattedText += `💼 Job Type: ${jobTypeText}\n`;
-    formattedText += `📊 Category: ${job.category}\n`;
-    formattedText += `💵 Salary: ${salaryText}\n`;
-    formattedText += `🎯 Experience Level: ${experienceLevel}\n`;
+    formattedText += `Location: ${job.location}\n`;
+    formattedText += `${jobTypeText}\n`;
+    formattedText += `${job.category}\n`;
+    formattedText += `${experienceLevel}\n`;
+    formattedText += `${salaryText}\n`;
+    formattedText += `SALARY\n`;
+    formattedText += `${job.total_views || 0} views\n`;
+    formattedText += `${job.total_applications || 0} applications\n`;
     
-    if (job.requirements && job.requirements.trim()) {
-      formattedText += `\n📋 Requirements:\n${job.requirements}\n`;
-    }
-    
-    if (job.qualifications && job.qualifications.trim()) {
-      formattedText += `\n🎓 Qualifications:\n${job.qualifications}\n`;
-    }
-    
-    formattedText += `\n🔗 Apply: ${window.location.origin}/jobs/${job.id}`;
+    formattedText += `\nView More\nApply\n`;
+    formattedText += `\n🔗 ${window.location.origin}/jobs/${job.id}`;
     
     return formattedText;
   };
