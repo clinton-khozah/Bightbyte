@@ -46,8 +46,8 @@ export default function PendingJobsPage() {
 
   useEffect(() => {
     fetchPendingJobs();
-    // Auto-refresh every 5 seconds to catch new jobs
-    const interval = setInterval(fetchPendingJobs, 5000);
+    // Auto-refresh every 30 seconds (less aggressive)
+    const interval = setInterval(fetchPendingJobs, 30000);
     return () => clearInterval(interval);
   }, []);
 
