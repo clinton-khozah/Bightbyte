@@ -52,7 +52,26 @@ export default function PendingJobsPage() {
     try {
       setLoading(true);
       
-      // Fetch ALL jobs with status 'pending' (more lenient - show all pending jobs)
+      // First, check ALL jobs to see what statuses exist
+      const { data: allJobs, error: allError } = await supabase
+        .from("jobs")
+        .select("id, title, status, company_id, is_automated, source, application_link")
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      console.log("🔍 Total jobs in database:", allJobs?.length || 0);
+      console.log("🔍 Job statuses:", allJobs?.map((j: any) => j.status) || []);
+      console.log("🔍 Jobs with status 'pending':", allJobs?.filter((j: any) => j.status === "pending").length || 0);
+      console.log("🔍 Sample jobs:", allJobs?.slice(0, 5).map((j: any) => ({
+        id: j.id,
+        title: j.title,
+        status: j.status,
+        company_id: j.company_id,
+        is_automated: j.is_automated,
+        source: j.source
+      })) || []);
+
+      // Fetch ALL jobs with status 'pending' (no filtering initially)
       const { data, error } = await supabase
         .from("jobs")
         .select("*")
@@ -60,47 +79,45 @@ export default function PendingJobsPage() {
         .order("created_at", { ascending: false });
 
       if (error) {
-        console.error("Error fetching pending jobs:", error);
-        toast.error("Failed to load pending jobs");
+        console.error("❌ Error fetching pending jobs:", error);
+        toast.error(`Failed to load pending jobs: ${error.message}`);
         console.log("Full error details:", JSON.stringify(error, null, 2));
         return;
       }
 
       console.log("📋 All pending jobs fetched:", data?.length || 0);
-      console.log("📋 Sample pending job:", data?.[0]);
-
-      // Filter for automated jobs (more lenient filter)
-      // Include jobs that are:
-      // 1. Explicitly marked as automated (is_automated = true)
-      // 2. Have source = 'automation' 
-      // 3. Have null company_id (likely automated)
-      // 4. Have external application_link (likely scraped)
-      const automatedJobs = (data || []).filter((job: any) => {
-        const isAutomated = job.is_automated === true;
-        const hasAutomationSource = job.source === "automation" || job.source === "linkedin" || job.source === "indeed";
-        const hasNullCompanyId = job.company_id === null;
-        const hasExternalLink = job.application_link && job.application_link.length > 0;
-        
-        // More lenient: if company_id is null OR has external link, consider it automated
-        const likelyAutomated = hasNullCompanyId || hasExternalLink;
-        
-        return isAutomated || hasAutomationSource || likelyAutomated;
-      });
-
-      console.log("✅ Filtered automated pending jobs:", automatedJobs.length);
-      console.log("📋 Automated jobs details:", automatedJobs.map((j: any) => ({
+      console.log("📋 Pending jobs details:", data?.map((j: any) => ({
         id: j.id,
         title: j.title,
+        status: j.status,
         company_id: j.company_id,
         is_automated: j.is_automated,
         source: j.source,
-        has_external_link: !!j.application_link
+        application_link: j.application_link
+      })) || []);
+
+      // Show ALL pending jobs (very lenient - no filtering)
+      // This ensures we see everything that needs review
+      const pendingJobsList = (data || []).filter((job: any) => {
+        // Only exclude jobs that are explicitly NOT automated (manual user posts)
+        // Include everything else
+        if (job.is_automated === false && job.source === "manual") {
+          return false; // Skip manual user posts
+        }
+        return true; // Include everything else
+      });
+
+      console.log("✅ Final pending jobs to show:", pendingJobsList.length);
+      console.log("📋 Final jobs:", pendingJobsList.map((j: any) => ({
+        id: j.id,
+        title: j.title,
+        status: j.status
       })));
 
-      setPendingJobs(automatedJobs);
-    } catch (error) {
-      console.error("Error fetching pending jobs:", error);
-      toast.error("Failed to load pending jobs");
+      setPendingJobs(pendingJobsList);
+    } catch (error: any) {
+      console.error("❌ Error fetching pending jobs:", error);
+      toast.error(`Error: ${error.message || "Failed to load pending jobs"}`);
     } finally {
       setLoading(false);
     }
