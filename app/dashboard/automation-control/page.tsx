@@ -159,36 +159,68 @@ export default function AutomationControlPage() {
                   </span>
                 </div>
                 
-                {results.results && (
-                  <div className="mt-4 space-y-2 text-sm">
-                    <p>
-                      <strong>Scraped Jobs:</strong>{" "}
-                      {results.results.scraped_jobs?.length || 0}
-                    </p>
-                    <p>
-                      <strong>Posted Jobs:</strong>{" "}
-                      {results.results.posted_jobs?.length || 0}
-                    </p>
-                    <p>
-                      <strong>Failed Jobs:</strong>{" "}
-                      {results.results.failed_jobs?.length || 0}
-                    </p>
-                    
-                    {results.results.posted_jobs && results.results.posted_jobs.length > 0 && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                        <p className="font-semibold mb-2">Posted Jobs:</p>
-                        <ul className="list-disc list-inside space-y-1">
-                          {results.results.posted_jobs.map((job: any, index: number) => (
-                            <li key={index}>
-                              {job.job?.title || job.job_data?.title || "Unknown"} - Status:{" "}
-                              {job.job?.status || job.job_data?.status || "pending"}
-                            </li>
-                          ))}
-                        </ul>
+                    {results.results && (
+                      <div className="mt-4 space-y-2 text-sm">
+                        <p>
+                          <strong>Scraped Jobs:</strong>{" "}
+                          {results.results.scraped_jobs?.length || 0}
+                        </p>
+                        <p>
+                          <strong>Posted Jobs:</strong>{" "}
+                          {results.results.posted_jobs?.length || 0}
+                        </p>
+                        <p>
+                          <strong>Failed Jobs:</strong>{" "}
+                          {results.results.failed_jobs?.length || 0}
+                        </p>
+                        
+                        {results.results.posted_jobs && results.results.posted_jobs.length > 0 && (
+                          <div className="mt-4 p-3 bg-green-50 rounded-lg">
+                            <p className="font-semibold mb-2 text-green-800">✅ Posted Jobs:</p>
+                            <ul className="list-disc list-inside space-y-1 text-green-700">
+                              {results.results.posted_jobs.map((job: any, index: number) => (
+                                <li key={index}>
+                                  {job.job?.title || job.job_data?.title || "Unknown"} - Status:{" "}
+                                  {job.job?.status || job.job_data?.status || "pending"}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {results.results.failed_jobs && results.results.failed_jobs.length > 0 && (
+                          <div className="mt-4 p-3 bg-red-50 rounded-lg">
+                            <p className="font-semibold mb-2 text-red-800">❌ Failed Jobs:</p>
+                            <ul className="list-disc list-inside space-y-1 text-red-700">
+                              {results.results.failed_jobs.map((job: any, index: number) => (
+                                <li key={index}>
+                                  <strong>{job.job?.title || "Unknown Job"}:</strong>{" "}
+                                  {job.error || job.message || "Unknown error"}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {results.results.scraped_jobs && results.results.scraped_jobs.length > 0 && (
+                          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                            <p className="font-semibold mb-2 text-blue-800">📋 Scraped Jobs:</p>
+                            <ul className="list-disc list-inside space-y-1 text-blue-700">
+                              {results.results.scraped_jobs.slice(0, 5).map((job: any, index: number) => (
+                                <li key={index}>
+                                  {job.title || "Unknown"} - {job.company_name || "Unknown Company"}
+                                </li>
+                              ))}
+                              {results.results.scraped_jobs.length > 5 && (
+                                <li className="text-gray-600">
+                                  ... and {results.results.scraped_jobs.length - 5} more
+                                </li>
+                              )}
+                            </ul>
+                          </div>
+                        )}
                       </div>
                     )}
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
