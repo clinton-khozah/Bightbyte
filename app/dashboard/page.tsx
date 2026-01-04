@@ -264,6 +264,7 @@ export default function DashboardPage() {
   const [sessionsLoading, setSessionsLoading] = useState(false);
   const [jobs, setJobs] = useState<any[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
+  const [pendingJobsCount, setPendingJobsCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const jobsPerPage = 20;
   const [companyData, setCompanyData] = useState<any>(null);

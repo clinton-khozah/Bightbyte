@@ -35,6 +35,7 @@ import {
   Search,
   Newspaper,
   Loader2,
+  Clock,
 } from "lucide-react";
 import clsx from "clsx";
 import { supabase } from "@/lib/supabase";
@@ -106,6 +107,11 @@ const getMainLinks = (userType: string, userEmail?: string): SidebarLink[] => {
         icon: Briefcase,
         label: "My Jobs",
         href: "/dashboard/myjobs",
+      },
+      {
+        icon: Clock,
+        label: "Pending Jobs",
+        href: "/dashboard/pending-jobs",
       },
     ];
 
