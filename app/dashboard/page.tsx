@@ -214,10 +214,69 @@ const formatSalary = (job: any) => {
   return "Salary negotiable";
 };
 
+// Format job for social media copy - professional format
+const formatJobForSocialMedia = (job: any) => {
+  const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+  let salaryText = "Salary negotiable";
+  
+  if (job.is_salary_disclosed) {
+    if (job.salary_min && job.salary_max) {
+      salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    } else {
+      salaryText = "Salary negotiable";
+    }
+  }
+
+  const jobTypeText = job.job_type?.toLowerCase() || "job";
+  const experienceLevel = (job.experience_level || "entry").toLowerCase();
+  
+  // Professional format with emojis
+  let formattedText = `💼 ${job.title}\n`;
+  formattedText += `🏢 ${job.company_name || "Company Not Specified"}\n`;
+  formattedText += `📍 Location: ${job.location}\n`;
+  formattedText += `💰 ${salaryText}\n\n`;
+  
+  // Full description
+  const description = job.description || "No description available.";
+  formattedText += `${description}\n\n`;
+  
+  formattedText += `📋 Job Type: ${jobTypeText}\n`;
+  formattedText += `🏷️ Category: ${job.category || "General"}\n`;
+  formattedText += `🎯 Experience Level: ${experienceLevel}\n`;
+  
+  if (job.requirements && job.requirements.trim()) {
+    formattedText += `\n📝 Requirements:\n${job.requirements}\n`;
+  }
+  
+  if (job.qualifications && job.qualifications.trim()) {
+    formattedText += `\n🎓 Qualifications:\n${job.qualifications}\n`;
+  }
+  
+  formattedText += `\n🔗 Apply: ${window.location.origin}/jobs/${job.id}`;
+  
+  return formattedText;
+};
+
 // Share job function
 const handleShareJob = (job: any, platform: string) => {
   const jobUrl = `${window.location.origin}/jobs/${job.id}`;
   const shareText = encodeURIComponent(`Check out this job: ${job.title} at ${job.company_name || 'Company'}`);
+  
+  // Format salary for WhatsApp
+  const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+  let salaryText = "Salary negotiable";
+  if (job.is_salary_disclosed) {
+    if (job.salary_min && job.salary_max) {
+      salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+    } else if (job.salary_min) {
+      salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+    }
+  }
+  
+  // Enhanced WhatsApp share text with details
+  const whatsappText = `💼 ${job.title}\n🏢 ${job.company_name || "Company Not Specified"}\n📍 Location: ${job.location}\n💰 ${salaryText}\n📋 Job Type: ${job.job_type?.toLowerCase() || "job"}\n\n🔗 ${jobUrl}`;
 
   let shareUrl = "";
 
@@ -226,17 +285,20 @@ const handleShareJob = (job: any, platform: string) => {
       shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
       break;
     case "whatsapp":
-      shareUrl = `https://wa.me/?text=${shareText}%20${encodeURIComponent(jobUrl)}`;
-      break;
-    case "linkedin":
-      shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
-      break;
-    case "twitter":
-      shareUrl = `https://twitter.com/intent/tweet?text=${shareText}&url=${encodeURIComponent(jobUrl)}`;
+      shareUrl = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
       break;
     case "copy":
       navigator.clipboard.writeText(jobUrl);
-      toast.success("Job link copied to clipboard!");
+      if (typeof window !== "undefined" && (window as any).toast) {
+        (window as any).toast.success("Link copied");
+      }
+      return;
+    case "copy-job":
+      const formattedJob = formatJobForSocialMedia(job);
+      navigator.clipboard.writeText(formattedJob);
+      if (typeof window !== "undefined" && (window as any).toast) {
+        (window as any).toast.success("Job copied");
+      }
       return;
     default:
       return;
@@ -1989,7 +2051,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-0">
-          <div className={`grid grid-cols-1 ${pendingJobsCount > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3 md:gap-6 flex-1 w-full md:w-auto`}>
+          <div className={`grid grid-cols-1 ${pendingJobsCount > 0 ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-3 md:gap-6 flex-1 w-full md:w-auto`}>
             <Card className="bg-white border rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
                 <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
@@ -2022,6 +2084,25 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-[10px] md:text-xs text-gray-600">
                   {jobs.length} {jobs.length === 1 ? "job" : "jobs"} posted
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-white border rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
+                <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
+                  Applications
+                </CardTitle>
+                <ClipboardList className="h-3 w-3 md:h-4 md:w-4 text-green-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-xl md:text-2xl font-bold text-gray-900">
+                  {jobs.reduce(
+                    (sum: number, j: any) => sum + (j.total_applications || 0),
+                    0
+                  )}
+                </div>
+                <p className="text-[10px] md:text-xs text-gray-600">
+                  Total applications
                 </p>
               </CardContent>
             </Card>
@@ -2450,18 +2531,11 @@ export default function DashboardPage() {
                                           WhatsApp
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
-                                          onClick={() => handleShareJob(job, "linkedin")}
+                                          onClick={() => handleShareJob(job, "copy-job")}
                                           className="cursor-pointer"
                                         >
-                                          <Linkedin className="h-4 w-4 mr-2 text-blue-700" />
-                                          LinkedIn
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem
-                                          onClick={() => handleShareJob(job, "twitter")}
-                                          className="cursor-pointer"
-                                        >
-                                          <Twitter className="h-4 w-4 mr-2 text-blue-400" />
-                                          Twitter
+                                          <Share2 className="h-4 w-4 mr-2" />
+                                          Share Job
                                         </DropdownMenuItem>
                                         <DropdownMenuItem
                                           onClick={() => handleShareJob(job, "copy")}

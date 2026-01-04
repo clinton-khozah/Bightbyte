@@ -23,6 +23,10 @@ import {
   Filter,
   Search,
   GraduationCap,
+  Share2,
+  Facebook,
+  MessageCircle,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,7 +45,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { JobDetailsModal } from "@/components/dashboard/job-details-modal";
+import { toast } from "sonner";
 import {
   Avatar,
   AvatarFallback,
@@ -310,6 +321,117 @@ export default function MyJobsPage() {
       return `${currencySymbol}${job.salary_min.toLocaleString()}+`;
     }
     return "Salary negotiable";
+  };
+
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMs = now.getTime() - date.getTime();
+    const diffInSeconds = Math.floor(diffInMs / 1000);
+    const diffInMinutes = Math.floor(diffInSeconds / 60);
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInDays = Math.floor(diffInHours / 24);
+
+    if (diffInSeconds < 60) {
+      return "Just now";
+    } else if (diffInMinutes < 60) {
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours} hour${diffInHours !== 1 ? "s" : ""} ago`;
+    } else if (diffInDays < 30) {
+      return `${diffInDays} day${diffInDays !== 1 ? "s" : ""} ago`;
+    } else {
+      return `${Math.floor(diffInDays / 30)} month${Math.floor(diffInDays / 30) !== 1 ? "s" : ""} ago`;
+    }
+  };
+
+  // Format job for social media copy - professional format
+  const formatJobForSocialMedia = (job: any) => {
+    const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+    let salaryText = "Salary negotiable";
+    
+    if (job.is_salary_disclosed) {
+      if (job.salary_min && job.salary_max) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+      } else if (job.salary_min) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+      } else {
+        salaryText = "Salary negotiable";
+      }
+    }
+
+    const jobTypeText = job.job_type?.toLowerCase() || "job";
+    const experienceLevel = (job.experience_level || "entry").toLowerCase();
+    
+    // Professional format with emojis
+    let formattedText = `💼 ${job.title}\n`;
+    formattedText += `🏢 ${job.company_name || "Company Not Specified"}\n`;
+    formattedText += `📍 Location: ${job.location}\n`;
+    formattedText += `💰 ${salaryText}\n\n`;
+    
+    // Full description
+    const description = job.description || "No description available.";
+    formattedText += `${description}\n\n`;
+    
+    formattedText += `📋 Job Type: ${jobTypeText}\n`;
+    formattedText += `🏷️ Category: ${job.category || "General"}\n`;
+    formattedText += `🎯 Experience Level: ${experienceLevel}\n`;
+    
+    if (job.requirements && job.requirements.trim()) {
+      formattedText += `\n📝 Requirements:\n${job.requirements}\n`;
+    }
+    
+    if (job.qualifications && job.qualifications.trim()) {
+      formattedText += `\n🎓 Qualifications:\n${job.qualifications}\n`;
+    }
+    
+    formattedText += `\n🔗 Apply: ${window.location.origin}/jobs/${job.id}`;
+    
+    return formattedText;
+  };
+
+  // Share job function
+  const handleShareJob = (job: any, platform: string) => {
+    const jobUrl = `${window.location.origin}/jobs/${job.id}`;
+    const shareText = encodeURIComponent(`Check out this job: ${job.title} at ${job.company_name || 'Company'}`);
+    
+    // Format salary for WhatsApp
+    const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+    let salaryText = "Salary negotiable";
+    if (job.is_salary_disclosed) {
+      if (job.salary_min && job.salary_max) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+      } else if (job.salary_min) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+      }
+    }
+    
+    // Enhanced WhatsApp share text with details
+    const whatsappText = `💼 ${job.title}\n🏢 ${job.company_name || "Company Not Specified"}\n📍 Location: ${job.location}\n💰 ${salaryText}\n📋 Job Type: ${job.job_type?.toLowerCase() || "job"}\n\n🔗 ${jobUrl}`;
+
+    let shareUrl = "";
+
+    switch (platform) {
+      case "facebook":
+        shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
+        window.open(shareUrl, "_blank", "width=600,height=400");
+        break;
+      case "whatsapp":
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
+        window.open(shareUrl, "_blank", "width=600,height=400");
+        break;
+      case "copy":
+        navigator.clipboard.writeText(jobUrl);
+        toast.success("Link copied");
+        break;
+      case "copy-job":
+        const formattedJob = formatJobForSocialMedia(job);
+        navigator.clipboard.writeText(formattedJob);
+        toast.success("Job copied");
+        break;
+      default:
+        return;
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -696,6 +818,47 @@ export default function MyJobsPage() {
                           <Eye className="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" />
                           View
                         </Button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-7 md:h-9 w-7 md:w-9 border-gray-300 hover:bg-gray-50"
+                            >
+                              <Share2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuItem
+                              onClick={() => handleShareJob(job, "facebook")}
+                              className="cursor-pointer"
+                            >
+                              <Facebook className="h-4 w-4 mr-2 text-blue-600" />
+                              Facebook
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShareJob(job, "whatsapp")}
+                              className="cursor-pointer"
+                            >
+                              <MessageCircle className="h-4 w-4 mr-2 text-green-600" />
+                              WhatsApp
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShareJob(job, "copy-job")}
+                              className="cursor-pointer"
+                            >
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Job
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShareJob(job, "copy")}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Link
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </CardContent>
                   </Card>

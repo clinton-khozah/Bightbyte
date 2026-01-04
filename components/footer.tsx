@@ -132,7 +132,7 @@ export function Footer() {
             <ul className="space-y-2 md:space-y-3">
               <li>
                 <Link
-                  href="/resources#privacy"
+                  href="/privacy"
                   className="text-gray-700 hover:text-blue-700 transition-colors font-['Verdana',sans-serif] font-medium hover:underline inline-block text-xs md:text-sm"
                 >
                   <TranslatableText>Privacy Policy</TranslatableText>

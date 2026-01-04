@@ -9,6 +9,12 @@ import { PageTranslator } from "@/components/page-translator"
 import Script from "next/script"
 import dynamic from "next/dynamic"
 
+// Dynamically import Toaster to avoid SSR issues
+const Toaster = dynamic(
+  () => import("@/components/ui/sonner").then((mod) => ({ default: mod.Toaster })),
+  { ssr: false }
+)
+
 // Dynamically import GoogleAnalytics to avoid SSR issues with usePathname
 const GoogleAnalytics = dynamic(
   () => import("@/components/google-analytics").then((mod) => ({
@@ -248,6 +254,7 @@ export default function RootLayout({
               {children}
             </LoadingProvider>
             <ChatBot />
+            <Toaster />
           </ThemeProvider>
         </TranslationProvider>
       </body>

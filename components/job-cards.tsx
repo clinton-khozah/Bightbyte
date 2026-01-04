@@ -37,6 +37,7 @@ import { LoadingLogo } from "@/components/loading-logo";
 import dynamic from "next/dynamic";
 import { trackJobEvent, trackButtonClick } from "@/lib/analytics";
 import { apiCache, createCacheKey } from "@/lib/api-cache";
+import { toast } from "sonner";
 
 // Dynamically import modals to avoid SSR issues
 const SignInModal = dynamic(
@@ -98,7 +99,7 @@ export function JobCards({
   const jobsPerPage = 100;
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Format job for social media copy - matches exact format requested
+  // Format job for social media copy - professional format
   const formatJobForSocialMedia = (job: Job): string => {
     const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
     let salaryText = "Salary negotiable";
@@ -113,30 +114,32 @@ export function JobCards({
       }
     }
 
-    const jobTypeText = job.job_type.toLowerCase();
+    const jobTypeText = job.job_type?.toLowerCase() || "job";
     const experienceLevel = (job.experience_level || "entry").toLowerCase();
-    const postedTime = job.created_at ? getRelativeTime(job.created_at) : "Recently";
     
-    // Format exactly as shown in user's examples
-    let formattedText = `${job.title}\n`;
-    formattedText += `${job.company_name || "Company Not Specified"}\n\n`;
-    formattedText += `Posted ${postedTime}\n\n`;
+    // Professional format with emojis
+    let formattedText = `💼 ${job.title}\n`;
+    formattedText += `🏢 ${job.company_name || "Company Not Specified"}\n`;
+    formattedText += `📍 Location: ${job.location}\n`;
+    formattedText += `💰 ${salaryText}\n\n`;
     
     // Full description
     const description = job.description || "No description available.";
     formattedText += `${description}\n\n`;
     
-    formattedText += `Location: ${job.location}\n`;
-    formattedText += `${jobTypeText}\n`;
-    formattedText += `${job.category}\n`;
-    formattedText += `${experienceLevel}\n`;
-    formattedText += `${salaryText}\n`;
-    formattedText += `SALARY\n`;
-    formattedText += `${job.total_views || 0} views\n`;
-    formattedText += `${job.total_applications || 0} applications\n`;
-    formattedText += `View More\n`;
-    formattedText += `Apply\n`;
-    formattedText += `\n🔗 ${window.location.origin}/jobs/${job.id}`;
+    formattedText += `📋 Job Type: ${jobTypeText}\n`;
+    formattedText += `🏷️ Category: ${job.category || "General"}\n`;
+    formattedText += `🎯 Experience Level: ${experienceLevel}\n`;
+    
+    if (job.requirements && job.requirements.trim()) {
+      formattedText += `\n📝 Requirements:\n${job.requirements}\n`;
+    }
+    
+    if (job.qualifications && job.qualifications.trim()) {
+      formattedText += `\n🎓 Qualifications:\n${job.qualifications}\n`;
+    }
+    
+    formattedText += `\n🔗 Apply: ${window.location.origin}/jobs/${job.id}`;
     
     return formattedText;
   };
@@ -146,6 +149,20 @@ export function JobCards({
     const jobUrl = `${window.location.origin}/jobs/${job.id}`;
     const jobTitle = encodeURIComponent(job.title);
     const jobDescription = encodeURIComponent(`${job.title} at ${job.company_name} - ${job.location}`);
+    
+    // Format salary for WhatsApp
+    const currencySymbol = getCurrencySymbol(job.salary_currency || "USD");
+    let salaryText = "Salary negotiable";
+    if (job.is_salary_disclosed) {
+      if (job.salary_min && job.salary_max) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()} - ${job.salary_max.toLocaleString()}`;
+      } else if (job.salary_min) {
+        salaryText = `${currencySymbol}${job.salary_min.toLocaleString()}+`;
+      }
+    }
+    
+    // Enhanced WhatsApp share text with details
+    const whatsappText = `💼 ${job.title}\n🏢 ${job.company_name || "Company Not Specified"}\n📍 Location: ${job.location}\n💰 ${salaryText}\n📋 Job Type: ${job.job_type?.toLowerCase() || "job"}\n\n🔗 ${jobUrl}`;
     const shareText = encodeURIComponent(`Check out this job: ${job.title} at ${job.company_name}`);
 
     let shareUrl = "";
@@ -155,7 +172,7 @@ export function JobCards({
         shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(jobUrl)}`;
         break;
       case "whatsapp":
-        shareUrl = `https://wa.me/?text=${shareText}%20${encodeURIComponent(jobUrl)}`;
+        shareUrl = `https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
         break;
       case "linkedin":
         shareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
@@ -166,12 +183,13 @@ export function JobCards({
       case "copy":
         navigator.clipboard.writeText(jobUrl);
         trackButtonClick("Copy Link", "job_card");
+        toast.success("Link copied");
         return;
       case "copy-job":
         const formattedJob = formatJobForSocialMedia(job);
         navigator.clipboard.writeText(formattedJob);
         trackButtonClick("Copy Job", "job_card");
-        toast.success("Job details copied to clipboard! Ready to paste on Facebook, WhatsApp, or Instagram.");
+        toast.success("Job copied");
         return;
       default:
         return;
@@ -764,16 +782,23 @@ export function JobCards({
                               <Share2 className="h-4 w-4 mr-2" />
                               Share Job
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShare(job, "copy")}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Link
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
                     </CardContent>
                   </Card>
-              </motion.div>
-            ))}
-          </div>
+                </motion.div>
+              ))}
+            </div>
 
-          {/* Desktop View - Grid Layout */}
+            {/* Desktop View - Grid Layout */}
           <div className="hidden md:block" ref={containerRef}>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {paginatedJobs.map((job, index) => (
@@ -1006,6 +1031,13 @@ export function JobCards({
                               <Share2 className="h-4 w-4 mr-2" />
                               Share Job
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShare(job, "copy")}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Link
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -1013,9 +1045,9 @@ export function JobCards({
                   </Card>
                 </motion.div>
               ))}
-          </div>
+            </div>
 
-            {/* Pagination Controls */}
+                  {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-8 mb-4">
                 <Button
