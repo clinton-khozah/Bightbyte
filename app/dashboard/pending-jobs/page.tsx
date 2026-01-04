@@ -47,7 +47,11 @@ export default function PendingJobsPage() {
 
   useEffect(() => {
     fetchPendingJobs();
-    // Only refresh once on mount, no auto-refresh to avoid constant refreshing
+    // Auto-refresh every 60 seconds to catch new automation jobs
+    const interval = setInterval(() => {
+      fetchPendingJobs();
+    }, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchPendingJobs = async () => {
