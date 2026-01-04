@@ -74,12 +74,33 @@ export default function CompanyDashboard() {
 
       try {
         setJobsLoading(true);
-        const { data: jobsData, error } = await supabase
-          .from("jobs")
-          .select("*")
-          .eq("company_id", userData.id)
-          .order("created_at", { ascending: false })
-          .limit(10);
+        
+        // Fetch jobs: company's jobs + automated jobs (null company_id)
+        let jobsData, error;
+        
+        try {
+          // Try to include automated jobs
+          const result = await supabase
+            .from("jobs")
+            .select("*")
+            .or(`company_id.eq.${userData.id},company_id.is.null,is_automated.eq.true`)
+            .order("created_at", { ascending: false })
+            .limit(50);
+          
+          jobsData = result.data;
+          error = result.error;
+        } catch (err) {
+          // Fallback: just company_id and null company_id
+          const result = await supabase
+            .from("jobs")
+            .select("*")
+            .or(`company_id.eq.${userData.id},company_id.is.null`)
+            .order("created_at", { ascending: false })
+            .limit(50);
+          
+          jobsData = result.data;
+          error = result.error;
+        }
 
         if (error) {
           console.error("Error fetching jobs:", error);

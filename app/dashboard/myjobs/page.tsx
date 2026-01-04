@@ -164,12 +164,33 @@ export default function MyJobsPage() {
           console.log("API fetch failed, trying Supabase directly:", apiError);
         }
 
-        // Fallback to Supabase - also check for null company_id (jobs created before fix)
-        const { data: jobsData, error: jobsError } = await supabase
-          .from("jobs")
-          .select("*")
-          .or(`company_id.eq.${companyData.id},company_id.is.null`)
-          .order("created_at", { ascending: false });
+        // Fallback to Supabase - include:
+        // 1. Jobs with matching company_id
+        // 2. Automated jobs (null company_id or is_automated = true)
+        // 3. Jobs with null company_id (legacy jobs)
+        let jobsData, jobsError;
+        
+        try {
+          // Try to include automated jobs
+          const { data, error } = await supabase
+            .from("jobs")
+            .select("*")
+            .or(`company_id.eq.${companyData.id},company_id.is.null,is_automated.eq.true`)
+            .order("created_at", { ascending: false });
+          
+          jobsData = data;
+          jobsError = error;
+        } catch (err) {
+          // Fallback: just company_id and null company_id
+          const { data, error } = await supabase
+            .from("jobs")
+            .select("*")
+            .or(`company_id.eq.${companyData.id},company_id.is.null`)
+            .order("created_at", { ascending: false });
+          
+          jobsData = data;
+          jobsError = error;
+        }
 
         if (jobsError) {
           console.error("Error fetching jobs:", jobsError);

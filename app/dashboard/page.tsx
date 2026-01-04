@@ -1065,24 +1065,59 @@ export default function DashboardPage() {
           }
         }
 
-        // Also fetch jobs with null company_id (these might be the user's jobs created before fix)
+        // Also fetch automated jobs (jobs with null company_id or is_automated flag)
+        // These are jobs posted by the automation system
         // Merge them with existing results
         if (currentUserId && !jobsError) {
-          console.log("📋 Also checking for null company_id jobs...");
-          const { data: nullCompanyJobs, error: nullError } = await supabase
-            .from("jobs")
-            .select("*")
-            .is("company_id", null)
-            .order("created_at", { ascending: false })
-            .limit(50);
+          console.log("📋 Also checking for automated jobs...");
+          
+          // Try to fetch automated jobs (jobs with null company_id or is_automated = true)
+          let automatedJobs: any[] = [];
+          
+          try {
+            const { data: autoJobs, error: autoError } = await supabase
+              .from("jobs")
+              .select("*")
+              .or("is_automated.eq.true,company_id.is.null")
+              .order("created_at", { ascending: false })
+              .limit(100);
 
-          if (!nullError && nullCompanyJobs && nullCompanyJobs.length > 0) {
-            console.log(
-              "📋 Found null company_id jobs:",
-              nullCompanyJobs.length
-            );
+            if (!autoError && autoJobs) {
+              automatedJobs = autoJobs;
+              console.log("📋 Found automated jobs:", automatedJobs.length);
+            } else {
+              // Fallback: fetch jobs with null company_id
+              const { data: nullCompanyJobs, error: nullError } = await supabase
+                .from("jobs")
+                .select("*")
+                .is("company_id", null)
+                .order("created_at", { ascending: false })
+                .limit(100);
+
+              if (!nullError && nullCompanyJobs) {
+                automatedJobs = nullCompanyJobs;
+                console.log("📋 Found null company_id jobs:", automatedJobs.length);
+              }
+            }
+          } catch (err) {
+            console.log("📋 Error fetching automated jobs, trying null company_id only:", err);
+            // Fallback: just get null company_id jobs
+            const { data: nullCompanyJobs, error: nullError } = await supabase
+              .from("jobs")
+              .select("*")
+              .is("company_id", null)
+              .order("created_at", { ascending: false })
+              .limit(100);
+
+            if (!nullError && nullCompanyJobs) {
+              automatedJobs = nullCompanyJobs;
+            }
+          }
+
+          if (automatedJobs.length > 0) {
+            console.log("📋 Found automated/null company_id jobs:", automatedJobs.length);
             // Merge with existing jobs and remove duplicates
-            const allJobs = [...(jobsData || []), ...nullCompanyJobs];
+            const allJobs = [...(jobsData || []), ...automatedJobs];
             const uniqueJobs = allJobs.filter(
               (job: any, index: number, self: any[]) =>
                 index === self.findIndex((j: any) => j.id === job.id)
