@@ -782,6 +782,13 @@ export function JobCards({
                               <Copy className="h-4 w-4 mr-2" />
                               Copy Link
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShare(job, "copy-job")}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Job Details
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>
@@ -1037,6 +1044,13 @@ export function JobCards({
                             >
                               <Copy className="h-4 w-4 mr-2" />
                               Copy Link
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleShare(job, "copy-job")}
+                              className="cursor-pointer"
+                            >
+                              <Copy className="h-4 w-4 mr-2" />
+                              Copy Job Details
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
