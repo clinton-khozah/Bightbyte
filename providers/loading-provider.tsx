@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react"
 import { usePathname } from "next/navigation"
 import { LoadingScreen } from "@/components/loading-screen"
+import { Suspense } from "react"
 
 interface LoadingContextType {
   isLoading: boolean
@@ -14,7 +15,7 @@ const LoadingContext = createContext<LoadingContextType>({
   setIsLoading: () => {},
 })
 
-export function LoadingProvider({ children }: { children: React.ReactNode }) {
+function LoadingProviderContent({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true) // Start with loading state on first load
   const pathname = usePathname()
 
@@ -44,6 +45,14 @@ export function LoadingProvider({ children }: { children: React.ReactNode }) {
       {isLoading && <LoadingScreen />}
       <div className={isLoading ? "hidden" : ""}>{children}</div>
     </LoadingContext.Provider>
+  )
+}
+
+export function LoadingProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<div>{children}</div>}>
+      <LoadingProviderContent>{children}</LoadingProviderContent>
+    </Suspense>
   )
 }
 
