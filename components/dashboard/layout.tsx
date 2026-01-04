@@ -109,16 +109,6 @@ const getMainLinks = (userType: string, userEmail?: string): SidebarLink[] => {
         label: "My Jobs",
         href: "/dashboard/myjobs",
       },
-      {
-        icon: Clock,
-        label: "Pending Jobs",
-        href: "/dashboard/pending-jobs",
-      },
-      {
-        icon: Play,
-        label: "Run Automation",
-        href: "/dashboard/automation-control",
-      },
     ];
 
     // Only show Analytics, News, and Users for clintonkhozah@gmail.com
