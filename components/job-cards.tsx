@@ -761,8 +761,8 @@ export function JobCards({
                               onClick={() => handleShare(job, "copy-job")}
                               className="cursor-pointer"
                             >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Job Details
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Job
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -1003,8 +1003,8 @@ export function JobCards({
                               onClick={() => handleShare(job, "copy-job")}
                               className="cursor-pointer"
                             >
-                              <Copy className="h-4 w-4 mr-2" />
-                              Copy Job Details
+                              <Share2 className="h-4 w-4 mr-2" />
+                              Share Job
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
