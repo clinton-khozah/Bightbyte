@@ -96,16 +96,9 @@ export default function PendingJobsPage() {
         application_link: j.application_link
       })) || []);
 
-      // Show ALL pending jobs (very lenient - no filtering)
-      // This ensures we see everything that needs review
-      const pendingJobsList = (data || []).filter((job: any) => {
-        // Only exclude jobs that are explicitly NOT automated (manual user posts)
-        // Include everything else
-        if (job.is_automated === false && job.source === "manual") {
-          return false; // Skip manual user posts
-        }
-        return true; // Include everything else
-      });
+      // Show ALL pending jobs - no filtering at all
+      // Just show everything with status = 'pending'
+      const pendingJobsList = data || [];
 
       console.log("✅ Final pending jobs to show:", pendingJobsList.length);
       console.log("📋 Final jobs:", pendingJobsList.map((j: any) => ({
