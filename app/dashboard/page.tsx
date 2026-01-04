@@ -1989,7 +1989,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 md:mb-6 gap-3 md:gap-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-6 flex-1 w-full md:w-auto">
+          <div className={`grid grid-cols-1 ${pendingJobsCount > 0 ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-3 md:gap-6 flex-1 w-full md:w-auto`}>
             <Card className="bg-white border rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
                 <CardTitle className="text-xs md:text-sm font-medium text-gray-600">
@@ -2025,6 +2025,26 @@ export default function DashboardPage() {
                 </p>
               </CardContent>
             </Card>
+            {pendingJobsCount > 0 && (
+              <Link href="/dashboard/pending-jobs">
+                <Card className="bg-yellow-50 border-yellow-200 border-2 rounded-xl p-3 md:p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-sm cursor-pointer">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 md:pb-2">
+                    <CardTitle className="text-xs md:text-sm font-medium text-yellow-800">
+                      Pending Approval
+                    </CardTitle>
+                    <Clock className="h-3 w-3 md:h-5 md:w-5 text-yellow-600" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xl md:text-2xl font-bold text-yellow-900">
+                      {pendingJobsCount}
+                    </div>
+                    <p className="text-[10px] md:text-xs text-yellow-700 mt-1">
+                      Jobs need review
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            )}
           </div>
         </div>
 
