@@ -133,6 +133,7 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
         <meta name="theme-color" content="#2563eb" />
         <meta name="msapplication-TileColor" content="#2563eb" />
+        <meta name="google-adsense-account" content="ca-pub-4896993903038581" />
         <link rel="canonical" href={siteUrl} />
         {/* Structured Data for SEO */}
         <script
