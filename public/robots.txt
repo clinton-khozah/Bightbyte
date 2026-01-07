@@ -18,7 +18,7 @@ Allow: /company
 Allow: /resources
 
 # Sitemap location
-Sitemap: https://brightbyt.com/sitemap.xml
+Sitemap: https://brightbyte.co.za/sitemap.xml
 
 # Crawl delay (optional, helps prevent server overload)
 Crawl-delay: 1

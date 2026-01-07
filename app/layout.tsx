@@ -1,37 +1,41 @@
-import "@/app/globals.css"
-import { Metadata } from "next"
-import { ChatBot } from "@/components/chat-bot"
-import { LoadingProvider } from "@/providers/loading-provider"
-import { StarsBackground } from "@/components/stars-background"
-import { ThemeProvider } from "@/components/theme-provider"
-import { TranslationProvider } from "@/contexts/TranslationContext"
-import { PageTranslator } from "@/components/page-translator"
-import Script from "next/script"
-import dynamic from "next/dynamic"
+import "@/app/globals.css";
+import { Metadata } from "next";
+import { ChatBot } from "@/components/chat-bot";
+import { LoadingProvider } from "@/providers/loading-provider";
+import { StarsBackground } from "@/components/stars-background";
+import { ThemeProvider } from "@/components/theme-provider";
+import { TranslationProvider } from "@/contexts/TranslationContext";
+import { PageTranslator } from "@/components/page-translator";
+import Script from "next/script";
+import dynamic from "next/dynamic";
 
 // Dynamically import Toaster to avoid SSR issues
 const Toaster = dynamic(
-  () => import("@/components/ui/sonner").then((mod) => ({ default: mod.Toaster })),
+  () =>
+    import("@/components/ui/sonner").then((mod) => ({ default: mod.Toaster })),
   { ssr: false }
-)
+);
 
 // Dynamically import GoogleAnalytics to avoid SSR issues with usePathname
 const GoogleAnalytics = dynamic(
-  () => import("@/components/google-analytics").then((mod) => ({
-    default: mod.GoogleAnalytics,
-  })),
+  () =>
+    import("@/components/google-analytics").then((mod) => ({
+      default: mod.GoogleAnalytics,
+    })),
   { ssr: false }
-)
+);
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://brightbyt.com';
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://brightbyte.co.za";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Brightbyt - Career Opportunities Platform | Jobs, Internships, Learnerships & Bursaries",
-    template: "%s | Brightbyt"
+    default:
+      "Brightbyt - Career Opportunities Platform | Jobs, Internships, Learnerships & Bursaries",
+    template: "%s | Brightbyt",
   },
-  description: "Brightbyt connects job seekers with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries. Post jobs, connect with employers, and advance your career. Your journey to professional success starts here.",
+  description:
+    "Brightbyt connects job seekers with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries. Post jobs, connect with employers, and advance your career. Your journey to professional success starts here.",
   keywords: [
     "jobs",
     "career opportunities",
@@ -61,7 +65,7 @@ export const metadata: Metadata = {
     "operations jobs",
     "customer service jobs",
     "design jobs",
-    "media jobs"
+    "media jobs",
   ],
   authors: [{ name: "Brightbyt Team" }],
   creator: "Brightbyt",
@@ -72,33 +76,36 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/images/logo1.png',
-    shortcut: '/images/logo1.png',
-    apple: '/images/logo1.png',
+    icon: "/images/logo1.png",
+    shortcut: "/images/logo1.png",
+    apple: "/images/logo1.png",
   },
-  manifest: '/manifest.json',
+  manifest: "/manifest.json",
   openGraph: {
-    type: 'website',
-    locale: 'en_US',
+    type: "website",
+    locale: "en_US",
     url: siteUrl,
-    siteName: 'Brightbyt',
-    title: 'Brightbyt - Career Opportunities Platform | Jobs, Internships, Learnerships & Bursaries',
-    description: 'Connect with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries. Post jobs and advance your career.',
+    siteName: "Brightbyt",
+    title:
+      "Brightbyt - Career Opportunities Platform | Jobs, Internships, Learnerships & Bursaries",
+    description:
+      "Connect with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries. Post jobs and advance your career.",
     images: [
       {
         url: `${siteUrl}/images/logo1.png`,
         width: 1200,
         height: 630,
-        alt: 'Brightbyt - Career Opportunities Platform',
+        alt: "Brightbyt - Career Opportunities Platform",
       },
     ],
   },
   twitter: {
-    card: 'summary_large_image',
-    title: 'Brightbyt - Career Opportunities Platform',
-    description: 'Connect with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries.',
+    card: "summary_large_image",
+    title: "Brightbyt - Career Opportunities Platform",
+    description:
+      "Connect with career opportunities worldwide. Find jobs, internships, learnerships, and bursaries.",
     images: [`${siteUrl}/images/logo1.png`],
-    creator: '@brightbyt',
+    creator: "@brightbyt",
   },
   robots: {
     index: true,
@@ -106,31 +113,37 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
     },
   },
   verification: {
-    google: 'your-google-verification-code', // Add your Google Search Console verification code
+    google: "your-google-verification-code", // Add your Google Search Console verification code
     // yandex: 'your-yandex-verification-code',
     // bing: 'your-bing-verification-code',
   },
   alternates: {
     canonical: siteUrl,
   },
-  category: 'Career & Employment',
-}
+  category: "Career & Employment",
+  other: {
+    "google-adsense-account": "ca-pub-4896993903038581",
+  },
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1.0, maximum-scale=5.0"
+        />
         <meta name="theme-color" content="#2563eb" />
         <meta name="msapplication-TileColor" content="#2563eb" />
         <meta name="google-adsense-account" content="ca-pub-4896993903038581" />
@@ -142,26 +155,27 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebSite",
-              "name": "Brightbyt",
-              "url": siteUrl,
-              "description": "Career opportunities platform connecting job seekers with employers worldwide",
-              "potentialAction": {
+              name: "Brightbyt",
+              url: siteUrl,
+              description:
+                "Career opportunities platform connecting job seekers with employers worldwide",
+              potentialAction: {
                 "@type": "SearchAction",
-                "target": {
+                target: {
                   "@type": "EntryPoint",
-                  "urlTemplate": `${siteUrl}/jobs?search={search_term_string}`
+                  urlTemplate: `${siteUrl}/jobs?search={search_term_string}`,
                 },
-                "query-input": "required name=search_term_string"
+                "query-input": "required name=search_term_string",
               },
-              "publisher": {
+              publisher: {
                 "@type": "Organization",
-                "name": "Brightbyt",
-                "logo": {
+                name: "Brightbyt",
+                logo: {
                   "@type": "ImageObject",
-                  "url": `${siteUrl}/images/logo1.png`
-                }
-              }
-            })
+                  url: `${siteUrl}/images/logo1.png`,
+                },
+              },
+            }),
           }}
         />
         <script
@@ -170,21 +184,22 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "Organization",
-              "name": "Brightbyt",
-              "url": siteUrl,
-              "logo": `${siteUrl}/images/logo1.png`,
-              "description": "Career opportunities platform connecting job seekers with employers worldwide",
-              "sameAs": [
+              name: "Brightbyt",
+              url: siteUrl,
+              logo: `${siteUrl}/images/logo1.png`,
+              description:
+                "Career opportunities platform connecting job seekers with employers worldwide",
+              sameAs: [
                 "https://twitter.com/brightbyt",
                 "https://facebook.com/brightbyt",
-                "https://linkedin.com/company/brightbyt"
+                "https://linkedin.com/company/brightbyt",
               ],
-              "contactPoint": {
+              contactPoint: {
                 "@type": "ContactPoint",
-                "contactType": "Customer Service",
-                "email": "support@brightbyt.com"
-              }
-            })
+                contactType: "Customer Service",
+                email: "support@brightbyt.com",
+              },
+            }),
           }}
         />
         <script
@@ -193,19 +208,19 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "JobPosting",
-              "hiringOrganization": {
+              hiringOrganization: {
                 "@type": "Organization",
-                "name": "Brightbyt"
+                name: "Brightbyt",
               },
-              "jobLocation": {
+              jobLocation: {
                 "@type": "Place",
-                "address": {
+                address: {
                   "@type": "PostalAddress",
-                  "addressCountry": "ZA"
-                }
+                  addressCountry: "ZA",
+                },
               },
-              "employmentType": "FULL_TIME,PART_TIME,CONTRACTOR,INTERN"
-            })
+              employmentType: "FULL_TIME,PART_TIME,CONTRACTOR,INTERN",
+            }),
           }}
         />
         {/* Google Analytics - Standard Implementation */}
@@ -267,5 +282,5 @@ export default function RootLayout({
         </TranslationProvider>
       </body>
     </html>
-  )
+  );
 }
