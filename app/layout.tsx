@@ -2,7 +2,6 @@ import "@/app/globals.css";
 import { Metadata } from "next";
 import { ChatBot } from "@/components/chat-bot";
 import { LoadingProvider } from "@/providers/loading-provider";
-import { StarsBackground } from "@/components/stars-background";
 import { ThemeProvider } from "@/components/theme-provider";
 import { TranslationProvider } from "@/contexts/TranslationContext";
 import { PageTranslator } from "@/components/page-translator";
@@ -272,10 +271,7 @@ export default function RootLayout({
         <TranslationProvider>
           <PageTranslator />
           <ThemeProvider>
-            <LoadingProvider>
-              <StarsBackground />
-              {children}
-            </LoadingProvider>
+            <LoadingProvider>{children}</LoadingProvider>
             <ChatBot />
             <Toaster />
           </ThemeProvider>

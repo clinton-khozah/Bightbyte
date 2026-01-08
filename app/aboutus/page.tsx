@@ -154,15 +154,15 @@ export default function CompanyPage() {
                 className="object-contain w-12 h-12 md:w-20 md:h-20"
               />
             </div>
-            <h1 className="text-2xl md:text-6xl font-bold text-white mb-3 md:mb-6 font-['Verdana',sans-serif] drop-shadow-lg">
+            <h1 className="text-2xl md:text-6xl font-bold text-black mb-3 md:mb-6 font-['Verdana',sans-serif] drop-shadow-lg">
               Who Are We
             </h1>
             <div className="max-w-4xl mx-auto px-2 md:px-0">
-              <p className="text-sm md:text-2xl text-white mb-2 md:mb-4 font-['Verdana',sans-serif] leading-relaxed font-semibold drop-shadow-md">
+              <p className="text-sm md:text-2xl text-black mb-2 md:mb-4 font-['Verdana',sans-serif] leading-relaxed font-semibold drop-shadow-md">
                 Welcome to{" "}
-                <span className="text-blue-300 font-bold">Brightbyt</span>
+                <span className="text-blue-600 font-bold">Brightbyt</span>
               </p>
-              <p className="text-xs md:text-lg text-gray-100 font-['Verdana',sans-serif] leading-relaxed drop-shadow-md mb-6 md:mb-12">
+              <p className="text-xs md:text-lg text-black font-['Verdana',sans-serif] leading-relaxed drop-shadow-md mb-6 md:mb-12">
                 We are the premier platform where you can find the best mentors
                 to teach you whatever you want to learn, and where recruiters
                 connect with top talent for jobs, learnerships, internships, and
@@ -177,24 +177,24 @@ export default function CompanyPage() {
 
               {/* What Makes Us Different */}
               <div className="mt-6 md:mt-12 text-left">
-                <h2 className="text-lg md:text-4xl font-bold text-white mb-4 md:mb-8 text-center font-['Verdana',sans-serif] drop-shadow-lg">
+                <h2 className="text-lg md:text-4xl font-bold text-black mb-4 md:mb-8 text-center font-['Verdana',sans-serif] drop-shadow-lg">
                   What Makes Us Different
                 </h2>
                 <div className="max-w-4xl mx-auto">
-                  <p className="text-xs md:text-base text-gray-200 font-['Verdana',sans-serif] leading-relaxed drop-shadow-sm">
-                    <strong className="text-white">Secure & Trusted:</strong>{" "}
+                  <p className="text-xs md:text-base text-black font-['Verdana',sans-serif] leading-relaxed drop-shadow-sm">
+                    <strong className="text-black">Secure & Trusted:</strong>{" "}
                     All payments are processed securely, and all mentors are
                     verified professionals.{" "}
-                    <strong className="text-white">Flexible Scheduling:</strong>{" "}
+                    <strong className="text-black">Flexible Scheduling:</strong>{" "}
                     Book sessions at times that work for you, from anywhere in
                     the world.{" "}
-                    <strong className="text-white">Instant Access:</strong>{" "}
+                    <strong className="text-black">Instant Access:</strong>{" "}
                     Start learning immediately after booking. No waiting, no
                     delays.{" "}
-                    <strong className="text-white">Quality Guaranteed:</strong>{" "}
+                    <strong className="text-black">Quality Guaranteed:</strong>{" "}
                     Every mentor is carefully vetted to ensure the highest
                     quality of instruction.{" "}
-                    <strong className="text-white">
+                    <strong className="text-black">
                       Recruitment Excellence:
                     </strong>{" "}
                     As recruiters, we connect companies with top talent for
@@ -225,13 +225,13 @@ export default function CompanyPage() {
                 Our Story
               </h2>
               <div className="bg-white/10 backdrop-blur-md rounded-xl md:rounded-2xl p-4 md:p-12 border-2 border-yellow-400/30 shadow-2xl">
-                <div className="space-y-3 md:space-y-6 text-gray-100 font-['Verdana',sans-serif] leading-relaxed text-xs md:text-xl">
+                <div className="space-y-3 md:space-y-6 text-black font-['Verdana',sans-serif] leading-relaxed text-xs md:text-xl">
                   <p className="drop-shadow-md">
-                    <strong className="text-yellow-400 text-sm md:text-2xl">
+                    <strong className="text-yellow-600 text-sm md:text-2xl">
                       Brightbyt was initiated in 2025
                     </strong>{" "}
                     by a group called{" "}
-                    <strong className="text-white">Brightbyte</strong>, who
+                    <strong className="text-black">Brightbyte</strong>, who
                     recognized critical gaps in both the global education
                     landscape and the job market. Born from a deep commitment to
                     educational equity, social impact, and career advancement,
@@ -262,7 +262,7 @@ export default function CompanyPage() {
                   </p>
 
                   <p className="drop-shadow-md">
-                    <strong className="text-white">Our core mission</strong> is
+                    <strong className="text-black">Our core mission</strong> is
                     twofold: to empower disadvantaged students and professionals
                     who aspire to upskill themselves but face financial
                     barriers, and to serve as trusted recruiters connecting
@@ -296,7 +296,7 @@ export default function CompanyPage() {
                   </p>
 
                   <p className="drop-shadow-md">
-                    <strong className="text-white">For investors</strong>,
+                    <strong className="text-black">For investors</strong>,
                     Brightbyt presents a unique opportunity to be part of a
                     socially responsible venture with tremendous growth
                     potential. The global online education market is projected

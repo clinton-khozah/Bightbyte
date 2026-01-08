@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://brightbyte.co.za'
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://brightbyt.com'
   
   // Static pages
   const staticPages = [

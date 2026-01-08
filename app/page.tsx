@@ -334,10 +334,10 @@ export default function Home() {
                     <span className="text-yellow-400 font-['Verdana',sans-serif]">
                       The Revolutionary
                     </span>
-                    <span className="text-white font-['Verdana',sans-serif] font-bold">
+                    <span className="text-blue-400 font-['Verdana',sans-serif] font-bold">
                       Career Opportunities
                     </span>
-                    <span className="text-white/90 font-['Verdana',sans-serif] font-bold">
+                    <span className="text-blue-400 font-['Verdana',sans-serif] font-bold">
                       Platform
                     </span>
                   </h1>

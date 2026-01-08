@@ -40,7 +40,7 @@ export function HowItWorks({
           className="text-center mb-8"
         >
           <motion.h2
-            className="text-3xl md:text-4xl font-bold mb-4 text-white font-['Verdana',sans-serif] drop-shadow-lg"
+            className="text-3xl md:text-4xl font-bold mb-4 text-yellow-400 font-['Verdana',sans-serif] drop-shadow-lg"
             initial={{ opacity: 0, y: -20 }}
             whileInView={{
               opacity: 1,
@@ -85,7 +85,7 @@ export function HowItWorks({
           >
             How It Works
           </motion.h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-black max-w-2xl mx-auto mb-8">
             Discover how our platform connects job seekers with top companies
             for jobs, learnerships, internships, and bursaries
           </p>

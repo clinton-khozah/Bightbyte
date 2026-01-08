@@ -163,10 +163,9 @@ export function NavBar({
         <div className="flex-grow"></div>
 
         {/* Auth Buttons */}
-        {/* Temporarily commented out for Google AdSense approval */}
-        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 hidden">
           {rightContent}
-          {/* <button
+          <button
             onClick={onSignIn}
             className={cn(
               "px-2 md:px-3 py-1 md:py-1.5 rounded-md text-[10px] md:text-xs font-medium text-blue-600 bg-white border-2 border-blue-500 hover:bg-blue-50 hover:border-blue-600 transition-all shadow-sm hover:shadow-md flex items-center gap-1 md:gap-1.5"
@@ -183,7 +182,7 @@ export function NavBar({
           >
             <span className="hidden sm:inline">Get Started</span>
             <span className="sm:hidden">Start</span>
-          </button> */}
+          </button>
         </div>
       </div>
     </div>

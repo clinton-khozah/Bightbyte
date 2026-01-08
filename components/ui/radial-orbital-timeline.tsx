@@ -264,7 +264,7 @@ export default function RadialOrbitalTimeline({
                   absolute top-12 md:top-24 whitespace-nowrap
                   text-[10px] md:text-base font-semibold tracking-wider
                   transition-all duration-300
-                  ${isExpanded ? "text-white scale-125" : "text-white"}
+                  ${isExpanded ? "text-blue-400 scale-125" : "text-blue-400"}
                 `}
                 >
                   {item.title}
@@ -274,7 +274,7 @@ export default function RadialOrbitalTimeline({
                   absolute top-16 md:top-36 whitespace-nowrap
                   text-[9px] md:text-sm font-medium tracking-wider
                   transition-all duration-300
-                  ${isExpanded ? "text-white scale-110" : "text-white/80"}
+                  ${isExpanded ? "text-blue-400 scale-110" : "text-blue-400/80"}
                 `}
                 >
                   {item.date}
