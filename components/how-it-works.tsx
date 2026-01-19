@@ -85,7 +85,7 @@ export function HowItWorks({
           >
             How It Works
           </motion.h2>
-          <p className="text-xl text-black max-w-2xl mx-auto mb-8">
+          <p className="text-xl text-white max-w-2xl mx-auto mb-8">
             Discover how our platform connects job seekers with top companies
             for jobs, learnerships, internships, and bursaries
           </p>

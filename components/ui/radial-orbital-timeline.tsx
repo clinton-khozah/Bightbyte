@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { ArrowRight, Link, Zap } from "lucide-react";
+import { ArrowRight, Link, Zap, MessageCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -264,7 +264,7 @@ export default function RadialOrbitalTimeline({
                   absolute top-12 md:top-24 whitespace-nowrap
                   text-[10px] md:text-base font-semibold tracking-wider
                   transition-all duration-300
-                  ${isExpanded ? "text-blue-400 scale-125" : "text-blue-400"}
+                  ${isExpanded ? "text-white scale-125" : "text-white"}
                 `}
                 >
                   {item.title}
@@ -274,14 +274,14 @@ export default function RadialOrbitalTimeline({
                   absolute top-16 md:top-36 whitespace-nowrap
                   text-[9px] md:text-sm font-medium tracking-wider
                   transition-all duration-300
-                  ${isExpanded ? "text-blue-400 scale-110" : "text-blue-400/80"}
+                  ${isExpanded ? "text-white scale-110" : "text-white/90"}
                 `}
                 >
                   {item.date}
                 </div>
 
                 {isExpanded && (
-                  <Card className="absolute top-24 md:top-32 left-1/2 -translate-x-1/2 w-64 md:w-80 bg-white border border-gray-200 shadow-lg rounded-xl md:rounded-2xl overflow-visible">
+                  <Card className="absolute top-20 md:top-32 left-1/2 -translate-x-1/2 w-[90vw] max-w-[320px] md:w-80 bg-white border border-gray-200 shadow-lg rounded-xl md:rounded-2xl overflow-visible z-50 max-h-[80vh] overflow-y-auto">
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-px h-3 bg-gray-200"></div>
                     <CardHeader className="pb-2 p-4 md:p-6">
                       <div className="flex justify-between items-center">
@@ -305,6 +305,18 @@ export default function RadialOrbitalTimeline({
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-xs md:text-sm text-gray-700 p-4 md:p-6 pt-0">
+                      {item.id === 2 && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open("https://wa.me/27723592849?text=Hi! I need help fixing my CV.", "_blank");
+                          }}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-[10px] md:text-xs h-7 md:h-10 flex items-center justify-center gap-1.5 md:gap-2 mb-3 md:mb-4"
+                        >
+                          <MessageCircle className="w-3 h-3 md:w-4 md:h-4" />
+                          <span className="text-[10px] md:text-sm">Contact us on WhatsApp</span>
+                        </Button>
+                      )}
                       <div className="mb-3 md:mb-4 whitespace-pre-line leading-relaxed">
                         {item.content.split('\n').map((line, idx) => {
                           // Check if line is a tip bullet point
@@ -335,6 +347,18 @@ export default function RadialOrbitalTimeline({
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium text-xs md:text-sm h-8 md:h-10"
                         >
                           Sign In
+                        </Button>
+                      )}
+                      {item.id === 4 && (
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open("https://wa.me/27723592849?text=Hi! Let's prepare me for the interview.", "_blank");
+                          }}
+                          className="w-full bg-green-600 hover:bg-green-700 text-white font-medium text-xs md:text-sm h-8 md:h-10 flex items-center justify-center gap-2"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          Let's prepare you for the interview
                         </Button>
                       )}
                     </CardContent>

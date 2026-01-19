@@ -310,7 +310,7 @@ export default function Home() {
           inset: 0,
           width: "100vw",
           height: "100vh",
-          backgroundImage: "url('/images/adspace.png')",
+          backgroundImage: "url('/images/background.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -334,10 +334,10 @@ export default function Home() {
                     <span className="text-yellow-400 font-['Verdana',sans-serif]">
                       The Revolutionary
                     </span>
-                    <span className="text-blue-400 font-['Verdana',sans-serif] font-bold">
+                    <span className="text-white font-['Verdana',sans-serif] font-bold">
                       Career Opportunities
                     </span>
-                    <span className="text-blue-400 font-['Verdana',sans-serif] font-bold">
+                    <span className="text-white font-['Verdana',sans-serif] font-bold">
                       Platform
                     </span>
                   </h1>

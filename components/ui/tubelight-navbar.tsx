@@ -91,8 +91,8 @@ export function NavBar({
           </Link>
         </div>
 
-        {/* Navigation Items */}
-        <div className="flex items-center gap-4 md:gap-6 ml-12 md:ml-16 flex-shrink-0">
+        {/* Navigation Items - Desktop (Center) */}
+        <div className="hidden md:flex items-center gap-4 md:gap-6 flex-grow justify-center">
           {items.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.name;
@@ -103,7 +103,6 @@ export function NavBar({
                 e.preventDefault();
                 setNavigatingTo(item.url);
                 router.push(item.url);
-                // Reset loading state after navigation completes
                 setTimeout(() => {
                   setNavigatingTo(null);
                 }, 1000);
@@ -116,40 +115,20 @@ export function NavBar({
                 href={item.url}
                 onClick={handleClick}
                 className={cn(
-                  "relative cursor-pointer text-sm md:text-lg font-medium text-gray-700 transition-colors px-1.5 md:px-3 flex items-center gap-1.5",
+                  "relative cursor-pointer text-sm md:text-lg font-medium transition-colors px-1.5 md:px-3 flex items-center gap-1.5 group",
                   "hover:text-blue-600",
                   activeTab === item.name && "text-blue-600",
-                  "relative group",
                   isNavigating && "opacity-70 cursor-wait"
                 )}
               >
                 {isNavigating ? (
                   <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin flex-shrink-0" />
                 ) : (
-                  <>
-                    <span className="hidden md:inline">{item.name}</span>
-                    <span className="md:hidden">
-                      <Icon size={16} strokeWidth={2.5} />
-                    </span>
-                  </>
-                )}
-                {isActive && !isNavigating && (
-                  <motion.div
-                    layoutId="lamp"
-                    className="absolute inset-0 w-full bg-blue-50 rounded-full -z-10"
-                    initial={false}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 30,
-                    }}
-                  >
-                    <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-8 h-1 bg-blue-500 rounded-t-full">
-                      <div className="absolute w-12 h-6 bg-blue-400/30 rounded-full blur-md -top-2 -left-2" />
-                      <div className="absolute w-8 h-6 bg-blue-400/30 rounded-full blur-md -top-1" />
-                      <div className="absolute w-4 h-4 bg-blue-400/30 rounded-full blur-sm top-0 left-2" />
-                    </div>
-                  </motion.div>
+                  <span className={cn(
+                    isActive ? "text-blue-600" : "text-gray-700"
+                  )}>
+                    {item.name}
+                  </span>
                 )}
                 {!isNavigating && (
                   <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 transition-all duration-300 group-hover:w-full" />
@@ -159,11 +138,52 @@ export function NavBar({
           })}
         </div>
 
-        {/* Spacer to push auth buttons to the right */}
-        <div className="flex-grow"></div>
+        {/* Spacer to push items to the right on mobile */}
+        <div className="flex-grow md:hidden"></div>
+
+        {/* Navigation Icons - Mobile (Right Side) */}
+        <div className="flex items-center gap-2 md:hidden flex-shrink-0">
+          {items.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.name;
+            const isNavigating = navigatingTo === item.url;
+
+            const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+              if (item.url !== pathname) {
+                e.preventDefault();
+                setNavigatingTo(item.url);
+                router.push(item.url);
+                setTimeout(() => {
+                  setNavigatingTo(null);
+                }, 1000);
+              }
+            };
+
+            return (
+              <Link
+                key={item.name}
+                href={item.url}
+                onClick={handleClick}
+                className={cn(
+                  "relative cursor-pointer p-1.5 rounded-md transition-colors",
+                  "hover:bg-blue-50",
+                  isActive && "bg-blue-50 text-blue-600",
+                  isNavigating && "opacity-70 cursor-wait"
+                )}
+                title={item.name}
+              >
+                {isNavigating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Icon size={18} strokeWidth={2.5} className={isActive ? "text-blue-600" : "text-gray-700"} />
+                )}
+              </Link>
+            );
+          })}
+        </div>
 
         {/* Auth Buttons */}
-        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0 hidden">
+        <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
           {rightContent}
           <button
             onClick={onSignIn}

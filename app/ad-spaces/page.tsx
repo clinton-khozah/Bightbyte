@@ -250,7 +250,7 @@ export default function FindTutorsPage() {
           inset: 0,
           width: "100vw",
           height: "100vh",
-          backgroundImage: "url('/images/adspace.png')",
+          backgroundImage: "url('/images/background.jpeg')",
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
