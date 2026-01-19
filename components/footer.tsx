@@ -12,6 +12,15 @@ import {
 } from "@/components/ui/select";
 import { languages, useTranslation } from "@/contexts/TranslationContext";
 import { TranslatableText } from "@/components/translatable-text";
+import dynamic from "next/dynamic";
+
+const GoogleAdSenseFooterAd = dynamic(
+  () =>
+    import("@/components/google-adsense-footer-ad").then((mod) => ({
+      default: mod.GoogleAdSenseFooterAd,
+    })),
+  { ssr: false }
+);
 
 export function Footer() {
   const { language, setLanguage } = useTranslation();
@@ -23,7 +32,9 @@ export function Footer() {
   };
 
   return (
-    <footer className="bg-blue-200 border-t border-blue-400 w-full mt-auto">
+    <>
+      <GoogleAdSenseFooterAd />
+      <footer className="bg-blue-200 border-t border-blue-400 w-full mt-auto">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 md:py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-8">
           {/* Company Info */}
@@ -243,5 +254,6 @@ export function Footer() {
         </div>
       </div>
     </footer>
+    </>
   );
 }

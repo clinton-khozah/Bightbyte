@@ -4,6 +4,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
+const GoogleAdSenseAd = dynamic(
+  () =>
+    import("@/components/google-adsense-ad").then((mod) => ({
+      default: mod.GoogleAdSenseAd,
+    })),
+  { ssr: false }
+);
+
 // Dynamically import HowItWorksTimeline to avoid SSR issues
 const HowItWorksTimeline = dynamic(
   () =>
@@ -61,6 +69,11 @@ export function HowItWorks({
           searchQuery={searchQuery}
           selectedCategory={selectedCategory}
         />
+
+        {/* Ad Unit - After Job Listings */}
+        <div className="my-6 md:my-8">
+          <GoogleAdSenseAd />
+        </div>
 
         <motion.div
           initial={{ opacity: 0, y: 20 }}

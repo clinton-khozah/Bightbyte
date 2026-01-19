@@ -24,6 +24,14 @@ const GoogleAnalytics = dynamic(
   { ssr: false }
 );
 
+const GoogleAdSenseAd = dynamic(
+  () =>
+    import("@/components/google-adsense-ad").then((mod) => ({
+      default: mod.GoogleAdSenseAd,
+    })),
+  { ssr: false }
+);
+
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://brightbyte.co.za";
 
 export const metadata: Metadata = {
@@ -271,7 +279,9 @@ export default function RootLayout({
         <TranslationProvider>
           <PageTranslator />
           <ThemeProvider>
-            <LoadingProvider>{children}</LoadingProvider>
+            <LoadingProvider>
+              {children}
+            </LoadingProvider>
             <ChatBot />
             <Toaster />
           </ThemeProvider>

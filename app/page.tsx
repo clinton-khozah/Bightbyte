@@ -48,6 +48,14 @@ import dynamic from "next/dynamic";
 import { supabase } from "@/lib/supabase";
 import { LoadingLogo } from "@/components/loading-logo";
 
+const GoogleAdSenseAd = dynamic(
+  () =>
+    import("@/components/google-adsense-ad").then((mod) => ({
+      default: mod.GoogleAdSenseAd,
+    })),
+  { ssr: false }
+);
+
 // Dynamically import JobNotificationPopup to avoid SSR issues
 const JobNotificationPopup = dynamic(
   () =>
@@ -577,6 +585,13 @@ export default function Home() {
                     </div>
                   </motion.div>
                 </motion.div>
+              </div>
+            </AnimatedContent>
+
+            {/* Ad Unit - Content Area */}
+            <AnimatedContent>
+              <div className="container-narrow relative z-10 py-4 md:py-6">
+                <GoogleAdSenseAd />
               </div>
             </AnimatedContent>
 
