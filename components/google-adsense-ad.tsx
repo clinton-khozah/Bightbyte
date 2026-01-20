@@ -17,11 +17,26 @@ export function GoogleAdSenseAd() {
   
   useEffect(() => {
     if (!isDashboard && typeof window !== "undefined") {
+      // Load ad immediately
       try {
         (window.adsbygoogle = window.adsbygoogle || []).push({});
       } catch (err) {
         console.error("AdSense error:", err);
       }
+    }
+  }, [isDashboard]);
+
+  // Force ad refresh on mount for faster loading
+  useEffect(() => {
+    if (!isDashboard && typeof window !== "undefined" && window.adsbygoogle) {
+      const timer = setTimeout(() => {
+        try {
+          (window.adsbygoogle = window.adsbygoogle || []).push({});
+        } catch (err) {
+          // Silent fail
+        }
+      }, 100);
+      return () => clearTimeout(timer);
     }
   }, [isDashboard]);
 

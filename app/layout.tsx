@@ -155,6 +155,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#2563eb" />
         <meta name="google-adsense-account" content="ca-pub-4896993903038581" />
         <link rel="canonical" href={siteUrl} />
+        <link rel="preload" as="image" href="/images/background.jpeg" />
         {/* Structured Data for SEO */}
         <script
           type="application/ld+json"

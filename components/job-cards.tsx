@@ -556,12 +556,10 @@ export function JobCards({
             {paginatedJobs.map((job, index) => (
               <motion.div
                 key={job.id}
-                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                initial={{ opacity: 1, y: 0, scale: 1 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{
-                  duration: 0.5,
-                  delay: index * 0.1,
-                  ease: "easeOut",
+                  duration: 0,
                 }}
               >
                   <Card className="min-h-[380px] bg-gradient-to-br from-blue-50 via-white to-blue-50 border-2 border-blue-200 shadow-sm hover:shadow-xl transition-all flex flex-col rounded-lg relative overflow-hidden">
@@ -804,12 +802,10 @@ export function JobCards({
               {paginatedJobs.map((job, index) => (
                 <motion.div
                   key={job.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                  initial={{ opacity: 1, y: 0, scale: 1 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   transition={{
-                    duration: 0.5,
-                    delay: index * 0.05,
-                    ease: "easeOut",
+                    duration: 0,
                   }}
                 >
                   <Card className="min-h-[550px] bg-gradient-to-br from-blue-50 via-white to-blue-50 border-2 border-blue-200 shadow-sm hover:shadow-xl transition-all flex flex-col rounded-xl relative overflow-hidden">
