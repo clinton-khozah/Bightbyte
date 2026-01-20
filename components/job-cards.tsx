@@ -55,6 +55,11 @@ const AdApplyModal = dynamic(
   { ssr: false }
 );
 
+const GoogleAdSenseInlineAd = dynamic(
+  () => import("@/components/google-adsense-inline-ad").then((mod) => ({ default: mod.GoogleAdSenseInlineAd })),
+  { ssr: false }
+);
+
 interface Job {
   id: string;
   title: string;
@@ -578,14 +583,14 @@ export function JobCards({
           {/* Mobile View - Vertical Scrollable List */}
           <div className="md:hidden space-y-4" ref={containerRef}>
             {paginatedJobs.map((job, index) => (
-              <motion.div
-                key={job.id}
-                initial={{ opacity: 1, y: 0, scale: 1 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{
-                  duration: 0,
-                }}
-              >
+              <React.Fragment key={job.id}>
+                <motion.div
+                  initial={{ opacity: 1, y: 0, scale: 1 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{
+                    duration: 0,
+                  }}
+                >
                   <Card className="min-h-[380px] bg-gradient-to-br from-blue-50 via-white to-blue-50 border-2 border-blue-200 shadow-sm hover:shadow-xl transition-all flex flex-col rounded-lg relative overflow-hidden">
                     <CardContent className="p-3 flex flex-col flex-grow relative">
                       {/* Blue accent bar */}
@@ -812,14 +817,14 @@ export function JobCards({
           <div className="hidden md:block" ref={containerRef}>
             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {paginatedJobs.map((job, index) => (
-                <motion.div
-                  key={job.id}
-                  initial={{ opacity: 1, y: 0, scale: 1 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{
-                    duration: 0,
-                  }}
-                >
+                <React.Fragment key={job.id}>
+                  <motion.div
+                    initial={{ opacity: 1, y: 0, scale: 1 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      duration: 0,
+                    }}
+                  >
                   <Card className="min-h-[550px] bg-gradient-to-br from-blue-50 via-white to-blue-50 border-2 border-blue-200 shadow-sm hover:shadow-xl transition-all flex flex-col rounded-xl relative overflow-hidden">
                     <CardContent className="p-6 flex flex-col flex-grow relative">
                       {/* Blue accent bar */}
@@ -1040,7 +1045,14 @@ export function JobCards({
                     </CardContent>
                   </Card>
                 </motion.div>
-              ))}
+                {/* Show ad after every 3rd job card */}
+                {(index + 1) % 3 === 0 && index < paginatedJobs.length - 1 && (
+                  <div className="col-span-full">
+                    <GoogleAdSenseInlineAd />
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
             </div>
 
                   {/* Pagination Controls */}
