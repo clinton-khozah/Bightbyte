@@ -50,6 +50,11 @@ const SignUpModal = dynamic(
   { ssr: false }
 );
 
+const AdApplyModal = dynamic(
+  () => import("@/components/ad-apply-modal").then((mod) => ({ default: mod.AdApplyModal })),
+  { ssr: false }
+);
+
 interface Job {
   id: string;
   title: string;
@@ -96,8 +101,27 @@ export function JobCards({
   const [loading, setLoading] = useState(true);
   const [isSignInOpen, setIsSignInOpen] = useState(false);
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
+  const [isAdModalOpen, setIsAdModalOpen] = useState(false);
+  const [selectedJobForApply, setSelectedJobForApply] = useState<Job | null>(null);
   const jobsPerPage = 100;
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Handle Apply button click - show ad first
+  const handleApplyClick = (job: Job, method: "external_link" | "email" | "platform") => {
+    setSelectedJobForApply(job);
+    setIsAdModalOpen(true);
+    
+    // Track the click
+    trackJobEvent.apply(job.id, job.title, method);
+    trackButtonClick(`Apply (${method === "external_link" ? "External" : method === "email" ? "Email" : "Platform"})`, "job_card");
+  };
+
+  // Continue to job page after ad
+  const handleContinueToApply = () => {
+    if (selectedJobForApply) {
+      window.location.href = `/jobs/${selectedJobForApply.id}#apply`;
+    }
+  };
 
   // Format job for social media copy - professional format
   const formatJobForSocialMedia = (job: Job): string => {
@@ -714,11 +738,7 @@ export function JobCards({
                         </Button>
                         {job.application_method === "external_link" && job.application_link ? (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "external_link");
-                              trackButtonClick("Apply (External)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "external_link")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs h-8 px-2"
                           >
                             <ExternalLink className="h-3 w-3 mr-1" />
@@ -726,11 +746,7 @@ export function JobCards({
                           </Button>
                         ) : job.application_method === "email" && job.application_email ? (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "email");
-                              trackButtonClick("Apply (Email)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "email")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs h-8 px-2"
                           >
                             <Mail className="h-3 w-3 mr-1" />
@@ -738,11 +754,7 @@ export function JobCards({
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "platform");
-                              trackButtonClick("Apply (Platform)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "platform")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all text-xs h-8 px-2"
                           >
                             Apply
@@ -961,11 +973,7 @@ export function JobCards({
                         </Button>
                         {job.application_method === "external_link" && job.application_link ? (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "external_link");
-                              trackButtonClick("Apply (External)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "external_link")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
@@ -973,11 +981,7 @@ export function JobCards({
                           </Button>
                         ) : job.application_method === "email" && job.application_email ? (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "email");
-                              trackButtonClick("Apply (Email)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "email")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                           >
                             <Mail className="h-4 w-4 mr-2" />
@@ -985,11 +989,7 @@ export function JobCards({
                           </Button>
                         ) : (
                           <Button
-                            onClick={() => {
-                              trackJobEvent.apply(job.id, job.title, "platform");
-                              trackButtonClick("Apply (Platform)", "job_card");
-                              window.location.href = `/jobs/${job.id}#apply`;
-                            }}
+                            onClick={() => handleApplyClick(job, "platform")}
                             className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md hover:shadow-lg transition-all"
                           >
                             Apply
@@ -1163,6 +1163,16 @@ export function JobCards({
       <SignUpModal
         isOpen={isSignUpOpen}
         onClose={() => setIsSignUpOpen(false)}
+      />
+
+      <AdApplyModal
+        isOpen={isAdModalOpen}
+        onClose={() => {
+          setIsAdModalOpen(false);
+          setSelectedJobForApply(null);
+        }}
+        onContinue={handleContinueToApply}
+        jobTitle={selectedJobForApply?.title}
       />
     </div>
   );
