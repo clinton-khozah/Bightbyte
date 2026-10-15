@@ -11,7 +11,10 @@ import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import ActionIcons from "../../components/ActionIcons/ActionIcons";
 import Avatar from "../../components/Avatar/Avatar";
 import PhotoUploadField from "../../components/PhotoUploadField/PhotoUploadField";
+import LineSelect from "../../components/LineSelect/LineSelect";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
+import { can, canManagePeople } from "../../constants/roles";
+import { useAuth } from "../../auth/AuthContext";
 import "./DriversPage.css";
 
 const formatLogin = (value) =>
@@ -26,7 +29,10 @@ const formatLogin = (value) =>
     : "Never";
 
 const DriversPage = () => {
+  const { user } = useAuth();
+  const managePeople = canManagePeople(user);
   const navigate = useNavigate();
+  const [roles, setRoles] = useState([]);
   const [rows, setRows] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [companies, setCompanies] = useState([]);
@@ -36,14 +42,21 @@ const DriversPage = () => {
   const [assigning, setAssigning] = useState(null);
   const [vehicleId, setVehicleId] = useState("");
   const [pending, setPending] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [success, setSuccess] = useState("");
+  const [editError, setEditError] = useState("");
 
   const load = () =>
-    Promise.all([api("/api/users"), api("/api/vehicles"), api("/api/companies").catch(() => [])]).then(
-      ([users, list, tenants]) => {
+    Promise.all([
+      api("/api/users"),
+      api("/api/vehicles"),
+      api("/api/companies").catch(() => []),
+      api("/api/roles").catch(() => []),
+    ]).then(([users, list, tenants, roleRows]) => {
         setRows(users);
         setVehicles(list);
         setCompanies(tenants);
+        setRoles(roleRows);
       },
     );
 
@@ -106,13 +119,17 @@ const DriversPage = () => {
       render: (d) => (
         <ActionIcons
           onView={() => navigate(`/drivers/${d.id}`)}
-          onEdit={() => {
+          onEdit={
+            can(user, "drivers", "edit") && (managePeople || d.id === user?.id)
+              ? () => {
             setEditing(d);
+            setEditError("");
             setEditForm({
               full_name: d.full_name || "",
               email: d.email || "",
               phone: d.phone || "",
               role: d.role || "driver",
+              role_id: d.role_id || "",
               status: d.status || "active",
               photo_url: d.photo_url || "",
               company_id: d.company_id || "",
@@ -127,14 +144,22 @@ const DriversPage = () => {
               license_expiry: d.license_expiry || "",
               license_codes: d.license_codes || "",
               prdp: d.prdp || "not_required",
+              password: "",
+              confirmPassword: "",
             });
-          }}
+          } : undefined
+          }
           onAssign={
-            d.role === "driver"
+            d.role === "driver" && managePeople && can(user, "drivers", "edit")
               ? () => {
                   setAssigning(d);
                   setVehicleId(d.assigned_vehicle_id || "");
                 }
+              : undefined
+          }
+          onDelete={
+            managePeople && can(user, "drivers", "delete") && d.id !== user?.id
+              ? () => setPendingDelete(d)
               : undefined
           }
         />
@@ -145,20 +170,24 @@ const DriversPage = () => {
   return (
     <>
       <OpsPage
-        crumb={["Administration", "Users"]}
-        title="User Management"
-        subtitle="Signed in as admin"
-        primaryLabel="Onboard User"
-        onPrimary={() => setOpen(true)}
-        onExport={() => csvDownload("users.csv", columns, filtered)}
+        crumb={managePeople ? ["Administration", "Users"] : ["Account", "My Profile"]}
+        title={managePeople ? "User Management" : "My Profile"}
+        subtitle={user?.role_label || user?.role || "—"}
+        primaryLabel={managePeople && can(user, "drivers", "create") ? "Onboard User" : undefined}
+        onPrimary={managePeople && can(user, "drivers", "create") ? () => setOpen(true) : undefined}
+        onExport={managePeople ? () => csvDownload("users.csv", columns, filtered) : undefined}
         activeStat={tab === "all" ? "all" : tab}
-        onStat={(id) => setTab(id === "all" ? "all" : id)}
-        stats={[
-          { id: "all", label: "Total Users", value: rows.length, tone: "blue", icon: "👤" },
-          { id: "active", label: "Active", value: rows.filter((r) => r.status === "active").length, tone: "green", icon: "✓" },
-          { id: "in_progress", label: "In Progress", value: rows.filter((r) => !r.photo_url).length, tone: "blue", icon: "👤" },
-          { id: "incomplete", label: "Incomplete", value: 0, tone: "amber", icon: "!" },
-        ]}
+        onStat={managePeople ? (id) => setTab(id === "all" ? "all" : id) : undefined}
+        stats={
+          managePeople
+            ? [
+                { id: "all", label: "Total Users", value: rows.length, tone: "blue", icon: "👤" },
+                { id: "active", label: "Active", value: rows.filter((r) => r.status === "active").length, tone: "green", icon: "✓" },
+                { id: "in_progress", label: "In Progress", value: rows.filter((r) => !r.photo_url).length, tone: "blue", icon: "👤" },
+                { id: "incomplete", label: "Incomplete", value: 0, tone: "amber", icon: "!" },
+              ]
+            : []
+        }
       >
         <DataTable
           rows={filtered}
@@ -168,18 +197,27 @@ const DriversPage = () => {
           search={query}
           onSearch={setQuery}
           searchPlaceholder="Search users..."
-          tabs={[
-            { id: "all", label: "All" },
-            { id: "active", label: "Active" },
-            { id: "in_progress", label: "In Progress" },
-            { id: "incomplete", label: "Incomplete" },
-          ]}
+          hideToolbar={!managePeople}
+          tabs={
+            managePeople
+              ? [
+                  { id: "all", label: "All" },
+                  { id: "active", label: "Active" },
+                  { id: "in_progress", label: "In Progress" },
+                  { id: "incomplete", label: "Incomplete" },
+                ]
+              : []
+          }
           tab={tab}
           onTab={setTab}
           emptyText="No users found."
         />
       </OpsPage>
-      <OnboardUserModal open={open} onClose={() => setOpen(false)} onComplete={load} />
+      <OnboardUserModal
+        open={open}
+        onClose={() => setOpen(false)}
+        onComplete={load}
+      />
       {editing ? (
         <Modal
           title="Edit user"
@@ -191,15 +229,28 @@ const DriversPage = () => {
             className="fc-form"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (editForm.password || editForm.confirmPassword) {
+                if (editForm.password !== editForm.confirmPassword) {
+                  setEditError("New password and confirmation do not match.");
+                  return;
+                }
+                if (String(editForm.password).length < 6) {
+                  setEditError("Password must be at least 6 characters.");
+                  return;
+                }
+              }
+              setEditError("");
+              const { confirmPassword, password, ...rest } = editForm;
               await api(`/api/users/${editing.id}`, {
                 method: "PATCH",
                 body: JSON.stringify({
-                  ...editForm,
+                  ...rest,
                   assigned_vehicle_id: editForm.assigned_vehicle_id || null,
+                  ...(password ? { password } : {}),
                 }),
               });
               setEditing(null);
-              setSuccess("User profile was updated.");
+              setSuccess(password ? "User profile and password were updated." : "User profile was updated.");
               load();
             }}
           >
@@ -224,32 +275,51 @@ const DriversPage = () => {
               Phone
               <input value={editForm.phone || ""} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} />
             </label>
-            <label>
-              Role
-              <select value={editForm.role || "driver"} onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}>
-                <option value="admin">admin</option>
-                <option value="fleet_manager">fleet_manager</option>
-                <option value="driver">driver</option>
-                <option value="finance">finance</option>
-              </select>
-            </label>
-            <label>
-              Status
-              <select value={editForm.status || "active"} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}>
-                <option value="active">active</option>
-                <option value="inactive">inactive</option>
-              </select>
-            </label>
-            <label>
-              Company
-              <select value={editForm.company_id || ""} onChange={(e) => setEditForm({ ...editForm, company_id: e.target.value })}>
-                {companies.map((company) => (
-                  <option key={company.id} value={company.id}>
-                    {company.name}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <LineSelect
+              label="Role"
+              value={editForm.role_id || editForm.role || "driver"}
+              onChange={(id) => {
+                const picked = roles.find((role) => role.RoleID === id || role.id === id);
+                setEditForm({
+                  ...editForm,
+                  role_id: picked?.RoleID || id,
+                  role: picked?.key || id,
+                });
+              }}
+              options={roles
+                .filter((role) => role.state !== "inactive")
+                .map((role) => ({
+                  id: role.RoleID,
+                  label: role.RoleName,
+                  sub: role.RoleID,
+                }))}
+              emptyText="Add roles under Roles & Rights first"
+            />
+            <LineSelect
+              label="Status"
+              value={editForm.status || "active"}
+              onChange={(id) => setEditForm({ ...editForm, status: id })}
+              options={[
+                { id: "active", label: "Active" },
+                { id: "inactive", label: "Inactive" },
+                { id: "in_progress", label: "In progress" },
+                { id: "incomplete", label: "Incomplete" },
+              ]}
+            />
+            <LineSelect
+              label="Company"
+              value={editForm.company_id || ""}
+              onChange={(id) => setEditForm({ ...editForm, company_id: id, assigned_vehicle_id: "" })}
+              placeholder="Select a company"
+              emptyText="No companies to select"
+              options={companies.map((company) => ({
+                id: company.id,
+                label: company.name,
+                sub: company.code || "",
+                photo: company.photo_url,
+                name: company.name,
+              }))}
+            />
             <label>
               Employee ID
               <input value={editForm.employee_id || ""} onChange={(e) => setEditForm({ ...editForm, employee_id: e.target.value })} />
@@ -266,20 +336,25 @@ const DriversPage = () => {
               Start date
               <input type="date" value={editForm.start_date || ""} onChange={(e) => setEditForm({ ...editForm, start_date: e.target.value })} />
             </label>
-            <label>
-              Assigned vehicle
-              <select
-                value={editForm.assigned_vehicle_id || ""}
-                onChange={(e) => setEditForm({ ...editForm, assigned_vehicle_id: e.target.value })}
-              >
-                <option value="">Unassigned</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.registration} — {v.make} {v.model}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <LineSelect
+              label="Assigned vehicle"
+              value={editForm.assigned_vehicle_id || "none"}
+              onChange={(id) => setEditForm({ ...editForm, assigned_vehicle_id: id === "none" ? "" : id })}
+              placeholder="Unassigned"
+              emptyText="No vehicles to select"
+              options={[
+                { id: "none", label: "Unassigned" },
+                ...vehicles
+                  .filter((v) => !editForm.company_id || v.company_id === editForm.company_id)
+                  .map((v) => ({
+                    id: v.id,
+                    label: v.registration,
+                    sub: `${v.make || ""} ${v.model || ""}`.trim(),
+                    photo: v.photo_url || v.photos?.[0],
+                    name: v.registration,
+                  })),
+              ]}
+            />
             <label>
               Emergency contact
               <input
@@ -306,14 +381,37 @@ const DriversPage = () => {
               Licence codes
               <input value={editForm.license_codes || ""} onChange={(e) => setEditForm({ ...editForm, license_codes: e.target.value })} />
             </label>
+            <LineSelect
+              label="PrDP"
+              value={editForm.prdp || "not_required"}
+              onChange={(id) => setEditForm({ ...editForm, prdp: id })}
+              options={[
+                { id: "not_required", label: "Not required" },
+                { id: "required", label: "Required" },
+                { id: "pending", label: "Pending" },
+              ]}
+            />
             <label>
-              PrDP
-              <select value={editForm.prdp || "not_required"} onChange={(e) => setEditForm({ ...editForm, prdp: e.target.value })}>
-                <option value="not_required">Not required</option>
-                <option value="required">Required</option>
-                <option value="pending">Pending</option>
-              </select>
+              New password
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={editForm.password || ""}
+                onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                placeholder="Leave blank to keep current"
+              />
             </label>
+            <label>
+              Confirm password
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={editForm.confirmPassword || ""}
+                onChange={(e) => setEditForm({ ...editForm, confirmPassword: e.target.value })}
+                placeholder="Repeat new password"
+              />
+            </label>
+            {editError ? <p className="fc-error">{editError}</p> : null}
             <div className="fc-form__actions">
               <button className="fc-btn" type="button" onClick={() => setEditing(null)}>
                 Cancel
@@ -339,18 +437,27 @@ const DriversPage = () => {
               setAssigning(null);
             }}
           >
-            <label>
-              Vehicle
-              <select value={vehicleId} onChange={(e) => setVehicleId(e.target.value)}>
-                <option value="">Unassigned</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.registration} — {v.make} {v.model}
-                    {v.assigned_driver_id && v.assigned_driver_id !== assigning.id ? " (in use)" : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <LineSelect
+              label="Vehicle"
+              value={vehicleId || "none"}
+              onChange={(id) => setVehicleId(id === "none" ? "" : id)}
+              placeholder="Unassigned"
+              emptyText="No vehicles to select"
+              options={[
+                { id: "none", label: "Unassigned" },
+                ...vehicles
+                  .filter((v) => !assigning.company_id || v.company_id === assigning.company_id)
+                  .map((v) => ({
+                    id: v.id,
+                    label: v.registration,
+                    sub:
+                      `${v.make || ""} ${v.model || ""}`.trim() +
+                      (v.assigned_driver_id && v.assigned_driver_id !== assigning.id ? " · in use" : ""),
+                    photo: v.photo_url || v.photos?.[0],
+                    name: v.registration,
+                  })),
+              ]}
+            />
             <div className="fc-form__actions">
               <button className="fc-btn" type="button" onClick={() => setAssigning(null)}>
                 Cancel
@@ -382,6 +489,23 @@ const DriversPage = () => {
           });
           setPending(null);
           setSuccess("Vehicle assignment was updated.");
+          load();
+        }}
+      />
+      <ConfirmModal
+        open={Boolean(pendingDelete)}
+        title="Delete this user?"
+        message={
+          pendingDelete
+            ? `This will permanently remove ${pendingDelete.full_name || pendingDelete.email} from User Management.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          await api(`/api/users/${pendingDelete.id}`, { method: "DELETE" });
+          setPendingDelete(null);
+          setSuccess("User was deleted.");
           load();
         }}
       />

@@ -11,9 +11,14 @@ export async function api(path, options = {}) {
   if (!(options.body instanceof FormData) && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
   }
-  const res = await fetch(path, { ...options, headers });
+  let res;
+  try {
+    res = await fetch(path, { ...options, headers });
+  } catch {
+    throw new Error("Cannot reach the API. Start the server and try again.");
+  }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Request failed");
+  if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
 

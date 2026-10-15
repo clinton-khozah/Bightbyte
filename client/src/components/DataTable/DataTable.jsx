@@ -82,7 +82,13 @@ const DataTable = ({
                 {visible.map((row) => (
                   <tr key={row[rowKey]}>
                     {columns.map((col) => (
-                      <td key={col.key}>{col.render ? col.render(row) : row[col.key] ?? "—"}</td>
+                      <td
+                        key={col.key}
+                        data-label={col.label || undefined}
+                        className={col.wrap ? "fc-table__cell--wrap" : undefined}
+                      >
+                        {col.render ? col.render(row) : row[col.key] ?? "—"}
+                      </td>
                     ))}
                   </tr>
                 ))}

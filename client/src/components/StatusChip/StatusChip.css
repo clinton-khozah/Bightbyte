@@ -23,7 +23,8 @@
   color: #006239;
 }
 
-.fc-chip--submitted {
+.fc-chip--submitted,
+.fc-chip--pending {
   background: #fff7ed;
   color: #c2410c;
 }
@@ -69,7 +70,8 @@
   color: #006239;
 }
 
-.fc-chip--due {
+.fc-chip--due,
+.fc-chip--overdue {
   background: #fee2e2;
   color: #dc2626;
 }

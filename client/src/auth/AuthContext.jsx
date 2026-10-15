@@ -20,6 +20,16 @@ export const AuthProvider = ({ children }) => {
       .finally(() => setReady(true));
   }, []);
 
+  useEffect(() => {
+    const onFocus = () => {
+      api("/api/me")
+        .then((data) => setUser(data.user))
+        .catch(() => {});
+    };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
   const value = useMemo(
     () => ({
       user,
@@ -40,6 +50,7 @@ export const AuthProvider = ({ children }) => {
           method: "POST",
           body: JSON.stringify(payload),
         });
+        if (data.pending) return data;
         setToken(data.token);
         setUser(data.user);
         return data.user;

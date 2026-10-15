@@ -18,6 +18,20 @@
   color: #525252;
   background: #fafafa;
   border-bottom: 1px solid var(--sb-border, #e6e6e4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.role-matrix__all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #525252;
+  cursor: pointer;
 }
 
 .role-matrix__grid {
@@ -65,4 +79,19 @@
   grid-column: 1 / -1;
   margin-top: 0;
   padding-top: 10px;
+}
+
+@media (max-width: 800px) {
+  .fc-modal--compact .role-form {
+    grid-template-columns: 1fr;
+  }
+
+  .role-matrix__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .role-matrix__grid table:first-child {
+    border-right: 0;
+    border-bottom: 1px solid var(--sb-border, #e6e6e4);
+  }
 }

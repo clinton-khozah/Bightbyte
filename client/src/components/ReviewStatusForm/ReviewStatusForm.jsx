@@ -1,32 +1,47 @@
 import React from "react";
+import LineSelect from "../LineSelect/LineSelect";
 import "../Modal/Modal.css";
 import "./ReviewStatusForm.css";
 
 const ReviewStatusForm = ({
   vehicleStatus,
   reviewStatus,
+  note,
   onVehicleStatus,
   onReviewStatus,
+  onNote,
   onSave,
   onCancel,
   saving,
   error,
 }) => (
   <form className="fc-form review-status" onSubmit={onSave}>
-    <label>
-      Vehicle status
-      <select value={vehicleStatus} onChange={(e) => onVehicleStatus(e.target.value)}>
-        <option value="in_use">In use</option>
-        <option value="available">Available</option>
-        <option value="maintenance">Maintenance</option>
-      </select>
-    </label>
-    <label>
-      Review status
-      <select value={reviewStatus} onChange={(e) => onReviewStatus(e.target.value)}>
-        <option value="submitted">Submitted</option>
-        <option value="reviewed">Reviewed</option>
-      </select>
+    <LineSelect
+      label="Vehicle status"
+      value={vehicleStatus}
+      onChange={onVehicleStatus}
+      options={[
+        { id: "in_use", label: "In use" },
+        { id: "available", label: "Available" },
+        { id: "maintenance", label: "Maintenance" },
+      ]}
+    />
+    <LineSelect
+      label="Review status"
+      value={reviewStatus}
+      onChange={onReviewStatus}
+      options={[
+        { id: "submitted", label: "Submitted" },
+        { id: "reviewed", label: "Reviewed" },
+      ]}
+    />
+    <label className="fc-form__full">
+      Note
+      <textarea
+        value={note}
+        onChange={(e) => onNote(e.target.value)}
+        placeholder="Write a note for this status update"
+      />
     </label>
     <p className="fc-form__hint">
       Set the vehicle status from this driver review, for example maintenance if the car is not roadworthy.

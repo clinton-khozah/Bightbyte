@@ -170,3 +170,20 @@
   justify-content: center;
   padding: 0;
 }
+
+@media (max-width: 800px) {
+  .fc-side-nav,
+  .fc-side-nav.is-collapsed {
+    position: fixed;
+    left: 0;
+    top: 0;
+    height: 100%;
+    z-index: 42;
+    width: var(--fc-sidebar-width-collapsed);
+  }
+
+  .fc-side-nav:not(.is-collapsed) {
+    width: var(--fc-sidebar-width);
+    box-shadow: 12px 0 32px rgba(0, 0, 0, 0.14);
+  }
+}

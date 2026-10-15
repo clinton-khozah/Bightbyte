@@ -10,8 +10,10 @@ import Avatar from "../../components/Avatar/Avatar";
 import ReviewFormModal from "../../components/ReviewFormModal/ReviewFormModal";
 import ReviewStatusForm from "../../components/ReviewStatusForm/ReviewStatusForm";
 import Modal from "../../components/Modal/Modal";
+import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import "./ReviewsPage.css";
 
 const ANGLES = [
@@ -34,8 +36,13 @@ const ReviewsPage = () => {
   const [reviewStatus, setReviewStatus] = useState("submitted");
   const [statusError, setStatusError] = useState("");
   const [success, setSuccess] = useState("");
-  const canManage = user?.role === "admin" || user?.role === "fleet_manager";
+  const [pendingDelete, setPendingDelete] = useState(null);
+  const canManage = can(user, "reviews", "edit");
+  const canCreate = can(user, "reviews", "create");
+  const canDelete = can(user, "reviews", "delete");
+  const [reviewerNote, setReviewerNote] = useState("");
   const [form, setForm] = useState({
+    driver_id: "",
     vehicle_id: "",
     condition: "good",
     notes: "",
@@ -49,14 +56,13 @@ const ReviewsPage = () => {
       api("/api/vehicles"),
       api("/api/users").catch(() => api("/api/drivers")),
     ]).then(([reviews, list, users = []]) => {
-      setRows(reviews);
+      setRows(user?.role === "driver" ? reviews.filter((row) => row.driver_id === user.id) : reviews);
       setVehicles(list);
-      setPeople(users);
-      if (!form.vehicle_id && list[0]) setForm((f) => ({ ...f, vehicle_id: list[0].id }));
+      setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
     });
   };
 
-  useEffect(load, []);
+  useEffect(load, [user?.role, user?.id]);
 
   const onPhoto = (key, url) => {
     setForm((f) => ({ ...f, photos: { ...f.photos, [key]: url } }));
@@ -69,6 +75,14 @@ const ReviewsPage = () => {
       setError("Take all four live photos before submitting.");
       return;
     }
+    if (user?.role !== "driver" && !form.driver_id) {
+      setError("Select a driver");
+      return;
+    }
+    if (!form.vehicle_id) {
+      setError("Select a vehicle");
+      return;
+    }
     try {
       await api("/api/reviews", {
         method: "POST",
@@ -78,6 +92,15 @@ const ReviewsPage = () => {
         }),
       });
       setOpen(false);
+      setSuccess("Review was submitted.");
+      setForm({
+        driver_id: user?.role === "driver" ? user.id : "",
+        vehicle_id: "",
+        condition: "good",
+        notes: "",
+        review_month: new Date().toISOString().slice(0, 10),
+        photos: { front: "", rear: "", left: "", right: "" },
+      });
       load();
     } catch (err) {
       setError(err.message);
@@ -92,6 +115,7 @@ const ReviewsPage = () => {
     setEditing(row);
     setVehicleStatus(vehicle?.status || "available");
     setReviewStatus(row.status || "submitted");
+    setReviewerNote(row.reviewer_note || "");
     setStatusError("");
   };
 
@@ -103,7 +127,7 @@ const ReviewsPage = () => {
       await Promise.all([
         api(`/api/reviews/${editing.id}`, {
           method: "PATCH",
-          body: JSON.stringify({ status: reviewStatus }),
+          body: JSON.stringify({ status: reviewStatus, reviewer_note: reviewerNote }),
         }),
         api(`/api/vehicles/${editing.vehicle_id}`, {
           method: "PATCH",
@@ -124,13 +148,20 @@ const ReviewsPage = () => {
   });
 
   return (
-    <>
+    <div className="reviews-page">
       <OpsPage
         crumb={["Operations", "Car reviews"]}
         title="Monthly car review"
         subtitle="Condition photos on file"
-        primaryLabel="New review"
-        onPrimary={() => setOpen(true)}
+        primaryLabel={canCreate ? "New review" : undefined}
+        onPrimary={canCreate ? () => {
+          const driverId = user?.role === "driver" ? user.id : "";
+          const assigned = driverId
+            ? vehicles.find((row) => row.assigned_driver_id === driverId)?.id || ""
+            : "";
+          setForm((f) => ({ ...f, driver_id: driverId, vehicle_id: assigned }));
+          setOpen(true);
+        } : undefined}
         stats={[
           { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "📷" },
           { id: "good", label: "Good", value: rows.filter((r) => r.condition === "good").length, tone: "green", icon: "✓" },
@@ -198,6 +229,7 @@ const ReviewsPage = () => {
               <ActionIcons
                 onView={() => navigate(`/reviews/${r.id}`)}
                 onEdit={canManage ? () => openStatus(r) : undefined}
+                onDelete={canDelete ? () => setPendingDelete(r) : undefined}
               />
             ),
           },
@@ -213,18 +245,43 @@ const ReviewsPage = () => {
           <ReviewStatusForm
             vehicleStatus={vehicleStatus}
             reviewStatus={reviewStatus}
+            note={reviewerNote}
             onVehicleStatus={setVehicleStatus}
             onReviewStatus={setReviewStatus}
+            onNote={setReviewerNote}
             error={statusError}
             onCancel={() => setEditing(null)}
             onSave={saveStatus}
           />
         </Modal>
       ) : null}
+      <ConfirmModal
+        open={Boolean(pendingDelete)}
+        title="Delete this review?"
+        message={
+          pendingDelete
+            ? `This will permanently remove the ${
+                vehicleFor(pendingDelete.vehicle_id)?.registration || "vehicle"
+              } review for ${
+                personFor(pendingDelete.driver_id)?.full_name || "this driver"
+              }.`
+            : ""
+        }
+        confirmLabel="Delete"
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={async () => {
+          await api(`/api/reviews/${pendingDelete.id}`, { method: "DELETE" });
+          setPendingDelete(null);
+          setSuccess("Review was deleted.");
+          load();
+        }}
+      />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
       {open ? (
         <ReviewFormModal
           vehicles={vehicles}
+          drivers={people.filter((p) => p.role === "driver" || !p.role)}
+          showDriver={user?.role !== "driver"}
           form={form}
           error={error}
           onChange={(next) => setForm((f) => ({ ...f, ...next }))}
@@ -233,7 +290,7 @@ const ReviewsPage = () => {
           onSubmit={submit}
         />
       ) : null}
-    </>
+    </div>
   );
 };
 

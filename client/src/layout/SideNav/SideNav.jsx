@@ -1,8 +1,9 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import NavIcon from "../../components/NavIcon/NavIcon";
-import { ADMIN_NAV, OPERATIONS_NAV } from "../../constants/nav";
+import { ADMIN_NAV, navItemForUser, OPERATIONS_NAV } from "../../constants/nav";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import "./SideNav.css";
 
 const SideNavLink = ({ item, collapsed }) => (
@@ -23,14 +24,12 @@ const SideNavLink = ({ item, collapsed }) => (
 
 const SideNav = ({ onLogout, collapsed, onToggle }) => {
   const { user } = useAuth();
-  const isDriver = user?.role === "driver";
-  const ops = isDriver
-    ? OPERATIONS_NAV.filter((item) =>
-        ["dashboard", "checkins", "reviews", "incidents", "mechanics"].includes(
-          item.id,
-        ),
-      )
-    : OPERATIONS_NAV;
+  const ops = OPERATIONS_NAV.filter((item) => can(user, item.id, "view")).map((item) =>
+    navItemForUser(item, user),
+  );
+  const admin = ADMIN_NAV.filter((item) => can(user, item.id, "view")).map((item) =>
+    navItemForUser(item, user),
+  );
 
   return (
     <aside className={`fc-side-nav${collapsed ? " is-collapsed" : ""}`}>
@@ -51,9 +50,9 @@ const SideNav = ({ onLogout, collapsed, onToggle }) => {
             <SideNavLink key={item.id} item={item} collapsed={collapsed} />
           ))}
         </ul>
-        {!isDriver ? (
+        {admin.length ? (
           <ul className="fc-side-nav__list fc-side-nav__list--footer">
-            {ADMIN_NAV.map((item) => (
+            {admin.map((item) => (
               <SideNavLink key={item.id} item={item} collapsed={collapsed} />
             ))}
           </ul>

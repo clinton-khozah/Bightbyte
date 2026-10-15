@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import "./FilesSheet.css";
 
 const FolderIcon = () => (
@@ -7,85 +7,54 @@ const FolderIcon = () => (
   </svg>
 );
 
-const CaretIcon = () => (
-  <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
-    <path d="M4.427 7.427 8 11l3.573-3.573A.25.25 0 0 0 11.396 7H4.604a.25.25 0 0 0-.177.427Z" />
-  </svg>
-);
-
-const FilesSheet = ({ rows = [], emptyText = "Nothing here yet." }) => {
-  const [openId, setOpenId] = useState(null);
-
-  useEffect(() => {
-    if (!openId) return undefined;
-    const close = () => setOpenId(null);
-    window.addEventListener("click", close);
-    return () => window.removeEventListener("click", close);
-  }, [openId]);
-
-  return (
-    <div className="files-sheet">
-      <div className="files-sheet__head">
-        <span>Name</span>
-        <span>Stack</span>
-      </div>
-      {!rows.length ? (
-        <div className="files-sheet__empty">{emptyText}</div>
-      ) : (
-        rows.map((row) => (
-          <div
-            key={row.id}
-            className="files-sheet__row"
-            role="button"
-            tabIndex={0}
-            onClick={() => row.onOpen?.()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                row.onOpen?.();
-              }
-            }}
-          >
-            <span className="files-sheet__icon">
-              <FolderIcon />
-            </span>
-            <span className="files-sheet__name">{row.name?.endsWith("/") ? row.name : `${row.name}/`}</span>
-            <span className="files-sheet__desc">{row.description}</span>
-            <span className="files-sheet__stack">{row.stack}</span>
-            <span className="files-sheet__more">
+const FilesSheet = ({ rows = [], emptyText = "Nothing here yet." }) => (
+  <div className="files-sheet">
+    <div className="files-sheet__head">
+      <span>Name</span>
+      <span>Stack</span>
+      <span>Actions</span>
+    </div>
+    {!rows.length ? (
+      <div className="files-sheet__empty">{emptyText}</div>
+    ) : (
+      rows.map((row) => (
+        <div
+          key={row.id}
+          className="files-sheet__row"
+          role="button"
+          tabIndex={0}
+          onClick={() => row.onOpen?.()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              row.onOpen?.();
+            }
+          }}
+        >
+          <span className="files-sheet__icon">
+            <FolderIcon />
+          </span>
+          <span className="files-sheet__name">{row.name?.endsWith("/") ? row.name : `${row.name}/`}</span>
+          <span className="files-sheet__desc">{row.description}</span>
+          <span className="files-sheet__stack">{row.stack}</span>
+          <span className="files-sheet__more">
+            {row.onDelete ? (
               <button
                 type="button"
-                className="files-sheet__caret"
-                aria-label={`Actions for ${row.name}`}
+                className="files-sheet__delete"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setOpenId((id) => (id === row.id ? null : row.id));
+                  row.onDelete();
                 }}
               >
-                <CaretIcon />
+                Delete
               </button>
-              {openId === row.id ? (
-                <div className="files-sheet__menu" onClick={(e) => e.stopPropagation()}>
-                  {(row.actions || [{ label: "Open", onClick: row.onOpen }]).map((action) => (
-                    <button
-                      key={action.label}
-                      type="button"
-                      onClick={() => {
-                        setOpenId(null);
-                        action.onClick?.();
-                      }}
-                    >
-                      {action.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </span>
-          </div>
-        ))
-      )}
-    </div>
-  );
-};
+            ) : null}
+          </span>
+        </div>
+      ))
+    )}
+  </div>
+);
 
 export default FilesSheet;

@@ -66,3 +66,24 @@
 .finance-chart__swatch--profit {
   background: #006239;
 }
+
+@media (max-width: 800px) {
+  .finance-chart {
+    min-height: 0;
+  }
+
+  .finance-chart svg {
+    height: 168px;
+  }
+
+  .finance-chart__legend {
+    flex-wrap: wrap;
+    gap: 10px 14px;
+    margin-bottom: 8px;
+  }
+
+  .finance-chart__tick,
+  .finance-chart__label {
+    font-size: 10px;
+  }
+}

@@ -85,8 +85,29 @@
   color: #b42318;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .op-panel__head {
     flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .op-panel__head h2 {
+    font-size: 14px;
+  }
+
+  .op-panel__head p {
+    margin-top: 2px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .op-panel__card {
+    padding: 6px 12px 4px;
+  }
+
+  .op-panel__row {
+    min-height: 44px;
+    padding: 8px 0;
   }
 }

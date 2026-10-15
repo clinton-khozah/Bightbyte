@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../../api";
 import NotificationsModal from "../../components/NotificationsModal/NotificationsModal";
 import "./TopNav.css";
 
-const TopNav = ({ user, query = "", onQuery }) => {
+const TopNav = ({ user }) => {
   const [notes, setNotes] = useState([]);
   const [open, setOpen] = useState(false);
   const unread = notes.filter((n) => !n.read).length;
@@ -22,18 +23,12 @@ const TopNav = ({ user, query = "", onQuery }) => {
         </svg>
         <span className="fc-top-nav__crumb">BrightByte</span>
         <span className="fc-top-nav__sep">/</span>
-        <span className="fc-top-nav__crumb">{user?.company_name || "Company"}</span>
+        <span className="fc-top-nav__crumb">{user?.company_name || "BrightByte"}</span>
         <span className="fc-top-nav__sep">/</span>
-        <span className="fc-top-nav__crumb">{user?.role_id || "—"}</span>
+        <span className="fc-top-nav__crumb">{user?.role_label || user?.role || "—"}</span>
         <span className="fc-top-nav__sep">/</span>
       </div>
       <div className="fc-top-nav__tools">
-        {onQuery ? (
-          <label className="fc-top-nav__search">
-            <input value={query} onChange={(e) => onQuery(e.target.value)} placeholder="Search..." />
-            <kbd>Ctrl K</kbd>
-          </label>
-        ) : null}
         <div className="fc-top-nav__bell-wrap">
           <button
             type="button"
@@ -61,9 +56,20 @@ const TopNav = ({ user, query = "", onQuery }) => {
             }
           }}
         />
-        <span className="fc-top-nav__avatar" title={user?.email}>
-          {(user?.full_name || user?.role || "U").slice(0, 1).toUpperCase()}
-        </span>
+        {user?.id ? (
+          <Link
+            className="fc-top-nav__avatar"
+            to={`/drivers/${user.id}`}
+            title="My profile"
+            aria-label="Open my profile"
+          >
+            {user.photo_url ? (
+              <img src={user.photo_url} alt="" />
+            ) : (
+              (user.full_name || user.role || "U").slice(0, 1).toUpperCase()
+            )}
+          </Link>
+        ) : null}
       </div>
     </header>
   );

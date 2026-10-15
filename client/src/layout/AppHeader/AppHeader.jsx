@@ -1,26 +1,24 @@
 import React from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
-import { ADMIN_NAV, OPERATIONS_NAV } from "../../constants/nav";
+import { ADMIN_NAV, navItemForUser, OPERATIONS_NAV } from "../../constants/nav";
+import { can } from "../../constants/roles";
 import { useAuth } from "../../auth/AuthContext";
 import "./AppHeader.css";
 
 const TABS = [
-  { label: "Overview", path: "/dashboard" },
-  { label: "Vehicles", path: "/vehicles" },
-  { label: "People", path: "/drivers" },
-  { label: "Activity", path: "/checkins" },
+  { label: "Overview", path: "/dashboard", module: "dashboard" },
+  { label: "Vehicles", path: "/vehicles", module: "vehicles" },
+  { label: "People", path: "/drivers", module: "drivers" },
+  { label: "Activity", path: "/checkins", module: "checkins" },
 ];
 
 const AppHeader = ({ query, onQuery }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const isDriver = user?.role === "driver";
-  const pills = isDriver
-    ? OPERATIONS_NAV.filter((item) =>
-        ["dashboard", "checkins", "reviews", "incidents"].includes(item.id),
-      )
-    : [...OPERATIONS_NAV, ...ADMIN_NAV];
+  const pills = [...OPERATIONS_NAV, ...ADMIN_NAV]
+    .filter((item) => can(user, item.id, "view"))
+    .map((item) => navItemForUser(item, user));
 
   const initials = String(user?.full_name || "U")
     .split(" ")
@@ -78,7 +76,10 @@ const AppHeader = ({ query, onQuery }) => {
         ))}
       </nav>
       <nav className="gh-tabs" aria-label="Sections">
-        {TABS.filter((tab) => !isDriver || tab.path !== "/drivers").map((tab) => (
+        {TABS.filter((tab) => can(user, tab.module, "view")).map((tab) => {
+          const label =
+            tab.module === "drivers" && user?.role === "driver" ? "My Profile" : tab.label;
+          return (
           <NavLink
             key={tab.path}
             to={tab.path}
@@ -86,9 +87,10 @@ const AppHeader = ({ query, onQuery }) => {
               `gh-tab${location.pathname.startsWith(tab.path) ? " gh-tab--active" : ""}`
             }
           >
-            {tab.label}
+            {label}
           </NavLink>
-        ))}
+        );
+        })}
       </nav>
     </div>
   );

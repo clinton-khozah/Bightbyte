@@ -9,17 +9,15 @@ import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import ActionIcons from "../../components/ActionIcons/ActionIcons";
 import StatusChip from "../../components/StatusChip/StatusChip";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import VehiclePhotoField from "../../components/VehiclePhotoField/VehiclePhotoField";
+import LineSelect from "../../components/LineSelect/LineSelect";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
 import "./VehiclesPage.css";
 
 const VEHICLE_FIELDS = [
   { key: "registration", label: "Registration" },
-  { key: "make", label: "Make" },
-  { key: "model", label: "Model" },
-  { key: "year", label: "Year" },
   { key: "vin", label: "VIN" },
-  { key: "colour", label: "Colour" },
   { key: "engine", label: "Engine" },
   { key: "odometer", label: "Odometer" },
   { key: "value", label: "Vehicle value (ZAR)" },
@@ -39,7 +37,26 @@ const emptyForm = {
   value: "",
   photo_url: "",
   photos: [],
+  company_id: "",
+  status: "available",
 };
+
+const VEHICLE_COLOURS = [
+  "White",
+  "Black",
+  "Silver",
+  "Grey",
+  "Red",
+  "Blue",
+  "Green",
+  "Gold",
+  "Brown",
+  "Beige",
+  "Orange",
+  "Yellow",
+  "Maroon",
+  "Navy",
+];
 
 const VehiclesPage = () => {
   const { user } = useAuth();
@@ -51,24 +68,53 @@ const VehiclesPage = () => {
   const [pendingDelete, setPendingDelete] = useState(null);
   const [busy, setBusy] = useState(false);
   const [success, setSuccess] = useState("");
+  const [companies, setCompanies] = useState([]);
+  const [formError, setFormError] = useState("");
+  const [makes, setMakes] = useState([]);
+  const [models, setModels] = useState([]);
+  const [years, setYears] = useState([]);
 
-  const load = () => api("/api/vehicles").then(setRows);
+  const load = () =>
+    Promise.all([
+      api("/api/vehicles"),
+      api("/api/companies").catch(() => []),
+      api("/api/vehicle-makes").catch(() => []),
+      api("/api/vehicle-years").catch(() => []),
+    ]).then(([fleet, tenants, makeRows, yearRows]) => {
+      setRows(fleet);
+      setCompanies(tenants);
+      setMakes(makeRows);
+      setYears(yearRows);
+    });
   useEffect(() => {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!form.make) {
+      setModels([]);
+      return;
+    }
+    api(`/api/vehicle-models?make=${encodeURIComponent(form.make)}`)
+      .then(setModels)
+      .catch(() => setModels([]));
+  }, [form.make]);
+
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
-    searchKeys: ["registration", "make", "model", "vin"],
+    tabKey: "status",
+    searchKeys: ["registration", "make", "model", "vin", "company_name"],
   });
 
   const openCreate = () => {
     setEditing(null);
+    setFormError("");
     setForm(emptyForm);
     setOpen(true);
   };
 
   const openEdit = (row) => {
     setEditing(row);
+    setFormError("");
     const photos = Array.from(new Set([row.photo_url, ...(row.photos || [])].filter(Boolean)));
     setForm({
       ...emptyForm,
@@ -97,36 +143,35 @@ const VehiclesPage = () => {
         </Link>
       ),
     },
-    { key: "make", label: "Vehicle", render: (r) => `${r.make} ${r.model}`, exportValue: (r) => `${r.make} ${r.model}` },
+    { key: "make", label: "Vehicle", wrap: true, render: (r) => `${r.make || ""} ${r.model || ""}`.trim() || "—", exportValue: (r) => `${r.make} ${r.model}` },
+    { key: "company_name", label: "Company", wrap: true, render: (r) => r.company_name || "—" },
     { key: "year", label: "Year" },
-    { key: "vin", label: "VIN" },
+    { key: "vin", label: "VIN", wrap: true, render: (r) => r.vin || "—" },
     { key: "status", label: "Status", render: (r) => <StatusChip value={r.status} /> },
     { key: "colour", label: "Colour" },
-    { key: "value", label: "Value (ZAR)", type: "n" },
+    ...(user?.role === "driver" || user?.role_key === "driver"
+      ? []
+      : [{ key: "value", label: "Value (ZAR)", type: "n" }]),
     { key: "odometer", label: "Odometer", type: "n" },
     {
       key: "actions",
       label: "Actions",
       render: (r) =>
-        user?.role === "driver" ? (
-          <ActionIcons onSupplies={() => navigate(`/vehicles/${r.id}#supplies`)} />
-        ) : (
           <ActionIcons
             onSupplies={() => navigate(`/vehicles/${r.id}#supplies`)}
-            onEdit={() => openEdit(r)}
-            onDelete={() => setPendingDelete(r)}
+            onEdit={can(user, "vehicles", "edit") ? () => openEdit(r) : undefined}
+            onDelete={can(user, "vehicles", "delete") ? () => setPendingDelete(r) : undefined}
           />
-        ),
     },
   ];
 
   return (
-    <>
+    <div className="vehicles-page">
       <OpsPage
         crumb={["Operations", "Assets"]}
         title="Asset Management"
-        primaryLabel="Add vehicle"
-        onPrimary={user?.role !== "driver" ? openCreate : undefined}
+        primaryLabel={can(user, "vehicles", "create") ? "Add vehicle" : undefined}
+        onPrimary={can(user, "vehicles", "create") ? openCreate : undefined}
         onExport={() => csvDownload("fleet-assets.xlsx", columns, filtered)}
         stats={[
           { id: "all", label: "Total assets", value: rows.length, tone: "blue", icon: "🚚" },
@@ -166,25 +211,106 @@ const VehiclesPage = () => {
             className="fc-form"
             onSubmit={async (e) => {
               e.preventDefault();
-              const photos = form.photos || [];
-              const payload = {
-                ...form,
-                photos,
-                photo_url: photos[0] || form.photo_url || "",
-              };
-              if (editing) {
-                await api(`/api/vehicles/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
-                setOpen(false);
-                setSuccess("Vehicle details were updated.");
-              } else {
-                await api("/api/vehicles", { method: "POST", body: JSON.stringify(payload) });
-                setOpen(false);
-                setSuccess("Vehicle was registered.");
+              setFormError("");
+              if (!form.company_id && user?.role === "super_admin") {
+                setFormError("Select the company this vehicle belongs to.");
+                return;
               }
-              load();
+              if (!form.make || !form.model) {
+                setFormError("Select make and model.");
+                return;
+              }
+              if (!form.year) {
+                setFormError("Select the vehicle year.");
+                return;
+              }
+              if ((form.photos || []).length < 5) {
+                setFormError("Upload at least five vehicle photos.");
+                return;
+              }
+              try {
+                const photos = form.photos || [];
+                const payload = {
+                  ...form,
+                  photos,
+                  photo_url: photos[0] || form.photo_url || "",
+                  company_id: form.company_id || user?.company_id,
+                };
+                if (editing) {
+                  await api(`/api/vehicles/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
+                  setOpen(false);
+                  setSuccess("Vehicle details were updated.");
+                } else {
+                  await api("/api/vehicles", { method: "POST", body: JSON.stringify(payload) });
+                  setOpen(false);
+                  setSuccess("Vehicle was registered.");
+                }
+                load();
+              } catch (err) {
+                setFormError(err.message);
+              }
             }}
           >
-            {VEHICLE_FIELDS.map((field) => (
+            <div className="fc-form__full">
+              <LineSelect
+                label="Company"
+                required
+                value={form.company_id}
+                onChange={(id) => setForm({ ...form, company_id: id })}
+                placeholder="Select a company"
+                emptyText="No companies to select"
+                options={companies.map((company) => ({
+                  id: company.id,
+                  label: company.name,
+                  sub: company.code || "",
+                  photo: company.photo_url,
+                  name: company.name,
+                }))}
+              />
+            </div>
+            <label>
+              Make
+              <select
+                value={form.make}
+                onChange={(e) => setForm({ ...form, make: e.target.value, model: "" })}
+                required
+              >
+                <option value="">Select make</option>
+                {makes.map((make) => (
+                  <option key={make.id || make.name} value={make.name}>
+                    {make.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Model
+              <select value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} required>
+                <option value="">{form.make ? "Select model" : "Select make first"}</option>
+                {models.map((model) => (
+                  <option key={model.id || model.name} value={model.name}>
+                    {model.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Year
+              <select value={String(form.year || "")} onChange={(e) => setForm({ ...form, year: e.target.value })} required>
+                <option value="">Select year</option>
+                {form.year && !years.some((row) => String(row.year) === String(form.year)) ? (
+                  <option value={form.year}>{form.year}</option>
+                ) : null}
+                {years.map((row) => (
+                  <option key={row.year} value={row.year}>
+                    {row.year}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {VEHICLE_FIELDS.filter(
+              (field) => field.key !== "value" || (user?.role !== "driver" && user?.role_key !== "driver"),
+            ).map((field) => (
               <label key={field.key}>
                 {field.label}
                 <input
@@ -194,6 +320,20 @@ const VehiclesPage = () => {
                 />
               </label>
             ))}
+            <label>
+              Colour
+              <select value={form.colour} onChange={(e) => setForm({ ...form, colour: e.target.value })}>
+                <option value="">Select colour</option>
+                {(VEHICLE_COLOURS.includes(form.colour) || !form.colour
+                  ? VEHICLE_COLOURS
+                  : [form.colour, ...VEHICLE_COLOURS]
+                ).map((colour) => (
+                  <option key={colour} value={colour}>
+                    {colour}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               Fuel
               <select value={form.fuel_type} onChange={(e) => setForm({ ...form, fuel_type: e.target.value })}>
@@ -206,6 +346,7 @@ const VehiclesPage = () => {
               Licence expiry
               <input type="date" value={form.licence_expiry || ""} onChange={(e) => setForm({ ...form, licence_expiry: e.target.value })} />
             </label>
+            {formError ? <p className="fc-error">{formError}</p> : null}
             <VehiclePhotoField
               photos={form.photos || []}
               min={5}
@@ -257,7 +398,7 @@ const VehiclesPage = () => {
         }}
       />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
-    </>
+    </div>
   );
 };
 

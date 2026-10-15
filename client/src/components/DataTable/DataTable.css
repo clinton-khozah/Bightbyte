@@ -129,9 +129,8 @@
 }
 
 .fc-table-scroll {
-  overflow-x: auto;
+  overflow-x: hidden;
   scrollbar-width: none;
-  -ms-overflow-style: none;
 }
 
 .fc-table-scroll::-webkit-scrollbar {
@@ -140,6 +139,8 @@
 
 .fc-table {
   width: 100%;
+  min-width: 0;
+  table-layout: auto;
   border-collapse: collapse;
   font-size: 0.8125rem;
 }
@@ -152,6 +153,17 @@
   color: var(--fc-color-text);
   vertical-align: middle;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.fc-table td.fc-table__cell--wrap {
+  white-space: normal;
+  min-width: 140px;
+  max-width: 240px;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
 .fc-table th {
@@ -169,13 +181,14 @@
   position: sticky;
   right: 0;
   z-index: 2;
+  min-width: 148px;
   background: #fff;
-  box-shadow: -10px 0 12px -12px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
 }
 
 .fc-table td:nth-last-child(2) {
   min-width: 112px;
-  padding-right: 18px;
+  padding-right: 20px;
 }
 
 .fc-table thead th:last-child {
@@ -261,4 +274,98 @@
 
 .fc-table-pager button:disabled {
   opacity: 0.4;
+}
+
+@media (max-width: 800px) {
+  .fc-table-controls {
+    padding: 10px 12px 0;
+    gap: 8px;
+  }
+
+  .fc-table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .fc-table-search {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .fc-table-tabs {
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+
+  .fc-table-tab {
+    min-height: 36px;
+    padding: 6px 0;
+  }
+
+  .fc-table-count {
+    padding: 6px 0 8px;
+    font-size: 12px;
+  }
+
+  .fc-table thead {
+    display: none;
+  }
+
+  .fc-table,
+  .fc-table tbody,
+  .fc-table tr,
+  .fc-table td {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .fc-table tr {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--fc-color-border);
+  }
+
+  .fc-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .fc-table td::before {
+    content: attr(data-label);
+    color: var(--sb-muted, #707070);
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .fc-table td:not([data-label])::before,
+  .fc-table td[data-label=""]::before {
+    content: none;
+  }
+
+  .fc-table th:last-child,
+  .fc-table td:last-child {
+    position: static;
+    min-width: 0;
+    background: transparent;
+  }
+
+  .fc-table td:nth-last-child(2) {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .fc-table-pager {
+    padding: 10px 12px 12px;
+  }
 }

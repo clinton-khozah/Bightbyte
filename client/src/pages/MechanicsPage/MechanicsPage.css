@@ -3,3 +3,9 @@
   gap: 10px;
   padding: 8px 4px 16px;
 }
+
+.fc-form > .fc-line-select,
+.fc-form > .operating-hours {
+  grid-column: auto;
+  min-width: 0;
+}

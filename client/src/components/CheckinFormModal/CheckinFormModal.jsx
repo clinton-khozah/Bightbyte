@@ -1,7 +1,15 @@
 import React from "react";
 import Modal from "../Modal/Modal";
 import FileDrop from "../FileDrop/FileDrop";
+import LineSelect from "../LineSelect/LineSelect";
+import CheckinNoteField from "../CheckinNoteField/CheckinNoteField";
 import "./CheckinFormModal.css";
+
+const STATUS_OPTIONS = [
+  { id: "submitted", label: "Submitted" },
+  { id: "approved", label: "Approved" },
+  { id: "rejected", label: "Rejected" },
+];
 
 const CheckinFormModal = ({
   open,
@@ -20,14 +28,23 @@ const CheckinFormModal = ({
   assignedLabel,
   assignedOk,
   lateFeeText,
+  minOdometer = 0,
 }) => {
   if (!open) return null;
 
   const set = (patch) => onChange({ ...form, ...patch });
+  const driver = drivers.find((row) => row.id === form.driver_id);
+  const fleet = form.driver_id
+    ? vehicles.filter(
+        (row) =>
+          row.assigned_driver_id === form.driver_id || driver?.assigned_vehicle_id === row.id,
+      )
+    : [];
 
   return (
     <Modal
       wide
+      compact
       title={editing ? "Edit check-in" : "Check in amount"}
       subtitle={
         editing
@@ -37,38 +54,53 @@ const CheckinFormModal = ({
       onClose={onClose}
     >
       <form className="fc-form checkin-form" onSubmit={onSubmit}>
-        {showDriver ? (
-          <label>
-            Driver
-            <select value={form.driver_id} onChange={(e) => onDriverChange(e.target.value)} required>
-              <option value="">Select a driver</option>
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.full_name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-        <label className={showDriver ? "" : "fc-form__full"}>
-          Vehicle
-          <select
-            value={form.vehicle_id}
-            onChange={(e) => set({ vehicle_id: e.target.value })}
-            required
-          >
-            <option value="">Select a vehicle</option>
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.registration} — {v.make} {v.model}
-                {v.assigned_driver_id === form.driver_id ? " (assigned)" : ""}
-              </option>
-            ))}
-          </select>
-          {assignedLabel ? (
-            <span className={`checkin-form__flag${assignedOk ? " is-ok" : " is-warn"}`}>{assignedLabel}</span>
+        <div className={`checkin-form__pickers${showDriver ? "" : " checkin-form__pickers--solo"}`}>
+          {showDriver ? (
+            <LineSelect
+              label="Driver"
+              required
+              value={form.driver_id}
+              onChange={onDriverChange}
+              placeholder="Select a driver"
+              emptyText="No drivers to select"
+              options={drivers.map((row) => ({
+                id: row.id,
+                label: row.full_name,
+                sub: row.employee_id || row.email || "",
+                photo: row.photo_url,
+                name: row.full_name,
+              }))}
+            />
           ) : null}
-        </label>
+          <div>
+            <LineSelect
+              label="Vehicle"
+              required
+              value={form.vehicle_id}
+              onChange={(id) => {
+                const lastKm = Number(vehicles.find((row) => row.id === id)?.odometer || 0);
+                const km = Number(form.odometer);
+                set({
+                  vehicle_id: id,
+                  odometer: !Number.isFinite(km) || km < lastKm ? lastKm || "" : form.odometer,
+                });
+              }}
+            placeholder="Select a vehicle"
+            emptyText="No vehicle assigned"
+              options={fleet.map((row) => ({
+                id: row.id,
+                label: row.registration,
+                sub: `${row.make || ""} ${row.model || ""}`.trim() +
+                  (row.assigned_driver_id === form.driver_id ? " · assigned" : ""),
+                photo: row.photo_url || row.photos?.[0],
+                name: row.registration,
+              }))}
+            />
+            <span className={`checkin-form__flag${assignedOk ? " is-ok" : assignedLabel ? " is-warn" : ""}`}>
+              {assignedLabel || "\u00a0"}
+            </span>
+          </div>
+        </div>
         <label>
           Amount (ZAR)
           <input
@@ -80,41 +112,38 @@ const CheckinFormModal = ({
             onChange={(e) => set({ amount: e.target.value })}
             required
           />
-          {lateFeeText ? <span className="checkin-form__flag is-warn">{lateFeeText}</span> : null}
+          <span className="checkin-form__flag is-warn">{lateFeeText || "\u00a0"}</span>
         </label>
         <label>
           Odometer (km)
           <input
             type="number"
-            min="0"
+            min={minOdometer}
             value={form.odometer}
             onChange={(e) => set({ odometer: e.target.value })}
+            required
           />
+          <span className={`checkin-form__flag${minOdometer ? " is-warn" : ""}`}>
+            {minOdometer
+              ? `Cannot be less than the previous reading (${Number(minOdometer).toLocaleString("en-ZA")} km)`
+              : "\u00a0"}
+          </span>
         </label>
         {showStatus ? (
-          <label>
-            Payment status
-            <select value={form.status} onChange={(e) => set({ status: e.target.value })}>
-              <option value="submitted">Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </label>
-        ) : null}
-        <label className={showStatus ? "" : "fc-form__full"}>
-          Note
-          <input
-            value={form.note}
-            onChange={(e) => set({ note: e.target.value })}
-            placeholder="Optional"
+          <LineSelect
+            label="Payment status"
+            value={form.status}
+            onChange={(id) => set({ status: id })}
+            options={STATUS_OPTIONS}
           />
-        </label>
+        ) : null}
         <FileDrop
           compact
           label="Proof of payment"
           onChange={onProof}
           previews={form.proof_url ? [form.proof_url] : []}
         />
+        <CheckinNoteField value={form.note} onChange={(note) => set({ note })} />
         {error ? <p className="fc-error">{error}</p> : null}
         <div className="fc-form__actions">
           <button className="fc-btn" type="button" onClick={onClose}>

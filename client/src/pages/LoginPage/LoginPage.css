@@ -17,39 +17,53 @@
   background: #f3fbf6;
   color: #171717;
   border-right: 1px solid #e6e6e4;
+  box-shadow: inset 4px 0 0 #b42318;
 }
 
 .bb-auth__aside-inner {
-  max-width: 360px;
+  max-width: 440px;
 }
 
-.bb-auth__eyebrow {
-  margin: 0 0 10px;
+.bb-auth__brand {
+  margin: 0 0 14px;
   color: #006239;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 72px;
+  font-weight: 700;
+  letter-spacing: -0.05em;
+  line-height: 0.9;
+}
+
+.bb-auth__rule {
+  display: block;
+  width: 56px;
+  height: 2px;
+  margin: 0 0 22px;
+  background: #b42318;
 }
 
 .bb-auth__aside h2 {
   margin: 0;
-  font-size: 28px;
-  line-height: 1.2;
+  font-size: 36px;
+  line-height: 1.15;
   font-weight: 600;
   letter-spacing: -0.03em;
 }
 
 .bb-auth__tag {
-  margin: 8px 0 0;
-  font-size: 13px;
+  margin: 12px 0 0;
+  font-size: 18px;
   font-weight: 600;
+  line-height: 1.35;
   color: #006239;
 }
 
-.bb-auth__aside p:last-child {
-  margin: 10px 0 0;
-  font-size: 14px;
-  line-height: 1.5;
-  color: #707070;
+.bb-auth__powered {
+  margin: 18px 0 0;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: #a3a3a3;
 }
 
 .bb-auth__main {
@@ -73,6 +87,15 @@
   letter-spacing: -0.03em;
 }
 
+.bb-auth__copy h1::after {
+  content: "";
+  display: block;
+  width: 40px;
+  height: 2px;
+  margin-top: 10px;
+  background: #b42318;
+}
+
 .bb-auth__lead {
   margin: 6px 0 0;
   font-size: 13px;
@@ -92,7 +115,7 @@
 }
 
 .bb-auth__card.is-register .bb-auth__extra {
-  max-height: 200px;
+  max-height: 280px;
   opacity: 1;
   transform: translateX(0);
 }
@@ -111,17 +134,8 @@
   color: #525252;
 }
 
-.bb-auth__field input,
-.bb-auth__password {
-  width: 100%;
-  min-height: 40px;
-  border: 1px solid #e6e6e4;
-  border-radius: 6px;
-  background: #fff;
-}
-
 .bb-auth__field input {
-  padding: 0 12px;
+  padding: 0 2px 8px;
   color: #171717;
   font-size: 13px;
   font-weight: 400;
@@ -130,29 +144,47 @@
 .bb-auth__password {
   display: flex;
   align-items: center;
-  padding-right: 4px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #d4d4d4;
+  background: transparent;
 }
 
 .bb-auth__password input {
+  flex: 1;
+  min-width: 0;
   border: 0;
-  min-height: 38px;
+  border-bottom: 0;
+  min-height: 36px;
+  padding: 6px 8px 8px 2px;
   background: transparent;
 }
 
 .bb-auth__field input:focus,
 .bb-auth__password:focus-within {
   outline: none;
-  border-color: #006239;
-  box-shadow: 0 0 0 3px #e6f4ec;
+  border-bottom-color: #006239;
+  box-shadow: none;
 }
 
-.bb-auth__password button {
+.bb-auth__eye {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: #006239;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 0 10px;
+  color: #525252;
+}
+
+.bb-auth__eye:hover {
+  color: #171717;
 }
 
 .bb-auth__submit {
@@ -222,10 +254,19 @@
     padding: 28px 20px;
     border-right: 0;
     border-bottom: 1px solid #e6e6e4;
+    box-shadow: inset 0 4px 0 #b42318;
+  }
+
+  .bb-auth__brand {
+    font-size: 52px;
   }
 
   .bb-auth__aside h2 {
-    font-size: 22px;
+    font-size: 26px;
+  }
+
+  .bb-auth__tag {
+    font-size: 16px;
   }
 
   .bb-auth__main {

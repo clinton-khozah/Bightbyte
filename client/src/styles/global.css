@@ -83,3 +83,53 @@ p {
   color: var(--gh-danger);
   font-size: 13px;
 }
+
+.fc-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+.fc-form select,
+.fc-form textarea,
+.fc-onboard__input,
+.fc-onboard__select,
+.fc-onboard__textarea,
+.bb-auth__field > input,
+.bb-auth__password,
+.review-status select {
+  width: 100%;
+  min-height: 36px;
+  padding: 6px 2px 8px;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 1px solid #d4d4d4;
+  background: transparent;
+  color: #171717;
+  box-shadow: none;
+}
+
+.fc-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):focus,
+.fc-form select:focus,
+.fc-form textarea:focus,
+.fc-onboard__input:focus,
+.fc-onboard__select:focus,
+.fc-onboard__textarea:focus,
+.bb-auth__field > input:focus,
+.bb-auth__password:focus-within,
+.review-status select:focus {
+  outline: none;
+  border-bottom-color: #006239;
+  box-shadow: none;
+}
+
+.fc-form textarea,
+.fc-onboard__textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.fc-form select,
+.fc-onboard__select,
+.review-status select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%23525252' stroke-width='1.6' d='M1.5 1.5L6 6l4.5-4.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 2px center;
+  padding-right: 22px;
+}

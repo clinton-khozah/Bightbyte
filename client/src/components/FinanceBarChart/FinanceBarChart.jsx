@@ -59,7 +59,7 @@ const FinanceBarChart = ({ months = [] }) => {
             <g key={row.key || row.label}>
               {bars.map((bar, i) => {
                 const x = start + i * (geometry.barW + 3);
-                const height = h(bar.value);
+                const height = Number(bar.value) > 0 ? h(bar.value) : 0;
                 return (
                   <rect
                     key={bar.key}
@@ -88,11 +88,11 @@ const FinanceBarChart = ({ months = [] }) => {
         </li>
         <li>
           <i className="finance-chart__swatch finance-chart__swatch--total" />
-          Total amount
+          Check-in
         </li>
         <li>
           <i className="finance-chart__swatch finance-chart__swatch--profit" />
-          Profit
+          Revenue
         </li>
       </ul>
     </div>

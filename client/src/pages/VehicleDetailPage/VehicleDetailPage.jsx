@@ -2,9 +2,11 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import StatusChip from "../../components/StatusChip/StatusChip";
 import Modal from "../../components/Modal/Modal";
 import MechanicCard from "../../components/MechanicCard/MechanicCard";
+import OperatingHoursField from "../../components/OperatingHoursField/OperatingHoursField";
 import VehicleAssetPanel, { VehicleAssetRow } from "../../components/VehicleAssetPanel/VehicleAssetPanel";
 import StarRating from "../../components/StarRating/StarRating";
 import PhotoViewer from "../../components/PhotoViewer/PhotoViewer";
@@ -32,15 +34,27 @@ const VehicleDetailPage = () => {
   const [error, setError] = useState("");
   const [viewer, setViewer] = useState(null);
   const [openSupply, setOpenSupply] = useState(false);
+  const [openMechanic, setOpenMechanic] = useState(false);
   const [supplyForm, setSupplyForm] = useState({ name: "", qty: "", unit: "ea", location: "" });
+  const [mechanicForm, setMechanicForm] = useState({
+    full_name: "",
+    trade: "",
+    phone: "",
+    workshop: "",
+    hours: "08:00–17:00",
+  });
 
   const load = () =>
-    Promise.all([
-      api(`/api/vehicles/${id}`),
-      api("/api/supplies").catch(() => []),
-      api("/api/mechanics").catch(() => []),
-      api("/api/reviews").catch(() => []),
-    ])
+    api(`/api/vehicles/${id}`)
+      .then((row) => {
+        const q = row.company_id ? `?company_id=${encodeURIComponent(row.company_id)}` : "";
+        return Promise.all([
+          row,
+          api(`/api/supplies${q}`).catch(() => []),
+          api(`/api/mechanics${q}`).catch(() => []),
+          api(`/api/reviews${q}`).catch(() => []),
+        ]);
+      })
       .then(([row, stock, people, reviewRows]) => {
         setVehicle(row);
         setSupplies(stock.filter((item) => item.vehicle_id === id));
@@ -116,10 +130,12 @@ const VehicleDetailPage = () => {
             {vehicle.make} {vehicle.model} · {vehicle.year}
           </p>
           <StarRating value={rating} label={scored.length ? `${scored.length} reviews` : "No reviews yet"} />
-          <div className="vehicle-profile__value">
-            <span>Vehicle value</span>
-            <strong>{vehicle.value ? money(vehicle.value) : "—"}</strong>
-          </div>
+          {user?.role === "driver" || user?.role_key === "driver" ? null : (
+            <div className="vehicle-profile__value">
+              <span>Vehicle value</span>
+              <strong>{vehicle.value ? money(vehicle.value) : "—"}</strong>
+            </div>
+          )}
           <div className="gh-facts">
             <div>
               <span>VIN</span>
@@ -156,7 +172,7 @@ const VehicleDetailPage = () => {
           </button>
         ))}
       </div>
-      {user?.role !== "driver" ? (
+      {can(user, "vehicles", "edit") ? (
         <label className="fc-btn" style={{ marginBottom: 20 }}>
           Add photos
           <input type="file" accept="image/*" multiple hidden onChange={addPhoto} />
@@ -166,7 +182,7 @@ const VehicleDetailPage = () => {
         title="Documents"
         description="Statutory and insurance files for this vehicle. Each record shows its type and whether a file is on record."
         action={
-          user?.role !== "driver" ? (
+          can(user, "vehicles", "edit") ? (
             <label className="fc-btn">
               Upload document
               <input type="file" hidden onChange={addDoc} />
@@ -199,7 +215,7 @@ const VehicleDetailPage = () => {
           title="Supplies"
           description="Consumables and spare parts allocated to this vehicle, with quantity and store location."
           action={
-            user?.role !== "driver" ? (
+            can(user, "vehicles", "edit") ? (
               <button className="fc-btn fc-btn--primary" type="button" onClick={() => setOpenSupply(true)}>
                 Add supply
               </button>
@@ -222,13 +238,26 @@ const VehicleDetailPage = () => {
       </div>
 
       <section className="vehicle-mechanics">
-        <h3>Mechanics</h3>
-        <p className="vehicle-supplies__empty">Call a mechanic if this vehicle has a problem.</p>
-        <div className="vehicle-mechanics__list">
-          {mechanics.map((mechanic) => (
-            <MechanicCard key={mechanic.id} mechanic={mechanic} />
-          ))}
+        <div className="vehicle-mechanics__head">
+          <div>
+            <h3>Mechanics</h3>
+            <p className="vehicle-supplies__empty">Workshop contacts for this company. None are listed until you add them.</p>
+          </div>
+          {can(user, "mechanics", "create") ? (
+            <button className="fc-btn fc-btn--primary" type="button" onClick={() => setOpenMechanic(true)}>
+              Add mechanic
+            </button>
+          ) : null}
         </div>
+        {mechanics.length ? (
+          <div className="vehicle-mechanics__list">
+            {mechanics.map((mechanic) => (
+              <MechanicCard key={mechanic.id} mechanic={mechanic} />
+            ))}
+          </div>
+        ) : (
+          <p className="vehicle-supplies__empty">No mechanics have been added for this company.</p>
+        )}
       </section>
 
       {openSupply ? (
@@ -239,7 +268,7 @@ const VehicleDetailPage = () => {
               e.preventDefault();
               await api("/api/supplies", {
                 method: "POST",
-                body: JSON.stringify({ ...supplyForm, vehicle_id: id }),
+                body: JSON.stringify({ ...supplyForm, vehicle_id: id, company_id: vehicle.company_id }),
               });
               setOpenSupply(false);
               setSupplyForm({ name: "", qty: "", unit: "ea", location: "" });
@@ -264,6 +293,71 @@ const VehicleDetailPage = () => {
             </label>
             <div className="fc-form__actions">
               <button className="fc-btn" type="button" onClick={() => setOpenSupply(false)}>
+                Cancel
+              </button>
+              <button className="fc-btn fc-btn--primary" type="submit">
+                Save
+              </button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+      {openMechanic ? (
+        <Modal title="Add mechanic" subtitle={`Available to ${vehicle.registration}'s company.`} onClose={() => setOpenMechanic(false)}>
+          <form
+            className="fc-form"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              await api("/api/mechanics", {
+                method: "POST",
+                body: JSON.stringify({ ...mechanicForm, company_id: vehicle.company_id }),
+              });
+              setOpenMechanic(false);
+              setMechanicForm({
+                full_name: "",
+                trade: "",
+                phone: "",
+                workshop: "",
+                hours: "08:00–17:00",
+              });
+              load();
+            }}
+          >
+            <label>
+              Name
+              <input
+                value={mechanicForm.full_name}
+                onChange={(e) => setMechanicForm({ ...mechanicForm, full_name: e.target.value })}
+                required
+              />
+            </label>
+            <label>
+              Trade
+              <input
+                value={mechanicForm.trade}
+                onChange={(e) => setMechanicForm({ ...mechanicForm, trade: e.target.value })}
+              />
+            </label>
+            <label>
+              Phone
+              <input
+                value={mechanicForm.phone}
+                onChange={(e) => setMechanicForm({ ...mechanicForm, phone: e.target.value })}
+              />
+            </label>
+            <label>
+              Workshop
+              <input
+                value={mechanicForm.workshop}
+                onChange={(e) => setMechanicForm({ ...mechanicForm, workshop: e.target.value })}
+              />
+            </label>
+            <OperatingHoursField
+              value={mechanicForm.hours}
+              onChange={(hours) => setMechanicForm({ ...mechanicForm, hours })}
+            />
+            <div className="fc-form__actions">
+              <button className="fc-btn" type="button" onClick={() => setOpenMechanic(false)}>
                 Cancel
               </button>
               <button className="fc-btn fc-btn--primary" type="submit">

@@ -4,6 +4,7 @@ import { api } from "../../api";
 import NavIcon from "../NavIcon/NavIcon";
 import CompanyPortrait from "../CompanyPortrait/CompanyPortrait";
 import { useAuth } from "../../auth/AuthContext";
+import { can, moduleFromPath } from "../../constants/roles";
 import "./WorkspaceNav.css";
 
 const LINKS = [
@@ -27,9 +28,9 @@ const WorkspaceNav = () => {
       <header className="ws-nav__head">
         <p>Workspace</p>
         <strong>{user?.company_name || "BrightByte"}</strong>
-        <span>{user?.role_id || user?.role || "—"}</span>
+        <span>{user?.role_label || user?.role || "—"}</span>
       </header>
-      <CompanyPortrait name={user?.company_name || "Company"} />
+      <CompanyPortrait name={user?.company_name || "BrightByte"} />
       <ul className="ws-nav__stats">
         <li>
           <span>Services due</span>
@@ -40,13 +41,13 @@ const WorkspaceNav = () => {
           <b>{data?.kpis?.openIncidents ?? "—"}</b>
         </li>
         <li>
-          <span>In use</span>
-          <b>{data?.kpis?.inUse ?? "—"}</b>
+          <span>{user?.role === "driver" ? "Check-ins" : "In use"}</span>
+          <b>{user?.role === "driver" ? data?.kpis?.checkins ?? "—" : data?.kpis?.inUse ?? "—"}</b>
         </li>
       </ul>
       <nav>
         <p className="ws-nav__label">Jump to</p>
-        {LINKS.map((link) => (
+        {LINKS.filter((link) => can(user, moduleFromPath(link.to), "view")).map((link) => (
           <NavLink
             key={link.to}
             to={link.to}

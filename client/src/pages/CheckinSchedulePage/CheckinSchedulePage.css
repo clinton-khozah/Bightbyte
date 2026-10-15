@@ -27,6 +27,10 @@
   gap: 12px;
 }
 
+.schedule-form .fc-line-select {
+  min-width: 0;
+}
+
 @media (max-width: 640px) {
   .schedule-form__row {
     grid-template-columns: 1fr;

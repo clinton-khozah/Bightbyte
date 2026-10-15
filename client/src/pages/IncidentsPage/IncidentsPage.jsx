@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import OpsPage from "../../components/OpsPage/OpsPage";
 import DataTable from "../../components/DataTable/DataTable";
 import Modal from "../../components/Modal/Modal";
@@ -10,6 +12,7 @@ import StatusChip from "../../components/StatusChip/StatusChip";
 import ActionIcons from "../../components/ActionIcons/ActionIcons";
 import Avatar from "../../components/Avatar/Avatar";
 import FileDrop from "../../components/FileDrop/FileDrop";
+import LineSelect from "../../components/LineSelect/LineSelect";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
 import "./IncidentsPage.css";
 
@@ -19,11 +22,15 @@ const localDateTime = (value) => {
   return date.toISOString().slice(0, 16);
 };
 
+const money = (n) =>
+  new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(n || 0));
+
 const emptyForm = (userId) => ({
   kind: "incident",
   logged_by: userId || "",
   vehicle_id: "",
   title: "",
+  amount: "",
   severity: "medium",
   description: "",
   occurred_at: localDateTime(),
@@ -37,6 +44,7 @@ const statusLabel = (status) => {
 };
 
 const IncidentsPage = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [vehicles, setVehicles] = useState([]);
@@ -44,11 +52,12 @@ const IncidentsPage = () => {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [pending, setPending] = useState(null);
-  const [viewing, setViewing] = useState(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [form, setForm] = useState(emptyForm(user?.id));
-  const canManage = user?.role === "admin" || user?.role === "fleet_manager";
+  const canManage = can(user, "incidents", "edit");
+  const canCreate = can(user, "incidents", "create");
+  const canDelete = can(user, "incidents", "delete");
 
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
   const personFor = (id) => people.find((p) => p.id === id);
@@ -59,14 +68,18 @@ const IncidentsPage = () => {
       api("/api/vehicles"),
       api("/api/users").catch(() => api("/api/drivers")),
     ]).then(([incidents, list, users = []]) => {
-      setRows(incidents);
+      setRows(
+        user?.role === "driver"
+          ? incidents.filter((row) => row.driver_id === user.id || row.logged_by === user.id)
+          : incidents,
+      );
       setVehicles(list);
-      setPeople(users);
+      setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
     });
 
   useEffect(() => {
     load();
-  }, []);
+  }, [user?.role, user?.id]);
 
   useEffect(() => {
     if (user?.id) setForm((f) => ({ ...f, logged_by: f.logged_by || user.id }));
@@ -81,6 +94,7 @@ const IncidentsPage = () => {
         logged_by: row.logged_by || row.driver_id || "",
         vehicle_id: row.vehicle_id || "",
         title: row.title || "",
+        amount: row.amount ?? "",
         severity: row.severity || "medium",
         description: row.description || "",
         occurred_at: localDateTime(row.occurred_at || row.created_at),
@@ -89,7 +103,11 @@ const IncidentsPage = () => {
       });
     } else {
       setEditing(null);
-      setForm(emptyForm(user?.id));
+      const assigned =
+        user?.role === "driver"
+          ? vehicles.find((row) => row.assigned_driver_id === user.id)?.id || ""
+          : "";
+      setForm({ ...emptyForm(user?.id), vehicle_id: assigned });
     }
     setOpen(true);
   };
@@ -125,7 +143,7 @@ const IncidentsPage = () => {
   };
 
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
-    searchKeys: ["title", "description", "kind", "severity", "status"],
+    searchKeys: ["title", "description", "kind", "severity", "status", "amount"],
   });
 
   const columns = [
@@ -163,6 +181,7 @@ const IncidentsPage = () => {
     },
     { key: "kind", label: "Record", render: (r) => <StatusChip value={r.kind || "incident"} /> },
     { key: "title", label: "Title" },
+    { key: "amount", label: "Amount", render: (r) => money(r.amount) },
     { key: "description", label: "Notes" },
     { key: "severity", label: "Priority", render: (r) => <StatusChip value={r.severity} /> },
     { key: "status", label: "Status", render: (r) => <StatusChip value={statusLabel(r.status)} /> },
@@ -171,25 +190,22 @@ const IncidentsPage = () => {
       label: "Actions",
       render: (r) => (
         <ActionIcons
-          onView={() => setViewing(r)}
+          onView={() => navigate(`/incidents/${r.id}`)}
           onEdit={canManage ? () => openForm(r) : undefined}
-          onDelete={canManage ? () => setPending(r) : undefined}
+          onDelete={canDelete ? () => setPending(r) : undefined}
         />
       ),
     },
   ];
 
-  const viewedVehicle = viewing ? vehicleFor(viewing.vehicle_id) : null;
-  const viewedPerson = viewing ? personFor(viewing.logged_by || viewing.driver_id) : null;
-
   return (
-    <>
+    <div className="incidents-page">
       <OpsPage
         crumb={["Operations", "Incidents"]}
         title="Incidents & Claims"
         subtitle="Log an incident or an insurance claim against a vehicle."
-        primaryLabel="Log incident or claim"
-        onPrimary={() => openForm()}
+        primaryLabel={canCreate ? "Log incident or claim" : undefined}
+        onPrimary={canCreate ? () => openForm() : undefined}
         onExport={() => csvDownload("incidents.xlsx", columns, filtered)}
         stats={[
           { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "⚠" },
@@ -222,50 +238,62 @@ const IncidentsPage = () => {
       {open ? (
         <Modal
           wide
+          compact
           title={editing ? "Edit incident or claim" : "Log incident or claim"}
           subtitle="Record who logged it, which vehicle, when it happened, and the notes."
           onClose={() => { setOpen(false); setEditing(null); }}
         >
           <form className="fc-form" onSubmit={submit}>
-            <label>
-              Record type
-              <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-                <option value="incident">Incident</option>
-                <option value="claim">Claim</option>
-              </select>
-            </label>
+            <LineSelect
+              label="Record type"
+              value={form.kind}
+              onChange={(id) => setForm({ ...form, kind: id })}
+              options={[
+                { id: "incident", label: "Incident" },
+                { id: "claim", label: "Claim" },
+              ]}
+            />
             {user?.role !== "driver" ? (
-              <label>
-                Logged by
-                <select
-                  value={form.logged_by}
-                  onChange={(e) => setForm({ ...form, logged_by: e.target.value })}
-                  required
-                >
-                  <option value="">Select a person</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.full_name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label>
-              Vehicle
-              <select
-                value={form.vehicle_id}
-                onChange={(e) => setForm({ ...form, vehicle_id: e.target.value })}
+              <LineSelect
+                label="Logged by"
                 required
-              >
-                <option value="">Select a vehicle</option>
-                {vehicles.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.registration} — {v.make} {v.model}
-                  </option>
-                ))}
-              </select>
-            </label>
+                value={form.logged_by}
+                onChange={(id) => {
+                  const assigned = vehicles.find((row) => row.assigned_driver_id === id);
+                  setForm({ ...form, logged_by: id, vehicle_id: assigned?.id || "" });
+                }}
+                placeholder="Select a person"
+                emptyText="No people to select"
+                options={people.map((p) => ({
+                  id: p.id,
+                  label: p.full_name,
+                  sub: p.employee_id || p.email || "",
+                  photo: p.photo_url,
+                  name: p.full_name,
+                }))}
+              />
+            ) : null}
+            <LineSelect
+              label="Vehicle"
+              required
+              value={form.vehicle_id}
+              onChange={(id) => setForm({ ...form, vehicle_id: id })}
+              placeholder="Select a vehicle"
+              emptyText="No vehicle assigned"
+              options={vehicles
+                .filter(
+                  (v) =>
+                    v.assigned_driver_id === form.logged_by ||
+                    people.find((p) => p.id === form.logged_by)?.assigned_vehicle_id === v.id,
+                )
+                .map((v) => ({
+                  id: v.id,
+                  label: v.registration,
+                  sub: `${v.make || ""} ${v.model || ""}`.trim(),
+                  photo: v.photo_url || v.photos?.[0],
+                  name: v.registration,
+                }))}
+            />
             <label>
               When
               <input
@@ -284,22 +312,38 @@ const IncidentsPage = () => {
               />
             </label>
             <label>
-              Priority
-              <select value={form.severity} onChange={(e) => setForm({ ...form, severity: e.target.value })}>
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
+              Amount (ZAR)
+              <input
+                type="number"
+                lang="en"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                required
+              />
             </label>
+            <LineSelect
+              label="Priority"
+              value={form.severity}
+              onChange={(id) => setForm({ ...form, severity: id })}
+              options={[
+                { id: "low", label: "Low" },
+                { id: "medium", label: "Medium" },
+                { id: "high", label: "High" },
+              ]}
+            />
             {editing ? (
-              <label>
-                Status
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                  <option value="open">Pending</option>
-                  <option value="review">Under review</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </label>
+              <LineSelect
+                label="Status"
+                value={form.status || "open"}
+                onChange={(id) => setForm({ ...form, status: id })}
+                options={[
+                  { id: "open", label: "Pending" },
+                  { id: "review", label: "Under review" },
+                  { id: "closed", label: "Closed" },
+                ]}
+              />
             ) : null}
             <label className="fc-form__full">
               Notes
@@ -326,80 +370,6 @@ const IncidentsPage = () => {
           </form>
         </Modal>
       ) : null}
-      {viewing ? (
-        <Modal
-          wide
-          title={viewing.title || "Record"}
-          subtitle={`${(viewing.kind || "incident").replace(/^./, (c) => c.toUpperCase())} logged against this vehicle.`}
-          onClose={() => setViewing(null)}
-        >
-          <div className="incident-view">
-            <div className="incident-view__people">
-              <div>
-                <Avatar
-                  src={viewedVehicle?.photo_url || viewedVehicle?.photos?.[0]}
-                  name={viewedVehicle?.registration || "V"}
-                  size="lg"
-                />
-                <span>{viewedVehicle?.registration || "—"}</span>
-              </div>
-              <div>
-                <Avatar src={viewedPerson?.photo_url} name={viewedPerson?.full_name || "U"} size="lg" />
-                <span>{viewedPerson?.full_name || "—"}</span>
-              </div>
-            </div>
-            <dl className="incident-view__facts">
-              <div>
-                <dt>Logged by</dt>
-                <dd>{viewedPerson?.full_name || "—"}</dd>
-              </div>
-              <div>
-                <dt>When</dt>
-                <dd>{new Date(viewing.occurred_at || viewing.created_at).toLocaleString("en-ZA")}</dd>
-              </div>
-              <div>
-                <dt>Vehicle</dt>
-                <dd>
-                  {viewedVehicle
-                    ? `${viewedVehicle.registration} — ${viewedVehicle.make} ${viewedVehicle.model}`
-                    : "—"}
-                </dd>
-              </div>
-              <div>
-                <dt>Record</dt>
-                <dd>
-                  <StatusChip value={viewing.kind || "incident"} />
-                </dd>
-              </div>
-              <div>
-                <dt>Priority</dt>
-                <dd>
-                  <StatusChip value={viewing.severity} />
-                </dd>
-              </div>
-              <div>
-                <dt>Status</dt>
-                <dd>
-                  <StatusChip value={statusLabel(viewing.status)} />
-                </dd>
-              </div>
-            </dl>
-            <p className="incident-view__notes">{viewing.description || "No notes."}</p>
-            {(viewing.photos || []).length ? (
-              <div className="incident-view__photos">
-                {viewing.photos.map((src) => (
-                  <img key={src} src={src} alt="" />
-                ))}
-              </div>
-            ) : null}
-            <div className="fc-form__actions">
-              <button className="fc-btn fc-btn--primary" type="button" onClick={() => setViewing(null)}>
-                Close
-              </button>
-            </div>
-          </div>
-        </Modal>
-      ) : null}
       <ConfirmModal
         open={Boolean(pending)}
         title="Delete this record?"
@@ -414,7 +384,7 @@ const IncidentsPage = () => {
         }}
       />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
-    </>
+    </div>
   );
 };
 

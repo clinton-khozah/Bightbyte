@@ -1,0 +1,87 @@
+<!--
+  EmailJS template (one template for every Fleet21 mail)
+
+  To: {{to_email}}
+  From name: Fleet21
+  Subject: {{subject}}
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+  <body style="margin:0;padding:0;background:#0c1612;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0c1612;padding:32px 12px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="580" cellspacing="0" cellpadding="0" style="max-width:580px;width:100%;">
+            <tr>
+              <td style="padding:0 8px 18px;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="width:28px;height:28px;background:#006239;border-radius:6px;text-align:center;vertical-align:middle;color:#e8fff3;font-family:Georgia,Times,'Times New Roman',serif;font-size:16px;font-weight:700;line-height:28px;">
+                      ▲
+                    </td>
+                    <td style="padding-left:10px;font-family:Arial,Helvetica,sans-serif;font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:#9dbeb0;">
+                      Fleet21
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f7f4ee;border-radius:18px;overflow:hidden;">
+                  <tr>
+                    <td style="height:6px;background:#006239;font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px 32px 8px;font-family:Arial,Helvetica,sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#006239;">
+                      {{company_name}} · operations
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:4px 32px 6px;font-family:Georgia,Times,'Times New Roman',serif;font-size:30px;line-height:1.2;color:#12241c;">
+                      {{headline}}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 32px 22px;">
+                      <span style="display:inline-block;width:48px;height:3px;background:#c5a572;font-size:0;line-height:0;">&nbsp;</span>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 32px 8px;font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#3d4a44;">
+                      Hi {{to_name}},
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 32px 28px;font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.65;color:#1c2a24;">
+                      {{message}}
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0 32px 32px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="background:#006239;border-radius:8px;">
+                            <a href="{{login_url}}" style="display:inline-block;padding:12px 22px;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:700;letter-spacing:0.04em;color:#ffffff;text-decoration:none;">
+                              {{action_label}}
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding:16px 32px;background:#12241c;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.5;color:#8aa396;">
+                      Automatic notice from Fleet21. Keep this for your records — roads, cash and service, in one place.
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

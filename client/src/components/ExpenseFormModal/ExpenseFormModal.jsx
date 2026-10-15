@@ -1,6 +1,7 @@
 import React from "react";
 import Modal from "../Modal/Modal";
 import FileDrop from "../FileDrop/FileDrop";
+import LineSelect from "../LineSelect/LineSelect";
 import "./ExpenseFormModal.css";
 
 export const EXPENSE_NAMES = [
@@ -16,6 +17,17 @@ export const EXPENSE_NAMES = [
 
 export const expenseNameLabel = (value) =>
   EXPENSE_NAMES.find((item) => item.value === value)?.label || value || "—";
+
+const FREQUENCY_OPTIONS = [
+  { id: "once_off", label: "Once-off" },
+  { id: "monthly", label: "Monthly (ongoing)" },
+];
+
+const STATUS_OPTIONS = [
+  { id: "submitted", label: "Submitted" },
+  { id: "approved", label: "Approved" },
+  { id: "rejected", label: "Rejected" },
+];
 
 const ExpenseFormModal = ({
   open,
@@ -35,6 +47,13 @@ const ExpenseFormModal = ({
   if (!open) return null;
 
   const set = (patch) => onChange({ ...form, ...patch });
+  const driver = drivers.find((row) => row.id === form.driver_id);
+  const fleet = form.driver_id
+    ? vehicles.filter(
+        (row) =>
+          row.assigned_driver_id === form.driver_id || driver?.assigned_vehicle_id === row.id,
+      )
+    : [];
 
   return (
     <Modal
@@ -45,41 +64,46 @@ const ExpenseFormModal = ({
     >
       <form className="fc-form expense-form" onSubmit={onSubmit}>
         {showDriver ? (
-          <label>
-            Driver
-            <select value={form.driver_id} onChange={(e) => onDriverChange(e.target.value)} required>
-              <option value="">Select a driver</option>
-              {drivers.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.full_name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <LineSelect
+            label="Driver"
+            required
+            value={form.driver_id}
+            onChange={onDriverChange}
+            placeholder="Select a driver"
+            emptyText="No drivers to select"
+            options={drivers.map((row) => ({
+              id: row.id,
+              label: row.full_name,
+              sub: row.employee_id || row.email || "",
+              photo: row.photo_url,
+              name: row.full_name,
+            }))}
+          />
         ) : null}
-        <label>
-          Vehicle
-          <select value={form.vehicle_id} onChange={(e) => set({ vehicle_id: e.target.value })} required>
-            <option value="">Select a vehicle</option>
-            {vehicles.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.registration} — {v.make} {v.model}
-                {v.assigned_driver_id === form.driver_id ? " (assigned)" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Expense name
-          <select value={form.name} onChange={(e) => set({ name: e.target.value })} required>
-            <option value="">Select a name</option>
-            {EXPENSE_NAMES.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <LineSelect
+          label="Vehicle"
+          required
+          value={form.vehicle_id}
+          onChange={(id) => set({ vehicle_id: id })}
+          placeholder="Select a vehicle"
+          emptyText="No vehicle assigned"
+          options={fleet.map((row) => ({
+            id: row.id,
+            label: row.registration,
+            sub: `${row.make || ""} ${row.model || ""}`.trim() +
+              (row.assigned_driver_id === form.driver_id ? " · assigned" : ""),
+            photo: row.photo_url || row.photos?.[0],
+            name: row.registration,
+          }))}
+        />
+        <LineSelect
+          label="Expense name"
+          required
+          value={form.name}
+          onChange={(id) => set({ name: id })}
+          placeholder="Select a name"
+          options={EXPENSE_NAMES.map((item) => ({ id: item.value, label: item.label }))}
+        />
         <label>
           Amount (ZAR)
           <input
@@ -92,22 +116,19 @@ const ExpenseFormModal = ({
             required
           />
         </label>
-        <label>
-          Frequency
-          <select value={form.frequency} onChange={(e) => set({ frequency: e.target.value })}>
-            <option value="once_off">Once-off</option>
-            <option value="monthly">Monthly (ongoing)</option>
-          </select>
-        </label>
+        <LineSelect
+          label="Frequency"
+          value={form.frequency}
+          onChange={(id) => set({ frequency: id })}
+          options={FREQUENCY_OPTIONS}
+        />
         {showStatus ? (
-          <label>
-            Status
-            <select value={form.status} onChange={(e) => set({ status: e.target.value })}>
-              <option value="submitted">Submitted</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-            </select>
-          </label>
+          <LineSelect
+            label="Status"
+            value={form.status}
+            onChange={(id) => set({ status: id })}
+            options={STATUS_OPTIONS}
+          />
         ) : null}
         <label className="fc-form__full">
           Note

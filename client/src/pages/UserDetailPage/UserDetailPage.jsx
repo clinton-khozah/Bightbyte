@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import StatusChip from "../../components/StatusChip/StatusChip";
 import DriverRatings from "../../components/DriverRatings/DriverRatings";
 import DriverCheckinHistory from "../../components/DriverCheckinHistory/DriverCheckinHistory";
@@ -106,7 +107,7 @@ const UserDetailPage = () => {
   return (
     <div className="user-detail">
       <Link className="user-detail__back" to="/drivers">
-        ← User Management
+        ← {session?.role === "driver" ? "My Profile" : "User Management"}
       </Link>
       <div className="user-detail__hero">
         {profile.photo_url ? (
@@ -123,7 +124,15 @@ const UserDetailPage = () => {
             <StarRating
               value={score.overall}
               outOf
-              label={schedule ? `Check-in due ${schedule.due_time}` : "No schedule yet"}
+              label={
+                schedule
+                  ? `Check-in due ${
+                      schedule.due_weekday
+                        ? `${schedule.due_weekday[0].toUpperCase()}${schedule.due_weekday.slice(1)} `
+                        : ""
+                    }${schedule.due_time}`
+                  : "No schedule yet"
+              }
             />
           ) : null}
           <div className="gh-facts">
@@ -199,7 +208,7 @@ const UserDetailPage = () => {
           <DriverRatings
             score={score}
             ratings={profile.ratings || []}
-            canRate={session?.role === "admin" || session?.role === "fleet_manager"}
+            canRate={can(session, "drivers", "edit")}
             onRate={addRating}
           />
         </>
@@ -236,7 +245,7 @@ const UserDetailPage = () => {
       ) : (
         <div className="user-detail__empty">No documents on file for this user.</div>
       )}
-      {session?.role !== "driver" ? (
+      {can(session, "drivers", "edit") ? (
         <label className="fc-btn">
           Upload document
           <input type="file" hidden accept="image/*,application/pdf" onChange={addDoc} />

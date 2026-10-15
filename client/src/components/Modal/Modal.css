@@ -6,7 +6,7 @@
   align-items: center;
   justify-content: center;
   padding: 32px 16px;
-  z-index: 80;
+  z-index: 110;
   overflow: auto;
 }
 
@@ -44,7 +44,14 @@
   max-height: none;
 }
 
-.fc-modal--compact .fc-modal__body {
+.fc-modal--wide.fc-modal--compact,
+.fc-modal--xl.fc-modal--compact {
+  max-height: none;
+}
+
+.fc-modal--compact .fc-modal__body,
+.fc-modal--wide.fc-modal--compact .fc-modal__body,
+.fc-modal--xl.fc-modal--compact .fc-modal__body {
   overflow: visible;
 }
 
@@ -141,26 +148,8 @@
   display: none;
 }
 
-.fc-form input,
-.fc-form select,
 .fc-form textarea {
-  min-height: 38px;
-  border: 1px solid var(--sb-border, #e6e6e4);
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: #fff;
-  color: #171717;
-}
-
-.fc-form input:focus,
-.fc-form select:focus,
-.fc-form textarea:focus {
-  outline: 2px solid #cce8d8;
-  border-color: #006239;
-}
-
-.fc-form textarea {
-  min-height: 92px;
+  min-height: 88px;
 }
 
 .fc-form__actions {
@@ -178,11 +167,248 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 800px) {
+  .fc-modal-backdrop {
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+  }
+
+  .fc-modal,
+  .fc-modal--wide,
+  .fc-modal--xl,
+  .fc-modal--compact,
+  .fc-modal--wide.fc-modal--compact,
+  .fc-modal--xl.fc-modal--compact {
+    width: min(360px, calc(100vw - 24px));
+    max-height: 70vh;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .fc-modal__head {
+    padding: 10px 12px 8px;
+    gap: 8px;
+  }
+
+  .fc-modal h3,
+  .fc-modal__head h3 {
+    font-size: 15px;
+  }
+
+  .fc-modal__sub {
+    margin-top: 2px;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .fc-modal__close {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+
+  .fc-modal__body,
+  .fc-modal--compact .fc-modal__body,
+  .fc-modal--wide.fc-modal--compact .fc-modal__body,
+  .fc-modal--xl.fc-modal--compact .fc-modal__body {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 8px 12px 12px;
+  }
+
   .fc-form,
   .fc-modal--xl .fc-form,
   .fc-modal--wide .fc-form {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .fc-modal .fc-form label,
+  .fc-modal .fc-line-select__label {
+    font-size: 11px;
+    gap: 2px;
+    font-weight: 600;
+  }
+
+  .fc-modal .fc-form input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  .fc-modal .fc-form select,
+  .fc-modal .fc-form textarea {
+    min-height: 30px;
+    padding: 2px 2px 4px;
+    font-size: 13px;
+  }
+
+  .fc-form textarea {
+    min-height: 48px;
+  }
+
+  .fc-form__actions {
+    flex-wrap: wrap;
+    padding-top: 8px;
+    margin-top: 0;
+    gap: 6px;
+  }
+
+  .fc-form__actions .fc-btn,
+  .fc-modal .fc-btn {
+    flex: 1;
+    min-height: 32px;
+    justify-content: center;
+    font-size: 12px;
+    padding: 0 8px;
+  }
+
+  .fc-modal .fc-filedrop {
+    padding: 6px;
+    font-size: 11px;
+    gap: 4px;
+  }
+
+  .fc-modal .fc-filedrop em {
+    font-size: 11px;
+  }
+
+  .fc-modal .fc-filedrop--compact,
+  .fc-modal .checkin-form .fc-filedrop--compact,
+  .fc-modal .expense-form .fc-filedrop--compact {
+    min-height: 40px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .fc-modal .fc-filedrop__previews {
+    grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+    margin-top: 4px;
+    gap: 4px;
+  }
+
+  .fc-modal .fc-filedrop__previews img,
+  .fc-modal .fc-filedrop__doc,
+  .fc-modal .checkin-form .fc-filedrop--compact .fc-filedrop__previews img,
+  .fc-modal .expense-form .fc-filedrop--compact .fc-filedrop__previews img {
+    width: 36px;
+    height: 36px;
+  }
+
+  .fc-modal .fc-line-select {
+    gap: 2px;
+  }
+
+  .fc-modal .fc-line-select__trigger,
+  .fc-modal .fc-line-select__option,
+  .fc-modal .checkin-form .fc-line-select__trigger {
+    min-height: 32px;
+    gap: 6px;
+    padding: 2px 2px 4px;
+  }
+
+  .fc-modal .fc-line-select__copy strong,
+  .fc-modal .fc-line-select__placeholder {
+    font-size: 13px;
+  }
+
+  .fc-modal .fc-line-select__copy em,
+  .fc-modal .fc-line-select__empty {
+    font-size: 11px;
+  }
+
+  .fc-modal .fc-line-select__menu {
+    max-height: 160px;
+    padding: 4px;
+  }
+
+  .fc-modal .fc-avatar--md {
+    width: 22px;
+    height: 22px;
+    font-size: 9px;
+  }
+
+  .fc-modal .checkin-form,
+  .fc-modal .expense-form,
+  .fc-modal .checkin-form > .checkin-form__pickers {
+    gap: 8px;
+  }
+
+  .fc-modal .checkin-form__flag {
+    font-size: 10px;
+    min-height: 0;
+  }
+
+  .fc-modal .checkin-form > label .checkin-form__flag {
+    min-height: 0;
+  }
+
+  .fc-modal .vehicle-photos {
+    gap: 6px;
+  }
+
+  .fc-modal .vehicle-photos__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .fc-modal .review-live__stage {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .fc-modal .review-live__stage video {
+    min-height: 140px;
+    max-height: 180px;
+  }
+
+  .fc-modal .review-live__hint,
+  .fc-modal .review-live__steps {
+    font-size: 11px;
+  }
+
+  .fc-modal .role-matrix th,
+  .fc-modal .role-matrix td {
+    padding: 3px 4px;
+    font-size: 11px;
+  }
+
+  .fc-modal .success-modal {
+    gap: 8px;
+    padding: 0;
+  }
+
+  .fc-modal .success-modal__icon {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .fc-modal .success-modal p,
+  .fc-modal .confirm-modal p {
+    font-size: 13px;
+  }
+
+  .fc-modal .user-dossier {
+    gap: 10px;
+  }
+
+  .fc-modal .user-dossier__photo,
+  .fc-modal .user-dossier__photo-fallback {
+    width: 72px;
+    height: 72px;
+  }
+
+  .fc-modal .user-dossier__hero h4 {
+    font-size: 16px;
+  }
+
+  .fc-modal .checkin-view,
+  .fc-modal .vehicle-report,
+  .fc-modal .review-view {
+    gap: 8px;
+  }
+
+  .fc-modal .checkin-view__kpi strong {
+    font-size: 13px;
   }
 }
 

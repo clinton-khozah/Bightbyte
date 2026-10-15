@@ -5,12 +5,13 @@ import "./SuccessModal.css";
 const SuccessModal = ({
   open,
   title = "Completed successfully",
+  subtitle = "The request finished without errors.",
   message = "The change was saved.",
   onClose,
 }) => {
   if (!open) return null;
   return (
-    <Modal title={title} subtitle="The request finished without errors." onClose={onClose}>
+    <Modal title={title} subtitle={subtitle} onClose={onClose}>
       <div className="success-modal">
         <span className="success-modal__icon" aria-hidden="true">
           ✓

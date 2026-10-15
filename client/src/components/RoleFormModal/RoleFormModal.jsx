@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from "react";
 import Modal from "../Modal/Modal";
-import { emptyMatrix, FLEET21_MODULES, ROLE_ACTIONS, summariseMatrix } from "../../constants/roles";
+import LineSelect from "../LineSelect/LineSelect";
+import { ACCESS_TYPES, emptyMatrix, FLEET21_MODULES, mergeMatrix, ROLE_ACTIONS, summariseMatrix } from "../../constants/roles";
 import "./RoleFormModal.css";
 
 const RoleFormModal = ({ open, mode, role, onClose, onSave, busy }) => {
   const [form, setForm] = useState({
     RoleName: "",
     description: "",
+    key: "admin",
     state: "active",
     permissionsMatrix: emptyMatrix(),
   });
@@ -16,8 +18,9 @@ const RoleFormModal = ({ open, mode, role, onClose, onSave, busy }) => {
     setForm({
       RoleName: role?.RoleName || "",
       description: role?.description || "",
+      key: role?.key || "admin",
       state: role?.state || "active",
-      permissionsMatrix: { ...emptyMatrix(), ...(role?.permissionsMatrix || {}) },
+      permissionsMatrix: mergeMatrix(role?.permissionsMatrix || role?.permissionsmatrix || {}),
     });
   }, [open, role]);
 
@@ -33,6 +36,23 @@ const RoleFormModal = ({ open, mode, role, onClose, onSave, busy }) => {
           [action]: !prev.permissionsMatrix[moduleId]?.[action],
         },
       },
+    }));
+  };
+
+  const allOn = FLEET21_MODULES.every((mod) =>
+    ROLE_ACTIONS.every((action) => form.permissionsMatrix[mod.id]?.[action.id]),
+  );
+
+  const toggleAll = () => {
+    const next = !allOn;
+    setForm((prev) => ({
+      ...prev,
+      permissionsMatrix: Object.fromEntries(
+        FLEET21_MODULES.map((mod) => [
+          mod.id,
+          Object.fromEntries(ROLE_ACTIONS.map((action) => [action.id, next])),
+        ]),
+      ),
     }));
   };
 
@@ -73,15 +93,30 @@ const RoleFormModal = ({ open, mode, role, onClose, onSave, busy }) => {
             onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
         </label>
-        <label>
-          Status
-          <select value={form.state} onChange={(e) => setForm({ ...form, state: e.target.value })}>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-        </label>
+        <LineSelect
+          label="Access type"
+          required
+          value={form.key}
+          onChange={(id) => setForm({ ...form, key: id })}
+          options={ACCESS_TYPES}
+        />
+        <LineSelect
+          label="Status"
+          value={form.state}
+          onChange={(id) => setForm({ ...form, state: id })}
+          options={[
+            { id: "active", label: "Active" },
+            { id: "inactive", label: "Inactive" },
+          ]}
+        />
         <div className="role-matrix">
-          <p>Module access</p>
+          <p>
+            Module access
+            <label className="role-matrix__all">
+              <input type="checkbox" checked={allOn} onChange={toggleAll} />
+              Select all
+            </label>
+          </p>
           <div className="role-matrix__grid">
             {columns.map((mods, col) => (
               <table key={col}>

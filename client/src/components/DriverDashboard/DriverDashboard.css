@@ -1,0 +1,16 @@
+.driver-dash__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+@media (max-width: 800px) {
+  .driver-dash .sb-kpis > a:nth-child(3) {
+    grid-column: auto;
+  }
+
+  .driver-dash__actions .sb-link-btn {
+    flex: 1;
+    justify-content: center;
+  }
+}

@@ -154,8 +154,20 @@
   text-decoration: none;
 }
 
-@media (max-width: 720px) {
-  .vehicle-report__hero,
+@media (max-width: 800px) {
+  .vehicle-report {
+    gap: 12px;
+  }
+
+  .vehicle-report__hero {
+    grid-template-columns: 1fr;
+  }
+
+  .vehicle-report__hero img,
+  .vehicle-report__hero-fallback {
+    height: 96px;
+  }
+
   .vehicle-report__kpis,
   .vehicle-report__months {
     grid-template-columns: 1fr 1fr;

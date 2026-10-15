@@ -9,6 +9,18 @@
   background: rgba(17, 17, 17, 0.88);
 }
 
+@media (max-width: 800px) {
+  .photo-viewer {
+    padding: 12px;
+  }
+
+  .photo-viewer__frame,
+  .photo-viewer__frame img {
+    max-width: calc(100vw - 24px);
+    max-height: 70vh;
+  }
+}
+
 .photo-viewer__frame {
   position: relative;
   display: flex;

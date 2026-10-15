@@ -14,7 +14,6 @@ const MechanicCard = ({ mechanic }) => {
         <strong>{mechanic.full_name}</strong>
         <p>
           {mechanic.trade}
-          {mechanic.after_hours ? " · after hours" : ""}
         </p>
         <p>
           {mechanic.workshop}

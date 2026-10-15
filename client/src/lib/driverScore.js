@@ -64,8 +64,10 @@ export const buildCheckinHistory = (checkins = [], schedule) => {
   if (schedule && schedule.active !== false) {
     const now = new Date();
     const today = dayKey(now);
-    const weekday = now.getDay();
-    if (weekday !== 0 && weekday !== 6 && !byDay[today]) {
+    const names = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const dueWeekday = String(schedule.due_weekday || "").toLowerCase();
+    const isDueDay = dueWeekday ? names[now.getDay()] === dueWeekday : now.getDay() !== 0 && now.getDay() !== 6;
+    if (isDueDay && !byDay[today]) {
       out.push({
         date: now,
         key: today,

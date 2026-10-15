@@ -1,3 +1,11 @@
 .companies-page {
   min-height: 0;
 }
+
+.companies-page__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 148px;
+}

@@ -54,3 +54,11 @@
 .user-profile dt {
   color: #707070;
 }
+
+.fc-form .fc-line-select {
+  min-width: 0;
+}
+
+.fc-form > .fc-line-select {
+  grid-column: auto;
+}

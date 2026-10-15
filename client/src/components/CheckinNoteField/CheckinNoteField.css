@@ -1,0 +1,25 @@
+.checkin-note__enable {
+  grid-column: 1 / -1;
+  justify-self: start;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #b0b0b0;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.checkin-note__enable:hover {
+  color: #737373;
+}
+
+.checkin-note {
+  grid-column: 1 / -1;
+}
+
+.checkin-note input {
+  min-height: 36px;
+}

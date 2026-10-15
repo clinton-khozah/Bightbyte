@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import OpsPage from "../../components/OpsPage/OpsPage";
 import DataTable from "../../components/DataTable/DataTable";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
@@ -16,6 +17,90 @@ import "./CheckinsPage.css";
 
 const money = (n) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(n || 0));
+
+const zaDay = (value) =>
+  new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Africa/Johannesburg",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value));
+
+const isDriverUser = (user) => user?.role === "driver" || user?.role_key === "driver";
+
+const samePerson = (a, b) => String(a || "") === String(b || "");
+
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+const zaWeekdayIndex = (now = new Date()) => {
+  const name = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Johannesburg",
+    weekday: "long",
+  })
+    .format(now)
+    .toLowerCase();
+  return WEEKDAYS.indexOf(name);
+};
+
+const addZaDays = (dayYmd, days) => {
+  const start = Date.parse(`${dayYmd}T12:00:00+02:00`);
+  return zaDay(new Date(start + days * 86400000));
+};
+
+const dueClockZa = (dayYmd, dueTime) => {
+  const [h, m] = String(dueTime || "18:00").split(":");
+  const hour = String(Number.isFinite(Number(h)) ? Number(h) : 18).padStart(2, "0");
+  const minute = String(Number.isFinite(Number(m)) ? Number(m) : 0).padStart(2, "0");
+  return new Date(`${dayYmd}T${hour}:${minute}:00+02:00`);
+};
+
+const scheduleWeekday = (schedule) => WEEKDAYS.indexOf(String(schedule?.due_weekday || "").toLowerCase());
+
+const dueFromSchedule = (schedule, now = new Date()) => {
+  const target = scheduleWeekday(schedule);
+  if (target < 0) return null;
+  const today = zaDay(now);
+  const delta = (target - zaWeekdayIndex(now) + 7) % 7;
+  return dueClockZa(addZaDays(today, delta), schedule.due_time);
+};
+
+const roundMoney = (n) => Math.round(Number(n || 0) * 100) / 100;
+
+const checkinCash = (row) => {
+  const cash = Number(row?.cash_amount);
+  if (Number.isFinite(cash) && cash > 0) return cash;
+  return Math.max(0, Number(row?.amount || 0) - Number(row?.late_fee_applied || 0));
+};
+
+const scheduleBalance = (schedule, checkins = [], due = dueFromSchedule(schedule)) => {
+  const expected = roundMoney(schedule?.expected_amount);
+  const dueDay = zaDay(due);
+  const paid = roundMoney(
+    checkins
+      .filter((row) => zaDay(row.created_at) === dueDay)
+      .reduce((sum, row) => sum + checkinCash(row), 0),
+  );
+  const remaining = expected > 0 ? roundMoney(Math.max(0, expected - paid)) : 0;
+  const settled = expected > 0 ? remaining <= 0 : paid > 0;
+  return { expected, paid, remaining, settled };
+};
+
+const pendingFromSchedule = (schedule, checkins = []) => {
+  const due = dueFromSchedule(schedule);
+  if (!due) return null;
+  const balance = scheduleBalance(schedule, checkins, due);
+  if (!balance.settled) return { due, balance };
+  const next = dueClockZa(addZaDays(zaDay(due), 7), schedule.due_time);
+  return {
+    due: next,
+    balance: {
+      expected: balance.expected,
+      paid: 0,
+      remaining: balance.expected,
+      settled: false,
+    },
+  };
+};
 
 const emptyForm = {
   driver_id: "",
@@ -65,47 +150,113 @@ const CheckinsPage = () => {
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
 
   const load = () => {
+    const driverView = isDriverUser(user);
     const peopleReq =
-      user?.role === "driver" ? api("/api/drivers").catch(() => []) : api("/api/users").catch(() => api("/api/drivers"));
+      driverView ? api("/api/drivers").catch(() => []) : api("/api/users").catch(() => api("/api/drivers"));
     Promise.all([
       api("/api/checkins"),
-      api("/api/expenses").catch(() => []),
+      driverView ? Promise.resolve([]) : api("/api/expenses").catch(() => []),
       api("/api/vehicles"),
       peopleReq,
       api("/api/checkin-schedules").catch(() => []),
     ]).then(([checkinRows, expenseRows = [], list, driverRows = [], scheduleRows]) => {
-      setCheckins(checkinRows);
-      setExpenses(expenseRows);
+      setCheckins(driverView ? checkinRows.filter((row) => samePerson(row.driver_id, user.id)) : checkinRows);
+      setExpenses(driverView ? [] : expenseRows);
       setVehicles(list);
-      setDrivers(driverRows.filter((p) => p.role === "driver" || !p.role));
-      setPeople(driverRows);
+      setDrivers(
+        driverView
+          ? driverRows.filter((p) => samePerson(p.id, user.id))
+          : driverRows.filter((p) => p.role === "driver" || !p.role),
+      );
+      setPeople(driverView ? driverRows.filter((p) => samePerson(p.id, user.id)) : driverRows);
       setSchedules(scheduleRows);
-      const driverId = user?.role === "driver" ? user.id : "";
-      setLateFee(Number(scheduleRows.find((s) => s.driver_id === driverId)?.late_fee_now || 0));
+      const mine = scheduleRows.find((s) => samePerson(s.driver_id, user?.id));
+      setLateFee(Number(mine?.late_fee_now || 0));
     });
   };
 
-  useEffect(load, [user?.role]);
+  useEffect(load, [user?.id, user?.role, user?.role_key]);
 
   useEffect(() => {
+    if (isDriverUser(user)) {
+      const mine = schedules.filter(
+        (row) =>
+          samePerson(row.driver_id, user.id) &&
+          row.active !== false &&
+          scheduleWeekday(row) >= 0 &&
+          roundMoney(row.expected_amount) > 0,
+      );
+      const pendingRows = mine.flatMap((schedule) => {
+        const pending = pendingFromSchedule(schedule, checkins);
+        if (!pending) return [];
+        const { due, balance } = pending;
+        return [
+          {
+            id: `due-${schedule.id}`,
+            record_type: "pending",
+            driver_id: user.id,
+            vehicle_id: schedule.vehicle_id || vehicleForDriver(vehicles, user.id),
+            created_at: due.toISOString(),
+            due_at: due.toISOString(),
+            due_weekday: schedule.due_weekday || "",
+            due_time: schedule.due_time || "18:00",
+            amount: balance.remaining,
+            expected_amount: balance.expected,
+            paid_amount: balance.paid,
+            remaining: balance.remaining,
+            status: Date.now() > due.getTime() ? "overdue" : "pending",
+          },
+        ];
+      });
+      const submittedRows = [...checkins]
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .map((row) => ({
+          ...row,
+          record_type: "checkin",
+          expected_amount: Number(row.cash_amount || row.amount || 0),
+          remaining: null,
+        }));
+      setRows([...pendingRows, ...submittedRows]);
+      return;
+    }
     const merged = [
       ...checkins.map((row) => ({ ...row, record_type: "checkin" })),
       ...expenses.map((row) => ({ ...row, record_type: "expense" })),
     ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
     setRows(merged);
-  }, [checkins, expenses]);
+  }, [checkins, expenses, schedules, vehicles, user]);
+
+  const lastOdometerFor = (vehicleId) => Number(vehicles.find((v) => v.id === vehicleId)?.odometer || 0);
 
   const starterIds = () => {
-    const driverId = user?.role === "driver" ? user.id : "";
+    const driverId = isDriverUser(user) ? user.id : "";
+    const vehicle_id = driverId ? vehicleForDriver(vehicles, driverId) : "";
+    const lastKm = lastOdometerFor(vehicle_id);
     return {
       driver_id: driverId,
-      vehicle_id: driverId ? vehicleForDriver(vehicles, driverId) : "",
+      vehicle_id,
+      odometer: lastKm || "",
     };
   };
 
   const openForm = (row) => {
     if (row?.record_type === "expense") {
       openExpense(row);
+      return;
+    }
+    if (row?.record_type === "pending") {
+      setEditing(null);
+      const vehicle_id = row.vehicle_id || starterIds().vehicle_id;
+      const pay = roundMoney(row.remaining > 0 ? row.remaining : row.expected_amount || row.amount);
+      setForm({
+        ...emptyForm,
+        ...starterIds(),
+        vehicle_id,
+        amount: pay > 0 ? String(pay) : "",
+        odometer: lastOdometerFor(vehicle_id) || "",
+      });
+      setError("");
+      setOpen(true);
       return;
     }
     if (row) {
@@ -121,7 +272,23 @@ const CheckinsPage = () => {
       });
     } else {
       setEditing(null);
-      setForm({ ...emptyForm, ...starterIds() });
+      const start = starterIds();
+      const pending = schedules
+        .filter(
+          (s) =>
+            samePerson(s.driver_id, user?.id) &&
+            s.active !== false &&
+            scheduleWeekday(s) >= 0 &&
+            roundMoney(s.expected_amount) > 0,
+        )
+        .map((s) => pendingFromSchedule(s, checkins))
+        .find(Boolean);
+      const pay = roundMoney(pending?.balance?.remaining || pending?.balance?.expected);
+      setForm({
+        ...emptyForm,
+        ...start,
+        amount: pay > 0 ? String(pay) : "",
+      });
     }
     setError("");
     setOpen(true);
@@ -149,17 +316,41 @@ const CheckinsPage = () => {
   };
 
   const onDriverChange = (driverId) => {
-    setForm((f) => ({
-      ...f,
-      driver_id: driverId,
-      vehicle_id: vehicleForDriver(vehicles, driverId) || f.vehicle_id,
-    }));
+    setForm((f) => {
+      const vehicle_id = vehicleForDriver(vehicles, driverId) || f.vehicle_id;
+      const lastKm = lastOdometerFor(vehicle_id);
+      const km = Number(f.odometer);
+      return {
+        ...f,
+        driver_id: driverId,
+        vehicle_id,
+        odometer: !Number.isFinite(km) || km < lastKm ? lastKm || "" : f.odometer,
+      };
+    });
     setLateFee(Number(schedules.find((s) => s.driver_id === driverId)?.late_fee_now || 0));
   };
 
   const submit = async (event) => {
     event.preventDefault();
     setError("");
+    if (user?.role !== "driver" && !form.driver_id) {
+      setError("Select a driver");
+      return;
+    }
+    if (!form.vehicle_id) {
+      setError("Select a vehicle");
+      return;
+    }
+    const lastKm = lastOdometerFor(form.vehicle_id);
+    const km = Number(form.odometer);
+    if (!Number.isFinite(km) || km < 0) {
+      setError("Enter the odometer reading");
+      return;
+    }
+    if (km < lastKm) {
+      setError(`Odometer cannot be less than the previous reading (${lastKm.toLocaleString("en-ZA")} km)`);
+      return;
+    }
     try {
       if (editing) {
         await api(`/api/checkins/${editing.id}`, {
@@ -172,7 +363,15 @@ const CheckinsPage = () => {
           method: "POST",
           body: JSON.stringify(form),
         });
-        setSuccess("Check-in was submitted.");
+        const leftover =
+          isDriver && driverBalance?.expected > 0
+            ? roundMoney(Math.max(0, driverBalance.remaining - Number(form.amount || 0)))
+            : 0;
+        setSuccess(
+          leftover > 0
+            ? `Check-in received. Remaining ${money(leftover)} still due.`
+            : "Check-in was submitted.",
+        );
       }
       setOpen(false);
       setEditing(null);
@@ -200,6 +399,18 @@ const CheckinsPage = () => {
   const submitExpense = async (event) => {
     event.preventDefault();
     setError("");
+    if (user?.role !== "driver" && !expenseForm.driver_id) {
+      setError("Select a driver");
+      return;
+    }
+    if (!expenseForm.vehicle_id) {
+      setError("Select a vehicle");
+      return;
+    }
+    if (!expenseForm.name) {
+      setError("Select an expense name");
+      return;
+    }
     try {
       if (editing?.record_type === "expense") {
         await api(`/api/expenses/${editing.id}`, {
@@ -228,8 +439,103 @@ const CheckinsPage = () => {
     matchTab: (row, current) =>
       current === "expense" ? row.record_type === "expense" : row.status === current,
   });
-  const canManage = user?.role !== "driver";
-  const columns = [
+  const canManage = can(user, "checkins", "edit");
+  const canCreate = can(user, "checkins", "create");
+  const canDelete = can(user, "checkins", "delete");
+  const isDriver = isDriverUser(user);
+  const canLogExpense = canCreate && !isDriver;
+  const driverSchedule = schedules.find(
+    (row) =>
+      samePerson(row.driver_id, user?.id) &&
+      row.active !== false &&
+      scheduleWeekday(row) >= 0 &&
+      roundMoney(row.expected_amount) > 0,
+  );
+  const driverPending = driverSchedule ? pendingFromSchedule(driverSchedule, checkins) : null;
+  const driverBalance = driverPending?.balance || null;
+  const dueStamp = driverPending
+    ? driverPending.due.toLocaleString("en-ZA", {
+        weekday: "short",
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
+    : "";
+  const columns = isDriver
+    ? [
+        {
+          key: "driver",
+          label: "Driver",
+          render: (r) => {
+            const person = personFor(r.driver_id);
+            return (
+              <div className="fc-table__name-cell">
+                <Avatar src={person?.photo_url} name={person?.full_name || "U"} />
+                <span>{person?.full_name || "—"}</span>
+              </div>
+            );
+          },
+        },
+        {
+          key: "due_at",
+          label: "Due",
+          render: (r) => {
+            const when = r.record_type === "checkin" ? r.created_at : r.due_at;
+            if (!when) return r.due_time || "—";
+            const stamp = new Date(when).toLocaleString("en-ZA", {
+              weekday: "short",
+              day: "2-digit",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            });
+            return r.record_type === "checkin" ? stamp : `${stamp}${r.due_time ? ` (${r.due_time})` : ""}`;
+          },
+        },
+        {
+          key: "vehicle",
+          label: "Vehicle",
+          render: (r) => {
+            const vehicle = vehicleFor(r.vehicle_id);
+            const src = vehicle?.photo_url || vehicle?.photos?.[0];
+            return (
+              <div className="fc-table__name-cell">
+                <Avatar src={src} name={vehicle?.registration || "V"} />
+                <span className="fc-table__id">{vehicle?.registration || "—"}</span>
+              </div>
+            );
+          },
+        },
+        {
+          key: "amount",
+          label: "Due amount",
+          render: (r) => money(r.expected_amount ?? r.amount),
+        },
+        {
+          key: "remaining",
+          label: "Remaining",
+          render: (r) => (r.record_type === "checkin" ? "—" : money(r.remaining ?? r.expected_amount ?? r.amount)),
+        },
+        {
+          key: "status",
+          label: "Status",
+          render: (r) => <StatusChip value={r.status || "pending"} />,
+        },
+        {
+          key: "actions",
+          label: "Actions",
+          render: (r) =>
+            r.record_type === "pending" ? (
+              <button type="button" className="fc-btn fc-btn--primary" onClick={() => openForm(r)}>
+                Check in
+              </button>
+            ) : (
+              <span className="fc-muted">Awaiting confirmation</span>
+            ),
+        },
+      ]
+    : [
     {
       key: "driver",
       label: "Driver",
@@ -314,12 +620,12 @@ const CheckinsPage = () => {
               r.record_type === "expense" ? () => openExpense(r) : () => navigate(`/checkins/${r.id}`)
             }
             onEdit={canManage ? () => openForm(r) : undefined}
-            onDelete={canManage ? () => setPendingDelete(r) : undefined}
+            onDelete={canDelete ? () => setPendingDelete(r) : undefined}
           />
         </div>
       ),
     },
-  ];
+    ];
 
   const assignedLabel = (() => {
     const vehicle = vehicles.find((v) => v.id === form.vehicle_id);
@@ -329,26 +635,39 @@ const CheckinsPage = () => {
   })();
 
   return (
-    <>
+    <div className="checkins-page">
       <OpsPage
         crumb={["Operations", "Check-in"]}
         title="Driver check-in"
-        subtitle="Cash check-ins and vehicle expenses"
-        primaryLabel="New check-in"
-        onPrimary={() => openForm()}
-        extraLabel="Log expense"
-        onExtra={() => openExpense()}
+        subtitle={
+          isDriver
+            ? dueStamp
+              ? `Pending check-in due ${dueStamp}.`
+              : "No check-in schedule is set for you."
+            : "Cash check-ins and vehicle expenses"
+        }
+        primaryLabel={canCreate ? "New check-in" : undefined}
+        onPrimary={canCreate ? () => openForm() : undefined}
+        extraLabel={canLogExpense ? "Log expense" : undefined}
+        onExtra={canLogExpense ? () => openExpense() : undefined}
         secondaryLabel="Check-in schedule"
         onSecondary={canManage ? () => navigate("/checkins/schedules") : undefined}
-        onExport={() => csvDownload("checkins.csv", columns, filtered)}
-        stats={[
-          { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "R" },
-          { id: "submitted", label: "Submitted", value: rows.filter((r) => r.status === "submitted").length, tone: "amber", icon: "↑" },
-          { id: "approved", label: "Approved", value: rows.filter((r) => r.status === "approved").length, tone: "green", icon: "✓" },
-          { id: "rejected", label: "Rejected", value: rows.filter((r) => r.status === "rejected").length, tone: "red", icon: "!" },
-        ]}
-        activeStat={tab}
-        onStat={setTab}
+        onExport={isDriver ? undefined : () => csvDownload("checkins.csv", columns, filtered)}
+        stats={
+          isDriver
+            ? [
+                { id: "all", label: "Pending", value: rows.filter((r) => r.record_type === "pending").length, tone: "amber", icon: "⏱" },
+                { id: "overdue", label: "Overdue", value: rows.filter((r) => r.status === "overdue").length, tone: "red", icon: "!" },
+              ]
+            : [
+                { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "R" },
+                { id: "submitted", label: "Submitted", value: rows.filter((r) => r.status === "submitted").length, tone: "amber", icon: "↑" },
+                { id: "approved", label: "Approved", value: rows.filter((r) => r.status === "approved").length, tone: "green", icon: "✓" },
+                { id: "rejected", label: "Rejected", value: rows.filter((r) => r.status === "rejected").length, tone: "red", icon: "!" },
+              ]
+        }
+        activeStat={isDriver ? "all" : tab}
+        onStat={isDriver ? undefined : setTab}
       >
         <DataTable
           rows={filtered}
@@ -358,15 +677,21 @@ const CheckinsPage = () => {
           search={query}
           onSearch={setQuery}
           searchPlaceholder="Search check-ins and expenses..."
-          tabs={[
-            { id: "all", label: "All" },
-            { id: "submitted", label: "Submitted" },
-            { id: "approved", label: "Approved" },
-            { id: "rejected", label: "Rejected" },
-            { id: "expense", label: "Expenses" },
-          ]}
+          hideToolbar={isDriver}
+          tabs={
+            isDriver
+              ? []
+              : [
+                  { id: "all", label: "All" },
+                  { id: "submitted", label: "Submitted" },
+                  { id: "approved", label: "Approved" },
+                  { id: "rejected", label: "Rejected" },
+                  { id: "expense", label: "Expenses" },
+                ]
+          }
           tab={tab}
           onTab={setTab}
+          emptyText={isDriver ? "No check-in schedule is set for you." : undefined}
         />
       </OpsPage>
       <CheckinFormModal
@@ -384,14 +709,22 @@ const CheckinsPage = () => {
         error={error}
         drivers={drivers}
         vehicles={vehicles}
-        showDriver={user?.role !== "driver"}
+        showDriver={!isDriver}
         showStatus={Boolean(editing) && editing?.record_type !== "expense" && canManage}
         assignedLabel={assignedLabel}
         assignedOk={assignedLabel === "Assigned to this driver"}
+        minOdometer={lastOdometerFor(form.vehicle_id)}
         lateFeeText={
-          lateFee && !editing
-            ? `After schedule. ${money(lateFee)} late fee — total ${money(Number(form.amount || 0) + lateFee)}.`
-            : ""
+          [
+            isDriver && driverBalance
+              ? `Due ${money(driverBalance.expected)}. Remaining ${money(driverBalance.remaining)}.`
+              : "",
+            lateFee && !editing
+              ? `After schedule. ${money(lateFee)} late fee — total ${money(Number(form.amount || 0) + lateFee)}.`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" ")
         }
       />
       <ExpenseFormModal
@@ -415,7 +748,7 @@ const CheckinsPage = () => {
         error={error}
         drivers={drivers}
         vehicles={vehicles}
-        showDriver={user?.role !== "driver"}
+        showDriver={!isDriver}
         showStatus={editing?.record_type === "expense" && canManage}
       />
       <ConfirmModal
@@ -442,7 +775,7 @@ const CheckinsPage = () => {
         }}
       />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
-    </>
+    </div>
   );
 };
 

@@ -17,6 +17,23 @@
   box-shadow: var(--fc-shadow-md);
 }
 
+@media (max-width: 800px) {
+  .gh-selfie-overlay {
+    padding: 12px;
+  }
+
+  .gh-selfie {
+    width: min(360px, calc(100vw - 24px));
+    max-height: 70vh;
+    overflow: auto;
+    padding: 14px;
+  }
+
+  .gh-selfie h3 {
+    font-size: 16px;
+  }
+}
+
 .gh-selfie h3 {
   font-size: 20px;
   margin-bottom: 6px;

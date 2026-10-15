@@ -1,9 +1,14 @@
 import React, { useEffect, useState } from "react";
-import { api, uploadFiles } from "../../api";
+import { api, getToken, uploadFiles } from "../../api";
+import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import OpsPage from "../../components/OpsPage/OpsPage";
 import Modal from "../../components/Modal/Modal";
 import FileDrop from "../../components/FileDrop/FileDrop";
 import FilesSheet from "../../components/FilesSheet/FilesSheet";
+import LineSelect from "../../components/LineSelect/LineSelect";
+import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
+import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
 import "./DocumentsPage.css";
 
@@ -11,12 +16,6 @@ const STACK = {
   licence: "vehicle",
   user: "user",
   incident: "incident",
-};
-
-const STACK_COPY = {
-  licence: "Vehicle licence and registration files.",
-  user: "Identity and onboarding documents for people.",
-  incident: "Photos and evidence from incident reports.",
 };
 
 const whenStamp = (value) =>
@@ -29,39 +28,78 @@ const whenStamp = (value) =>
     : "";
 
 const DocumentsPage = () => {
+  const { user } = useAuth();
   const [rows, setRows] = useState([]);
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", category: "licence", type: "licence", file_url: "" });
+  const [pending, setPending] = useState(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [form, setForm] = useState({ title: "", description: "", category: "licence", type: "licence", file_url: "" });
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
     tabKey: "category",
-    searchKeys: ["title", "category", "type", "uploaded_by_name"],
+    searchKeys: ["title", "description", "category", "type", "uploaded_by_name"],
   });
 
-  const load = () => api("/api/documents").then(setRows);
+  const load = () =>
+    api("/api/documents")
+      .then(setRows)
+      .catch((err) => setError(err.message));
+
+  const canCreate = can(user, "documents", "create");
+  const canDelete = can(user, "documents", "delete");
+
   useEffect(() => {
-    load();
-  }, []);
+    if (can(user, "documents", "view")) load();
+  }, [user?.id, user?.role]);
+
+  if (user && !can(user, "documents", "view")) {
+    return <p className="fc-error">This role cannot open document management.</p>;
+  }
 
   const columns = [
     { key: "title", label: "Document Name" },
+    { key: "description", label: "Description" },
     { key: "category", label: "Category" },
     { key: "uploaded_by_name", label: "Uploaded by" },
     { key: "created_at", label: "Date", render: (r) => whenStamp(r.created_at) },
   ];
 
-  const openFile = (row) => {
-    if (row.file_url) window.open(row.file_url, "_blank", "noopener,noreferrer");
+  const openFile = async (row) => {
+    const res = await fetch(`/api/documents/${row.id}/file`, {
+      headers: { Authorization: `Bearer ${getToken()}` },
+    });
+    if (!res.ok) {
+      setError("This file is only available to a super admin.");
+      return;
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
+  const oldCopy = [
+    "Vehicle licence and registration files.",
+    "Identity and onboarding documents for people.",
+    "Photos and evidence from incident reports.",
+    "Uploaded document.",
+  ];
+  const posterName = (row) => {
+    const name = row.uploaded_by_name || "";
+    if (!name || ["Thabo Mokoena", "Lerato Dlamini"].includes(name)) {
+      return user?.company_name || "BrightByte";
+    }
+    return name;
+  };
   const sheetRows = filtered.map((row) => ({
     id: row.id,
     name: row.title,
-    description: STACK_COPY[row.category] || "Uploaded document.",
+    description:
+      row.description && !oldCopy.includes(row.description)
+        ? row.description
+        : `Posted by ${posterName(row)} on ${whenStamp(row.created_at)}`,
     stack: STACK[row.category] || row.type || "file",
     onOpen: () => openFile(row),
-    actions: [
-      { label: "Open", onClick: () => openFile(row) },
-    ],
+    onDelete: canDelete ? () => setPending(row) : undefined,
   }));
 
   return (
@@ -69,8 +107,8 @@ const DocumentsPage = () => {
       <OpsPage
         crumb={["Administration", "Documents"]}
         title="Document Management"
-        primaryLabel="Upload Document"
-        onPrimary={() => setOpen(true)}
+        primaryLabel={canCreate ? "Upload Document" : undefined}
+        onPrimary={canCreate ? () => { setError(""); setOpen(true); } : undefined}
         onExport={() => csvDownload("documents.csv", columns, filtered)}
         stats={[
           { id: "all", label: "Total Documents", value: rows.length, tone: "blue", icon: "📄" },
@@ -81,6 +119,7 @@ const DocumentsPage = () => {
         activeStat={tab}
         onStat={setTab}
       >
+        {error ? <p className="fc-error">{error}</p> : null}
         <div className="docs-page__toolbar">
           <label className="docs-page__search">
             <span aria-hidden="true">⌕</span>
@@ -111,15 +150,21 @@ const DocumentsPage = () => {
         <FilesSheet rows={sheetRows} emptyText="No documents uploaded yet." />
       </OpsPage>
       {open ? (
-        <Modal title="Upload document" subtitle="The file is stamped with the time and the person who uploaded it." onClose={() => setOpen(false)}>
+        <Modal title="Upload document" subtitle="Only a super admin can open these files." onClose={() => setOpen(false)}>
           <form
             className="fc-form"
             onSubmit={async (e) => {
               e.preventDefault();
-              await api("/api/documents", { method: "POST", body: JSON.stringify(form) });
-              setOpen(false);
-              setForm({ title: "", category: "licence", type: "licence", file_url: "" });
-              load();
+              setError("");
+              try {
+                await api("/api/documents", { method: "POST", body: JSON.stringify(form) });
+                setOpen(false);
+                setForm({ title: "", description: "", category: "licence", type: "licence", file_url: "" });
+                setSuccess("Document was uploaded.");
+                load();
+              } catch (err) {
+                setError(err.message);
+              }
             }}
           >
             <label>
@@ -127,16 +172,23 @@ const DocumentsPage = () => {
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
             </label>
             <label>
-              Category
-              <select
-                value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value, type: e.target.value })}
-              >
-                <option value="licence">Vehicle document</option>
-                <option value="user">User document</option>
-                <option value="incident">Incident evidence</option>
-              </select>
+              Description
+              <input
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Short note about this file"
+              />
             </label>
+            <LineSelect
+              label="Category"
+              value={form.category}
+              onChange={(id) => setForm({ ...form, category: id, type: id })}
+              options={[
+                { id: "licence", label: "Vehicle document" },
+                { id: "user", label: "User document" },
+                { id: "incident", label: "Incident evidence" },
+              ]}
+            />
             <FileDrop
               label="File"
               accept="image/*,application/pdf"
@@ -153,6 +205,7 @@ const DocumentsPage = () => {
                 }));
               }}
             />
+            {error ? <p className="fc-error">{error}</p> : null}
             <div className="fc-form__actions">
               <button className="fc-btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
               <button className="fc-btn fc-btn--primary" type="submit">Upload</button>
@@ -160,6 +213,20 @@ const DocumentsPage = () => {
           </form>
         </Modal>
       ) : null}
+      <ConfirmModal
+        open={Boolean(pending)}
+        title="Delete this document?"
+        message={`Remove ${pending?.title || "this document"}? This cannot be undone.`}
+        confirmLabel="Delete"
+        onCancel={() => setPending(null)}
+        onConfirm={async () => {
+          await api(`/api/documents/${pending.id}`, { method: "DELETE" });
+          setPending(null);
+          setSuccess("Document was deleted.");
+          load();
+        }}
+      />
+      <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
     </>
   );
 };

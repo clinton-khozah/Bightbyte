@@ -87,6 +87,12 @@
   line-height: 1.5;
 }
 
+.review-detail__notes--reviewer {
+  margin-top: -12px;
+  background: #f3fbf6;
+  border-color: #cde8d8;
+}
+
 .review-detail__photos {
   display: flex;
   flex-wrap: wrap;

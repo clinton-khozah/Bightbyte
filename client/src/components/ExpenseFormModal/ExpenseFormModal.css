@@ -3,10 +3,8 @@
   gap: 14px 16px;
 }
 
-.expense-form select {
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.expense-form .fc-line-select {
+  min-width: 0;
 }
 
 .expense-form .fc-filedrop--compact {
@@ -45,10 +43,21 @@
   padding-top: 14px;
 }
 
-@media (max-width: 560px) {
+@media (max-width: 800px) {
   .expense-form,
   .expense-form .fc-filedrop--compact {
     grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .expense-form .fc-filedrop--compact {
+    min-height: 40px;
+    padding: 6px 8px;
+  }
+
+  .expense-form .fc-filedrop--compact .fc-filedrop__previews img {
+    width: 36px;
+    height: 36px;
   }
 
   .expense-form .fc-filedrop--compact em {

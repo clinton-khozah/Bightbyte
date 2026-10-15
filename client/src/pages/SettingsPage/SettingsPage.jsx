@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import OpsPage from "../../components/OpsPage/OpsPage";
 import PhotoUploadField from "../../components/PhotoUploadField/PhotoUploadField";
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
@@ -24,7 +25,7 @@ const SettingsPage = () => {
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const canManage = user?.role === "admin" || user?.role === "fleet_manager";
+  const canManage = can(user, "settings", "edit");
 
   useEffect(() => {
     api("/api/company")
@@ -63,7 +64,7 @@ const SettingsPage = () => {
           <section className="settings-card">
             <header>
               <h2>Company</h2>
-              <p>Shown in the top bar as BrightByte / company / role.</p>
+              <p>Shown in the top bar with your company and role.</p>
             </header>
             <form
               className="fc-form"
@@ -74,7 +75,13 @@ const SettingsPage = () => {
                 try {
                   const saved = await api(`/api/companies/${user.company_id}`, {
                     method: "PATCH",
-                    body: JSON.stringify(company),
+                    body: JSON.stringify({
+                      name: company.name,
+                      code: company.code,
+                      city: company.city,
+                      contact_email: company.contact_email,
+                      photo_url: company.photo_url,
+                    }),
                   });
                   setCompany(saved);
                   await refreshUser();
@@ -141,9 +148,7 @@ const SettingsPage = () => {
           <section className="settings-card">
             <header>
               <h2>Your account</h2>
-              <p>
-                Role {user?.role_id || "—"} · {user?.role || "—"}
-              </p>
+              <p>{user?.role_label || user?.role || "—"}</p>
             </header>
             <form
               className="fc-form"
@@ -214,7 +219,7 @@ const SettingsPage = () => {
               </div>
               <div>
                 <dt>Storage</dt>
-                <dd>Slips, photos and documents are stored on this BrightByte server.</dd>
+                <dd>Slips, photos and documents are stored on this server.</dd>
               </div>
             </dl>
           </section>

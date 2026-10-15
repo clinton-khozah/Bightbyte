@@ -84,8 +84,15 @@
   margin: 0 0 32px;
 }
 
-.sb-kpis > div {
+.sb-kpis > div,
+.sb-kpis > a {
   padding: 12px 0;
+  color: inherit;
+  text-decoration: none;
+}
+
+.sb-kpis > a:hover dd {
+  color: var(--sb-green-btn, #006239);
 }
 
 .sb-kpis dt {
@@ -98,6 +105,40 @@
   font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.03em;
+}
+
+.sb-kpis__vehicle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+}
+
+.sb-kpis__vehicle .fc-avatar {
+  width: 32px;
+  height: 32px;
+}
+
+.sb-keys__who {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.sb-keys__who .fc-avatar--lg {
+  width: 56px;
+  height: 56px;
+  font-size: 0.9rem;
+}
+
+.sb-kpis dd.sb-kpis__revenue {
+  color: var(--sb-green-btn, #006239);
+  font-weight: 700;
+}
+
+.sb-kpis > a:hover dd.sb-kpis__revenue {
+  color: var(--sb-green-btn, #006239);
 }
 
 .sb-section {
@@ -220,9 +261,83 @@
 }
 
 @media (max-width: 800px) {
-  .sb-kpis,
+  .sb-page__header {
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .sb-page__header h1 {
+    font-size: 18px;
+  }
+
+  .sb-page__header p {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .sb-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 4px 12px;
+    margin-bottom: 16px;
+  }
+
+  .sb-kpis > div,
+  .sb-kpis > a {
+    min-height: 48px;
+    padding: 8px 0;
+  }
+
+  .sb-kpis > a:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .sb-kpis dt {
+    font-size: 11px;
+  }
+
+  .sb-kpis dd {
+    margin-top: 2px;
+    font-size: 16px;
+  }
+
+  .sb-section {
+    margin-bottom: 16px;
+  }
+
+  .sb-section__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .sb-section__head h2 {
+    font-size: 14px;
+  }
+
+  .sb-section__head p {
+    font-size: 12px;
+  }
+
+  .sb-link-btn {
+    align-self: flex-start;
+    min-height: 36px;
+  }
+
+  .sb-card {
+    padding: 4px 12px 10px;
+  }
+
   .sb-keys__row,
   .sb-keys .sb-keys__row {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr auto;
+    min-height: 44px;
+    padding: 8px 4px;
+  }
+
+  .sb-keys__row--head {
+    min-height: 0;
+    padding: 8px 4px;
   }
 }

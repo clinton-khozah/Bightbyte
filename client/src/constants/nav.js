@@ -18,6 +18,11 @@ export const ADMIN_NAV = [
 
 export const ALL_NAV = [...OPERATIONS_NAV, ...ADMIN_NAV];
 
-export const titleFromPath = (pathname) =>
-  ALL_NAV.find((item) => pathname === item.path || pathname.startsWith(`${item.path}/`))
-    ?.label || "Fleet21";
+export const navItemForUser = (item, user) =>
+  item.id === "drivers" && user?.role === "driver" ? { ...item, label: "My Profile" } : item;
+
+export const titleFromPath = (pathname, user) => {
+  const item = ALL_NAV.find((row) => pathname === row.path || pathname.startsWith(`${row.path}/`));
+  if (!item) return "Fleet21";
+  return navItemForUser(item, user).label;
+};

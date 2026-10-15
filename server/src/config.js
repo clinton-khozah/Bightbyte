@@ -14,6 +14,14 @@ export const config = {
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET || "fleet21",
+  superAdminNotifyEmail: process.env.SUPER_ADMIN_NOTIFY_EMAIL || "",
+  appLoginUrl: process.env.APP_LOGIN_URL || "https://brightbyte.co.za/login",
+  emailjs: {
+    serviceId: process.env.EMAILJS_SERVICE_ID || "",
+    templateId: process.env.EMAILJS_TEMPLATE_ID || "template_nr0z4if",
+    publicKey: process.env.EMAILJS_PUBLIC_KEY || "",
+    privateKey: process.env.EMAILJS_PRIVATE_KEY || "",
+  },
 };
 
 export const useSupabase = Boolean(

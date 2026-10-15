@@ -167,9 +167,18 @@
   padding-top: 6px;
 }
 
-@media (max-width: 720px) {
+@media (max-width: 800px) {
+  .checkin-view {
+    gap: 12px;
+  }
+
   .checkin-view__kpis,
   .checkin-view__facts {
     grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .checkin-view__kpi {
+    padding: 8px 10px;
   }
 }

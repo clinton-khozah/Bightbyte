@@ -50,6 +50,17 @@
   color: var(--sb-text);
 }
 
+.ops-page__btn--outline {
+  background: #fff;
+  border: 1px solid var(--sb-border, #d0d7de);
+  color: var(--sb-text, #1f2328);
+}
+
+.ops-page__btn--outline:hover {
+  background: #f6f8fa;
+  border-color: #afb8c1;
+}
+
 .ops-page__btn--primary {
   background: var(--sb-green-btn);
   border-color: var(--sb-green-btn);
@@ -113,5 +124,53 @@
 @media (max-width: 960px) {
   .ops-page__stats {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 800px) {
+  .ops-page__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .ops-page__title {
+    font-size: 18px;
+  }
+
+  .ops-page__sub {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .ops-page__actions {
+    flex-wrap: wrap;
+  }
+
+  .ops-page__btn {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .ops-page__stats {
+    margin-bottom: 14px;
+  }
+
+  .ops-page__stat {
+    padding: 8px 8px 10px 0;
+  }
+
+  .ops-page__stat-copy {
+    gap: 2px;
+  }
+
+  .ops-page__stat-copy strong {
+    font-size: 16px;
+  }
+
+  .ops-page__stat-copy span {
+    font-size: 11px;
   }
 }

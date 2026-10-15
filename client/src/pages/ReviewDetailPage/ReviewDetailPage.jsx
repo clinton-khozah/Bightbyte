@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import StatusChip from "../../components/StatusChip/StatusChip";
 import Avatar from "../../components/Avatar/Avatar";
 import PhotoViewer from "../../components/PhotoViewer/PhotoViewer";
@@ -29,7 +30,8 @@ const ReviewDetailPage = () => {
   const [reviewStatus, setReviewStatus] = useState("submitted");
   const [saveError, setSaveError] = useState("");
   const [success, setSuccess] = useState("");
-  const canManage = user?.role === "admin" || user?.role === "fleet_manager";
+  const [reviewerNote, setReviewerNote] = useState("");
+  const canManage = can(user, "reviews", "edit");
 
   useEffect(() => {
     Promise.all([
@@ -44,6 +46,7 @@ const ReviewDetailPage = () => {
         setDriver(people.find((p) => p.id === row.driver_id) || null);
         setVehicleStatus(found?.status || "available");
         setReviewStatus(row.status || "submitted");
+        setReviewerNote(row.reviewer_note || "");
       })
       .catch((e) => setError(e.message));
   }, [id]);
@@ -121,13 +124,18 @@ const ReviewDetailPage = () => {
         </div>
       </div>
       <p className="review-detail__notes">{review.notes || "No notes."}</p>
+      {review.reviewer_note ? (
+        <p className="review-detail__notes review-detail__notes--reviewer">{review.reviewer_note}</p>
+      ) : null}
       {canManage ? (
         <div className="review-detail__status">
           <ReviewStatusForm
             vehicleStatus={vehicleStatus}
             reviewStatus={reviewStatus}
+            note={reviewerNote}
             onVehicleStatus={setVehicleStatus}
             onReviewStatus={setReviewStatus}
+            onNote={setReviewerNote}
             error={saveError}
             onSave={async (event) => {
               event.preventDefault();
@@ -136,15 +144,17 @@ const ReviewDetailPage = () => {
                 const [nextReview, nextVehicle] = await Promise.all([
                   api(`/api/reviews/${review.id}`, {
                     method: "PATCH",
-                    body: JSON.stringify({ status: reviewStatus }),
+                    body: JSON.stringify({ status: reviewStatus, reviewer_note: reviewerNote }),
                   }),
-                  api(`/api/vehicles/${review.vehicle_id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ status: vehicleStatus }),
-                  }),
+                  review.vehicle_id
+                    ? api(`/api/vehicles/${review.vehicle_id}`, {
+                        method: "PATCH",
+                        body: JSON.stringify({ status: vehicleStatus }),
+                      })
+                    : Promise.resolve(vehicle),
                 ]);
                 setReview(nextReview);
-                setVehicle(nextVehicle);
+                if (nextVehicle) setVehicle(nextVehicle);
                 setSuccess("Vehicle and review status were saved.");
               } catch (err) {
                 setSaveError(err.message);
@@ -153,7 +163,8 @@ const ReviewDetailPage = () => {
           />
         </div>
       ) : null}
-      <h3>Condition photos</h3>      {photos.length ? (
+      <h3>Condition photos</h3>
+      {photos.length ? (
         <div className="review-detail__photos">
           {photos.map((src, index) => (
             <figure key={src} className="review-detail__photo">

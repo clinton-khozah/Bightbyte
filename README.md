@@ -24,6 +24,16 @@ Demo login (local mode, no Supabase required):
 
 ## Supabase
 
-1. Create a project and run `supabase/schema.sql`.
-2. Create a public storage bucket named `fleet21`.
-3. Put `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `server/.env`.
+Without these keys the API keeps companies in memory and they disappear when the server restarts.
+
+1. Create a project at supabase.com.
+2. SQL Editor → paste and run `supabase/schema.sql` (creates companies, profiles, and the rest of the fleet tables, including pending `status` and company `address`).
+3. Storage → create a public bucket named `fleet21`.
+4. Put `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `server/.env`, then restart `npm run dev`.
+
+New workspace signups then insert into `companies` (`status = pending`) and `profiles` (`status = pending`). Approve in the app, or:
+
+```sql
+update companies set status = 'active' where id = '<company-id>';
+update profiles set status = 'active' where company_id = '<company-id>';
+```

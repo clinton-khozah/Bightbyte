@@ -9,63 +9,92 @@
   color: #656d76;
 }
 
-.review-live__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.review-live__slot {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid #e6e6e4;
-  border-radius: 10px;
-  background: #fafafa;
-}
-
-.review-live__slot.is-live {
-  border-color: #006239;
-  background: #f3fbf6;
-}
-
-.review-live__slot span {
-  font-size: 13px;
+.review-live__steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  font-size: 12px;
   font-weight: 600;
+  color: #a3a3a3;
+}
+
+.review-live__steps .is-now {
+  color: #006239;
+}
+
+.review-live__steps .is-done {
   color: #171717;
 }
 
-.review-live__slot video,
-.review-live__slot img {
+.review-live__stage {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #cde8d8;
+  border-radius: 10px;
+  background: #f3fbf6;
+}
+
+.review-live__stage strong {
+  font-size: 14px;
+}
+
+.review-live__stage video {
   width: 100%;
-  height: 140px;
+  min-height: 240px;
+  max-height: 360px;
   object-fit: cover;
   border-radius: 8px;
   background: #0d1117;
 }
 
-.review-live__empty {
-  height: 140px;
-  border: 1px dashed #c9c9c4;
-  border-radius: 8px;
-  background: #fff;
-  color: #006239;
+.review-live__stage em {
+  font-style: normal;
   font-size: 13px;
-  font-weight: 600;
+  color: #656d76;
 }
 
-.review-live__retake {
+.review-live__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.review-live__file {
+  display: none;
+}
+
+.review-live__thumbs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.review-live__thumb {
+  display: grid;
+  gap: 6px;
+  padding: 0;
   border: 0;
   background: transparent;
-  color: #006239;
-  font-size: 12px;
+  text-align: left;
+}
+
+.review-live__thumb img {
+  width: 100%;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid #e6e6e4;
+}
+
+.review-live__thumb span {
+  font-size: 11px;
   font-weight: 600;
-  padding: 0;
+  color: #006239;
 }
 
 @media (max-width: 640px) {
-  .review-live__grid {
-    grid-template-columns: 1fr;
+  .review-live__thumbs {
+    grid-template-columns: 1fr 1fr;
   }
 }

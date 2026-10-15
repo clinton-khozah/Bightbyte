@@ -1,7 +1,12 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 import { config, useSupabase } from "./config.js";
+import { MAKE_MODELS, vehicleYearList } from "./vehicleCatalog.js";
+import { ROLE_TEMPLATES } from "./permissions.js";
 
 const now = () => new Date().toISOString();
 
@@ -11,11 +16,12 @@ const memory = {
   companies: [
     {
       id: "co-1",
-      name: "Apex Logistics",
-      code: "APX",
-      city: "Pretoria",
-      contact_email: "ops@apex.local",
+      name: "BrightByte",
+      code: "",
+      city: "",
+      contact_email: "",
       status: "active",
+      demo: true,
       created_at: now(),
     },
     {
@@ -25,71 +31,31 @@ const memory = {
       city: "Johannesburg",
       contact_email: "fleet@metro.local",
       status: "active",
+      demo: true,
       created_at: now(),
     },
   ],
-  roles: [
-    {
-      id: "R001",
-      company_id: "co-1",
-      RoleID: "R001",
-      RoleName: "System Administrator",
-      description: "Full system access and configuration",
-      Permissions: "All modules · full CRUD",
-      state: "active",
-      isSystem: true,
-      permissionsMatrix: {},
-      created_at: now(),
-    },
-    {
-      id: "R002",
-      company_id: "co-1",
-      RoleID: "R002",
-      RoleName: "Fleet Manager",
-      description: "Manage fleet, assets, maintenance and reports",
-      Permissions: "Assets · Check-in · Maintenance",
-      state: "active",
-      isSystem: true,
-      permissionsMatrix: {},
-      created_at: now(),
-    },
-    {
-      id: "R003",
-      company_id: "co-1",
-      RoleID: "R003",
-      RoleName: "Driver",
-      description: "Check-in, reviews and assigned vehicle",
-      Permissions: "Check-in · Reviews · Checkout",
-      state: "active",
-      isSystem: true,
-      permissionsMatrix: {},
-      created_at: now(),
-    },
-    {
-      id: "R004",
-      company_id: "co-1",
-      RoleID: "R004",
-      RoleName: "Read Only",
-      description: "View operations without changing records",
-      Permissions: "View only",
-      state: "active",
-      isSystem: true,
-      permissionsMatrix: {},
-      created_at: now(),
-    },
-  ],
+  roles: ROLE_TEMPLATES.map((role) => ({
+    ...role,
+    id: role.RoleID,
+    company_id: "co-1",
+    state: "active",
+    isSystem: false,
+    created_at: now(),
+  })),
   profiles: [
     {
       id: "u-admin",
       company_id: "co-1",
       email: "admin@fleet21.local",
-      full_name: "Thabo Mokoena",
-      role: "admin",
-      role_id: "R001",
-      phone: "+27 82 000 1100",
-      employee_id: "APX-001",
+      full_name: "BrightByte",
+      role: "super_admin",
+      role_id: "R000",
+      phone: "",
+      employee_id: "",
+      demo: true,
       status: "active",
-      photo_url: "https://randomuser.me/api/portraits/men/32.jpg",
+      photo_url: "",
       last_login: new Date(Date.now() - 3600000).toISOString(),
       password_hash: seedPasswordHash,
       created_at: now(),
@@ -136,6 +102,7 @@ const memory = {
         },
       ],
       assigned_vehicle_id: "v-1",
+      demo: true,
       ratings: [
         {
           score: 4,
@@ -168,6 +135,7 @@ const memory = {
       odometer: 48210,
       value: 685000,
       assigned_driver_id: "u-driver",
+      demo: true,
       photo_url:
         "https://images.unsplash.com/photo-1559416523-140ddc3d238c?auto=format&fit=crop&w=1200&q=80",
       photos: [
@@ -192,6 +160,7 @@ const memory = {
       engine: "2.5L",
       licence_expiry: "2027-02-14",
       status: "available",
+      demo: true,
       odometer: 61002,
       value: 429000,
       assigned_driver_id: null,
@@ -213,6 +182,7 @@ const memory = {
       engine: "2.0L bi-turbo",
       licence_expiry: "2026-08-01",
       status: "maintenance",
+      demo: true,
       odometer: 22140,
       value: 798000,
       assigned_driver_id: null,
@@ -228,6 +198,7 @@ const memory = {
   checkins: [
     {
       id: "c-1",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -241,6 +212,7 @@ const memory = {
     },
     {
       id: "c-2",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -254,6 +226,7 @@ const memory = {
     },
     {
       id: "c-3",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -270,6 +243,7 @@ const memory = {
   expenses: [
     {
       id: "ex-1",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -284,6 +258,7 @@ const memory = {
     },
     {
       id: "ex-2",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -299,9 +274,11 @@ const memory = {
   checkin_schedules: [
     {
       id: "sch-1",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
+      due_weekday: "monday",
       due_time: "18:00",
       late_fee: 100,
       expected_amount: 1800,
@@ -325,6 +302,7 @@ const memory = {
   reviews: [
     {
       id: "r-1",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -342,6 +320,7 @@ const memory = {
     },
     {
       id: "r-2",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -374,6 +353,7 @@ const memory = {
   incidents: [
     {
       id: "i-1",
+      demo: true,
       company_id: "co-1",
       driver_id: "u-driver",
       vehicle_id: "v-1",
@@ -391,6 +371,7 @@ const memory = {
   maintenance: [
     {
       id: "m-1",
+      demo: true,
       company_id: "co-1",
       vehicle_id: "v-1",
       title: "Service",
@@ -412,6 +393,7 @@ const memory = {
       qty: 8,
       unit: "L",
       location: "Depot bay 2",
+      demo: true,
       created_at: now(),
     },
     {
@@ -422,6 +404,7 @@ const memory = {
       qty: 2,
       unit: "ea",
       location: "Parts cage",
+      demo: true,
       created_at: now(),
     },
     {
@@ -432,6 +415,7 @@ const memory = {
       qty: 1,
       unit: "ea",
       location: "On vehicle",
+      demo: true,
       created_at: now(),
     },
   ],
@@ -445,6 +429,7 @@ const memory = {
       workshop: "Apex Depot, Pretoria",
       hours: "Mon–Sat 07:00–18:00",
       after_hours: true,
+      demo: true,
       photo_url: "https://randomuser.me/api/portraits/men/75.jpg",
       created_at: now(),
     },
@@ -457,6 +442,7 @@ const memory = {
       workshop: "Menlyn service bay",
       hours: "Mon–Fri 08:00–17:00",
       after_hours: false,
+      demo: true,
       photo_url: "https://randomuser.me/api/portraits/women/65.jpg",
       created_at: now(),
     },
@@ -464,6 +450,7 @@ const memory = {
   documents: [
     {
       id: "d-1",
+      demo: true,
       company_id: "co-1",
       title: "hilux-licence",
       type: "licence",
@@ -476,6 +463,7 @@ const memory = {
     },
     {
       id: "d-2",
+      demo: true,
       company_id: "co-1",
       title: "driver-id-pack",
       type: "user",
@@ -488,6 +476,7 @@ const memory = {
     },
     {
       id: "d-3",
+      demo: true,
       company_id: "co-1",
       title: "quantum-registration",
       type: "licence",
@@ -500,6 +489,7 @@ const memory = {
     },
     {
       id: "d-4",
+      demo: true,
       company_id: "co-1",
       title: "workshop-training",
       type: "user",
@@ -512,6 +502,7 @@ const memory = {
     },
     {
       id: "d-5",
+      demo: true,
       company_id: "co-1",
       title: "incident-photos",
       type: "incident",
@@ -523,6 +514,19 @@ const memory = {
       created_at: now(),
     },
   ],
+  vehicle_makes: Object.keys(MAKE_MODELS).map((name, index) => ({
+    id: `make-${index + 1}`,
+    name,
+  })),
+  vehicle_models: Object.entries(MAKE_MODELS).flatMap(([make, models], makeIndex) =>
+    models.map((name, index) => ({
+      id: `model-${makeIndex + 1}-${index + 1}`,
+      make_id: `make-${makeIndex + 1}`,
+      make,
+      name,
+    })),
+  ),
+  vehicle_years: vehicleYearList().map((year) => ({ id: `year-${year}`, year })),
   refuels: [
     {
       id: "f-1",
@@ -536,6 +540,131 @@ const memory = {
     },
   ],
 };
+
+const dataFile = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "local-store.json");
+
+const LOCAL_TABLES = ["companies", "profiles", "vehicles", "supplies", "mechanics", "checkins", "expenses", "checkin_schedules", "reviews", "incidents", "maintenance", "documents", "roles", "notifications", "emails"];
+
+const persistLocal = () => {
+  fs.mkdirSync(path.dirname(dataFile), { recursive: true });
+  fs.writeFileSync(
+    dataFile,
+    JSON.stringify(
+      {
+        companies: memory.companies.filter((row) => !row.demo),
+        profiles: memory.profiles.filter((row) => !["u-admin", "u-driver"].includes(row.id)),
+        platform: (() => {
+          const company = memory.companies.find((row) => row.id === "co-1");
+          const profile = memory.profiles.find((row) => row.id === "u-admin");
+          return {
+            company: company
+              ? {
+                  name: company.name || "",
+                  code: company.code || "",
+                  city: company.city || "",
+                  contact_email: company.contact_email || "",
+                  photo_url: company.photo_url || "",
+                }
+              : null,
+            profile: profile
+              ? {
+                  full_name: profile.full_name || "",
+                  phone: profile.phone || "",
+                  photo_url: profile.photo_url || "",
+                }
+              : null,
+          };
+        })(),
+        vehicles: memory.vehicles.filter((row) => !row.demo && !["v-1", "v-2", "v-3"].includes(row.id)),
+        supplies: (memory.supplies || []).filter((row) => !row.demo),
+        mechanics: (memory.mechanics || []).filter((row) => !row.demo),
+        checkins: (memory.checkins || []).filter((row) => !row.demo && !["c-1", "c-2", "c-3"].includes(row.id)),
+        expenses: (memory.expenses || []).filter((row) => !row.demo && !["ex-1", "ex-2"].includes(row.id)),
+        checkin_schedules: (memory.checkin_schedules || []).filter((row) => !row.demo && row.id !== "sch-1"),
+        reviews: (memory.reviews || []).filter((row) => !row.demo && !["r-1", "r-2"].includes(row.id)),
+        incidents: (memory.incidents || []).filter((row) => !row.demo && row.id !== "i-1"),
+        maintenance: (memory.maintenance || []).filter((row) => !row.demo && row.id !== "m-1"),
+        documents: (memory.documents || []).filter((row) => !row.demo && !["d-1", "d-2", "d-3", "d-4", "d-5"].includes(row.id)),
+        roles: (memory.roles || []).map((row) => ({ ...row, isSystem: false })),
+        notifications: (memory.notifications || []).filter((row) => !row.demo),
+        emails: (memory.emails || []).filter((row) => !row.demo),
+      },
+      null,
+      2,
+    ),
+  );
+};
+
+try {
+  const saved = JSON.parse(fs.readFileSync(dataFile, "utf8"));
+  if (saved.platform?.company) {
+    const idx = memory.companies.findIndex((row) => row.id === "co-1");
+    if (idx >= 0) {
+      memory.companies[idx] = {
+        ...memory.companies[idx],
+        ...saved.platform.company,
+        id: "co-1",
+        demo: true,
+      };
+    }
+  }
+  if (saved.platform?.profile) {
+    const idx = memory.profiles.findIndex((row) => row.id === "u-admin");
+    if (idx >= 0) {
+      memory.profiles[idx] = {
+        ...memory.profiles[idx],
+        ...saved.platform.profile,
+        id: "u-admin",
+        role: "super_admin",
+        role_id: "R000",
+        demo: true,
+      };
+    }
+  }
+  for (const company of saved.companies || []) {
+    if (company.demo) continue;
+    if (!memory.companies.some((row) => row.id === company.id || row.contact_email === company.contact_email)) {
+      memory.companies.push(company);
+    }
+  }
+  for (const user of saved.profiles || []) {
+    if (!memory.profiles.some((row) => row.id === user.id || row.email?.toLowerCase() === user.email?.toLowerCase())) {
+      memory.profiles.push(user);
+    }
+  }
+  for (const vehicle of saved.vehicles || []) {
+    if (vehicle.demo) continue;
+    if (!memory.vehicles.some((row) => row.id === vehicle.id || row.registration === vehicle.registration)) {
+      memory.vehicles.push(vehicle);
+    }
+  }
+  for (const supply of saved.supplies || []) {
+    if (supply.demo) continue;
+    if (!(memory.supplies || []).some((row) => row.id === supply.id)) memory.supplies.push(supply);
+  }
+  for (const mechanic of saved.mechanics || []) {
+    if (mechanic.demo) continue;
+    if (!(memory.mechanics || []).some((row) => row.id === mechanic.id)) memory.mechanics.push(mechanic);
+  }
+  for (const table of ["checkins", "expenses", "checkin_schedules", "reviews", "incidents", "maintenance", "documents", "notifications", "emails"]) {
+    for (const row of saved[table] || []) {
+      if (row.demo) continue;
+      if (!(memory[table] || []).some((item) => item.id === row.id)) memory[table].push(row);
+    }
+  }
+  for (const role of saved.roles || []) {
+    const idx = memory.roles.findIndex(
+      (row) => row.id === role.id || (row.company_id === role.company_id && row.RoleID === role.RoleID),
+    );
+    if (idx >= 0) {
+      memory.roles[idx] = { ...memory.roles[idx], ...role, isSystem: false };
+    } else {
+      memory.roles.push({ ...role, isSystem: false });
+    }
+  }
+} catch {
+  /* first run — no saved tenants yet */
+}
 
 let supabase = null;
 if (useSupabase) {
@@ -566,7 +695,10 @@ export const db = {
       .eq("email", email)
       .maybeSingle();
     if (error) throw error;
-    return data;
+    return (
+      data ||
+      memory.profiles.find((p) => p.email.toLowerCase() === String(email).toLowerCase())
+    );
   },
 
   async getUser(id) {
@@ -577,16 +709,32 @@ export const db = {
       .eq("id", id)
       .maybeSingle();
     if (error) throw error;
-    return data;
+    return data || memory.profiles.find((p) => p.id === id);
   },
 
-  async registerCompany({ companyName, fullName, email, password, role }) {
+  async listByRole(role) {
+    if (!useSupabase) return memory.profiles.filter((p) => p.role === role);
+    const { data, error } = await supabase.from("profiles").select("*").eq("role", role);
+    if (error) throw error;
+    const remote = data || [];
+    const extras = memory.profiles.filter(
+      (row) => row.role === role && !remote.some((item) => item.id === row.id),
+    );
+    return [...remote, ...extras];
+  },
+
+  async registerCompany({ companyName, fullName, email, password, address, role }) {
     const hash = bcrypt.hashSync(password, 10);
+    const code = String(companyName).replace(/[^A-Za-z0-9]/g, "").slice(0, 3).toUpperCase() || "CO";
     if (!useSupabase) {
       const company = {
         id: uuid(),
         name: companyName,
-        code: companyName.slice(0, 3).toUpperCase(),
+        code,
+        address: address || "",
+        city: "",
+        contact_email: email,
+        status: "pending",
         created_at: now(),
       };
       const user = {
@@ -595,17 +743,35 @@ export const db = {
         email,
         full_name: fullName,
         role: role || "admin",
-        status: "active",
+        role_id: "R001",
+        status: "pending",
         password_hash: hash,
         created_at: now(),
       };
       memory.companies.push(company);
       memory.profiles.push(user);
+      ROLE_TEMPLATES.forEach((template) => {
+        memory.roles.push({
+          ...template,
+          id: uuid(),
+          company_id: company.id,
+          state: "active",
+          isSystem: false,
+          created_at: now(),
+        });
+      });
+      persistLocal();
       return { company, user: publicUser(user) };
     }
     const { data: company, error: cErr } = await supabase
       .from("companies")
-      .insert({ name: companyName, code: companyName.slice(0, 3).toUpperCase() })
+      .insert({
+        name: companyName,
+        code,
+        address: address || "",
+        contact_email: email,
+        status: "pending",
+      })
       .select()
       .single();
     if (cErr) throw cErr;
@@ -616,11 +782,26 @@ export const db = {
         email,
         full_name: fullName,
         role: role || "admin",
+        role_id: "R001",
+        status: "pending",
         password_hash: hash,
       })
       .select()
       .single();
     if (uErr) throw uErr;
+    memory.companies.push(company);
+    memory.profiles.push(user);
+    ROLE_TEMPLATES.forEach((template) => {
+      memory.roles.push({
+        ...template,
+        id: uuid(),
+        company_id: company.id,
+        state: "active",
+        isSystem: false,
+        created_at: now(),
+      });
+    });
+    persistLocal();
     return { company, user: publicUser(user) };
   },
 
@@ -637,19 +818,31 @@ export const db = {
       reviews: "vehicle_reviews",
     };
     const name = map[table] || table;
-    const { data, error } = await supabase
-      .from(name)
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+    let query = supabase.from(name).select("*");
+    if (table !== "companies") query = query.eq("company_id", companyId);
+    const { data, error } = await query.order("created_at", { ascending: false });
     if (error) throw error;
-    return data || [];
+    const remote = data || [];
+    if (table === "companies") {
+      const extras = memory.companies.filter(
+        (row) =>
+          !row.demo &&
+          !remote.some((item) => item.id === row.id || item.contact_email === row.contact_email),
+      );
+      return [...remote, ...extras];
+    }
+    const extras = (memory[table] || []).filter(
+      (row) => row.company_id === companyId && !remote.some((item) => item.id === row.id),
+    );
+    return [...remote, ...extras];
   },
 
   async insert(table, row) {
     const record = { id: uuid(), created_at: now(), ...row };
     if (!useSupabase) {
+      if (!memory[table]) memory[table] = [];
       memory[table].unshift(record);
+      if (LOCAL_TABLES.includes(table)) persistLocal();
       return record;
     }
     const map = { reviews: "vehicle_reviews" };
@@ -660,12 +853,12 @@ export const db = {
   },
 
   async getById(table, id) {
-    if (!useSupabase) return memory[table].find((r) => r.id === id) || null;
+    if (!useSupabase) return (memory[table] || []).find((r) => r.id === id) || null;
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
     const { data, error } = await supabase.from(name).select("*").eq("id", id).maybeSingle();
     if (error) throw error;
-    return data;
+    return data || (memory[table] || []).find((r) => r.id === id) || null;
   },
 
   async update(table, id, patch) {
@@ -673,6 +866,7 @@ export const db = {
       const idx = memory[table].findIndex((r) => r.id === id);
       if (idx < 0) return null;
       memory[table][idx] = { ...memory[table][idx], ...patch };
+      if (LOCAL_TABLES.includes(table)) persistLocal();
       return memory[table][idx];
     }
     const map = { reviews: "vehicle_reviews" };
@@ -691,6 +885,7 @@ export const db = {
     if (!useSupabase) {
       const before = memory[table].length;
       memory[table] = memory[table].filter((r) => r.id !== id);
+      if (LOCAL_TABLES.includes(table)) persistLocal();
       return before !== memory[table].length;
     }
     const map = { reviews: "vehicle_reviews" };
@@ -698,6 +893,42 @@ export const db = {
     const { error } = await supabase.from(name).delete().eq("id", id);
     if (error) throw error;
     return true;
+  },
+
+  async nextEmployeeId(company) {
+    const prefix =
+      String(company?.code || company?.name || "EMP")
+        .replace(/[^A-Za-z0-9]/g, "")
+        .toUpperCase()
+        .slice(0, 8) || "EMP";
+    const people = await this.fetchAll("profiles", company.id);
+    const highest = people.reduce((max, row) => {
+      const match = String(row.employee_id || "").match(/(\d+)\s*$/);
+      const n = match ? Number(match[1]) : 0;
+      return n > max ? n : max;
+    }, 0);
+    return `${prefix}-${String(highest + 1).padStart(3, "0")}`;
+  },
+
+  async listCatalog(table, make) {
+    if (!useSupabase) {
+      let rows = [...(memory[table] || [])];
+      if (table === "vehicle_models" && make) {
+        rows = rows.filter((row) => row.make === make || row.make_id === make);
+      }
+      if (table === "vehicle_years") return rows.sort((a, b) => b.year - a.year);
+      return rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    }
+    if (table === "vehicle_years") {
+      const { data, error } = await supabase.from("vehicle_years").select("*").order("year", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+    let query = supabase.from(table).select("*").order("name");
+    if (table === "vehicle_models" && make) query = query.eq("make", make);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data || [];
   },
 
   publicUser,

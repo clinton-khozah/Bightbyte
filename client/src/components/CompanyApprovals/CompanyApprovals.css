@@ -1,0 +1,11 @@
+.company-approvals {
+  margin-bottom: 36px;
+}
+
+.company-approvals__row {
+  grid-template-columns: 1.2fr 1.4fr auto;
+}
+
+.company-approvals .fc-btn {
+  justify-self: end;
+}

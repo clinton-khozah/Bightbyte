@@ -1,0 +1,32 @@
+.operating-hours {
+  display: grid;
+  gap: 8px;
+}
+
+.operating-hours__times {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.operating-hours label {
+  display: grid;
+  gap: 4px;
+  font-size: 13px;
+  color: #525252;
+}
+
+.operating-hours input[type="time"] {
+  min-height: 36px;
+}
+
+.operating-hours__all {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.operating-hours__all input {
+  width: auto;
+}

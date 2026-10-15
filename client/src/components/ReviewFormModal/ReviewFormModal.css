@@ -3,13 +3,17 @@
   gap: 14px;
 }
 
+.review-form .fc-line-select {
+  min-width: 0;
+}
+
 .review-form__row {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 800px) {
   .review-form__row {
     grid-template-columns: 1fr;
   }

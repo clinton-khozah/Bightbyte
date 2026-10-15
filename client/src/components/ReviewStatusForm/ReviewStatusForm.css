@@ -16,24 +16,18 @@
   color: #525252;
 }
 
-.review-status select {
-  min-height: 38px;
-  width: 100%;
-  border: 1px solid var(--sb-border, #e6e6e4);
-  border-radius: 6px;
-  padding: 8px 12px;
-  background: #fff;
-  color: #171717;
+.review-status .fc-line-select {
+  min-width: 0;
 }
 
-.review-status select:focus {
-  outline: 2px solid #cce8d8;
-  border-color: #006239;
+.review-status > .fc-line-select {
+  grid-column: auto;
 }
 
 .review-status .fc-form__hint,
 .review-status .fc-form__actions,
-.review-status .fc-error {
+.review-status .fc-error,
+.review-status > .fc-form__full {
   grid-column: 1 / -1;
 }
 

@@ -8,18 +8,25 @@ import RoleFormModal from "../../components/RoleFormModal/RoleFormModal";
 import ConfirmModal from "../../components/ConfirmModal/ConfirmModal";
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import { csvDownload, useOpsList } from "../../hooks/useOpsList";
+import { useAuth } from "../../auth/AuthContext";
+import { can } from "../../constants/roles";
 import "./RolesRightsPage.css";
 
 const RolesRightsPage = () => {
+  const { user, refreshUser } = useAuth();
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
   const [modal, setModal] = useState({ open: false, mode: "add", role: null });
   const [pending, setPending] = useState(null);
   const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const canCreate = can(user, "roles-rights", "create");
+  const canEdit = can(user, "roles-rights", "edit");
+  const canDelete = can(user, "roles-rights", "delete");
 
   const load = () =>
-    Promise.all([api("/api/roles"), api("/api/users")]).then(([roleRows, userRows]) => {
+    Promise.all([api("/api/roles"), api("/api/users").catch(() => [])]).then(([roleRows, userRows]) => {
       setRoles(roleRows);
       setUsers(userRows);
     });
@@ -28,18 +35,14 @@ const RolesRightsPage = () => {
     load();
   }, []);
 
-  const counts = users.reduce((acc, user) => {
-    const key = String(user.role || "").toLowerCase();
-    acc[key] = (acc[key] || 0) + 1;
-    return acc;
-  }, {});
-
   const rows = roles.map((role) => ({
     ...role,
-    users:
-      counts[role.RoleName?.toLowerCase()] ||
-      counts[role.RoleID === "R001" ? "admin" : role.RoleID === "R003" ? "driver" : ""] ||
-      0,
+    users: users.filter(
+      (person) =>
+        person.role_id === role.RoleID ||
+        person.role === role.key ||
+        String(person.role || "").toLowerCase() === String(role.RoleName || "").toLowerCase(),
+    ).length,
   }));
 
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
@@ -52,12 +55,7 @@ const RolesRightsPage = () => {
     {
       key: "RoleName",
       label: "Role Name",
-      render: (r) => (
-        <span>
-          <strong>{r.RoleName}</strong>
-          {r.isSystem ? <em className="roles-page__tag">System</em> : null}
-        </span>
-      ),
+      render: (r) => <strong>{r.RoleName}</strong>,
     },
     { key: "description", label: "Description" },
     { key: "users", label: "Users" },
@@ -68,8 +66,8 @@ const RolesRightsPage = () => {
       label: "Actions",
       render: (r) => (
         <ActionIcons
-          onEdit={() => setModal({ open: true, mode: "edit", role: r })}
-          onDelete={r.isSystem ? undefined : () => setPending(r)}
+          onEdit={canEdit ? () => setModal({ open: true, mode: "edit", role: r }) : undefined}
+          onDelete={canDelete ? () => setPending(r) : undefined}
         />
       ),
     },
@@ -80,9 +78,9 @@ const RolesRightsPage = () => {
       <OpsPage
         crumb={["Administration", "Roles"]}
         title="Roles & Rights"
-        subtitle="Signed in as admin"
-        primaryLabel="Add Role"
-        onPrimary={() => setModal({ open: true, mode: "add", role: null })}
+        subtitle={user?.role_label || user?.role || "—"}
+        primaryLabel={canCreate ? "Add Role" : undefined}
+        onPrimary={canCreate ? () => setModal({ open: true, mode: "add", role: null }) : undefined}
         onExport={() => csvDownload("roles.csv", columns, filtered)}
         stats={[
           { id: "all", label: "Total roles", value: roles.length, tone: "blue", icon: "▣" },
@@ -93,6 +91,7 @@ const RolesRightsPage = () => {
         activeStat={tab}
         onStat={setTab}
       >
+        {error ? <p className="fc-error">{error}</p> : null}
         <DataTable
           rows={filtered}
           columns={columns}
@@ -119,6 +118,7 @@ const RolesRightsPage = () => {
         onClose={() => setModal({ open: false, mode: "add", role: null })}
         onSave={async (record) => {
           setBusy(true);
+          setError("");
           try {
             if (modal.mode === "edit" && modal.role?.id) {
               await api(`/api/roles/${modal.role.id}`, { method: "PATCH", body: JSON.stringify(record) });
@@ -128,7 +128,10 @@ const RolesRightsPage = () => {
               setSuccess("Role was created.");
             }
             setModal({ open: false, mode: "add", role: null });
+            await refreshUser();
             load();
+          } catch (err) {
+            setError(err.message);
           } finally {
             setBusy(false);
           }
@@ -141,10 +144,15 @@ const RolesRightsPage = () => {
         confirmLabel="Delete"
         onCancel={() => setPending(null)}
         onConfirm={async () => {
-          await api(`/api/roles/${pending.id}`, { method: "DELETE" });
-          setPending(null);
-          setSuccess("Role was deleted.");
-          load();
+          try {
+            await api(`/api/roles/${pending.id}`, { method: "DELETE" });
+            setPending(null);
+            setSuccess("Role was deleted.");
+            load();
+          } catch (err) {
+            setPending(null);
+            setError(err.message);
+          }
         }}
       />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />

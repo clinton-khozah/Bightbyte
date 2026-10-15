@@ -52,11 +52,22 @@
 }
 
 .fc-app-layout__nav-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 39;
-  border: 0;
-  background: rgba(23, 23, 23, 0.28);
+  display: none;
+}
+
+@media (max-width: 800px) {
+  .fc-app-layout {
+    padding-left: var(--fc-sidebar-width-collapsed);
+  }
+
+  .fc-app-layout__nav-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 41;
+    border: 0;
+    background: rgba(23, 23, 23, 0.28);
+  }
 }
 
 @media (max-width: 900px) {

@@ -10,7 +10,7 @@ const OperatingPosition = ({ months = [], totals = { expense: 0, total: 0, profi
     <header className="op-panel__head">
       <div>
         <h2>Operating position</h2>
-        <p>Expense, total amount and profit as a grouped bar chart.</p>
+        <p>Expense, check-in and revenue as a grouped bar chart.</p>
       </div>
       <span className="op-panel__chip">Last 6 months</span>
     </header>
@@ -30,15 +30,15 @@ const OperatingPosition = ({ months = [], totals = { expense: 0, total: 0, profi
         </div>
         <div className="op-panel__row">
           <div>
-            <strong>Total amount</strong>
-            <small>Approved and captured check-ins</small>
+            <strong>Check-in</strong>
+            <small>Captured cash check-ins</small>
           </div>
           <code>{money(totals.total)}</code>
         </div>
         <div className="op-panel__row">
           <div>
-            <strong>Profit</strong>
-            <small>Total amount less expense</small>
+            <strong>Revenue</strong>
+            <small>Check-in less expense</small>
           </div>
           <code className={totals.profit >= 0 ? "is-up" : "is-down"}>{money(totals.profit)}</code>
         </div>

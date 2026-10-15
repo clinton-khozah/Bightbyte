@@ -1,0 +1,66 @@
+.company-form {
+  gap: 16px 18px;
+}
+
+.company-form__identity {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  grid-column: 1 / -1;
+  padding: 16px 18px;
+  background: #f7f7f5;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-left: 3px solid #b42318;
+  border-radius: 8px;
+}
+
+.company-form__identity .photo-upload {
+  grid-column: auto;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.company-form__identity-copy {
+  min-width: 0;
+}
+
+.company-form__eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #006239;
+}
+
+.company-form__rule {
+  display: block;
+  width: 40px;
+  height: 2px;
+  margin: 8px 0 10px;
+  background: #b42318;
+}
+
+.company-form__identity-copy strong {
+  display: block;
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #171717;
+}
+
+.company-form__identity-copy p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #707070;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+@media (max-width: 800px) {
+  .company-form__identity {
+    grid-template-columns: 1fr;
+  }
+}

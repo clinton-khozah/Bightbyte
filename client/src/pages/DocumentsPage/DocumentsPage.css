@@ -52,3 +52,25 @@
   color: #006239;
   font-weight: 600;
 }
+
+.fc-form > .fc-line-select {
+  grid-column: auto;
+  min-width: 0;
+}
+
+@media (max-width: 800px) {
+  .docs-page__toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .docs-page__search {
+    width: 100%;
+  }
+
+  .docs-page__tab {
+    min-height: 36px;
+  }
+}

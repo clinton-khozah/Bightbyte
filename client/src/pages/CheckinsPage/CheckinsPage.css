@@ -18,3 +18,148 @@
   align-items: center;
 }
 
+@media (max-width: 800px) {
+  .checkins-page .ops-page__header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .checkins-page .ops-page__title {
+    font-size: 18px;
+  }
+
+  .checkins-page .ops-page__sub {
+    margin-top: 4px;
+    font-size: 12px;
+    line-height: 1.4;
+  }
+
+  .checkins-page .ops-page__actions {
+    flex-wrap: wrap;
+  }
+
+  .checkins-page .ops-page__btn {
+    min-height: 36px;
+    font-size: 12px;
+  }
+
+  .checkins-page .ops-page__stats {
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 14px;
+  }
+
+  .checkins-page .ops-page__stat {
+    padding: 8px 8px 10px 0;
+  }
+
+  .checkins-page .ops-page__stat-copy {
+    gap: 2px;
+  }
+
+  .checkins-page .ops-page__stat-copy strong {
+    font-size: 16px;
+  }
+
+  .checkins-page .ops-page__stat-copy span {
+    font-size: 11px;
+  }
+
+  .checkins-page .fc-table-controls {
+    padding: 10px 12px 0;
+    gap: 8px;
+  }
+
+  .checkins-page .fc-table-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .checkins-page .fc-table-search {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .checkins-page .fc-table-tabs {
+    margin-left: 0;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+
+  .checkins-page .fc-table-tab {
+    min-height: 36px;
+    padding: 6px 0;
+  }
+
+  .checkins-page .fc-table-count {
+    padding: 6px 0 8px;
+    font-size: 12px;
+  }
+
+  .checkins-page .fc-table thead {
+    display: none;
+  }
+
+  .checkins-page .fc-table,
+  .checkins-page .fc-table tbody,
+  .checkins-page .fc-table tr,
+  .checkins-page .fc-table td {
+    display: block;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+  }
+
+  .checkins-page .fc-table tr {
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid var(--fc-color-border);
+  }
+
+  .checkins-page .fc-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 0;
+    border-bottom: 0;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .checkins-page .fc-table td::before {
+    content: attr(data-label);
+    color: var(--sb-muted, #707070);
+    font-size: 11px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .checkins-page .fc-table td:not([data-label])::before,
+  .checkins-page .fc-table td[data-label=""]::before {
+    content: none;
+  }
+
+  .checkins-page .fc-table th:last-child,
+  .checkins-page .fc-table td:last-child {
+    position: static;
+    min-width: 0;
+    background: transparent;
+  }
+
+  .checkins-page .fc-table td:nth-last-child(2) {
+    min-width: 0;
+    padding-right: 0;
+  }
+
+  .checkins-page .fc-table-pager {
+    padding: 10px 12px 12px;
+  }
+
+  .checkins-page .checkin-actions {
+    min-width: 0;
+  }
+}
+
