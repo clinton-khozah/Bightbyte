@@ -1,0 +1,68 @@
+.fc-modal--compact .role-form {
+  grid-template-columns: 1.3fr 1.5fr 0.8fr;
+  gap: 10px 14px;
+}
+
+.role-matrix {
+  grid-column: 1 / -1;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.role-matrix p {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #525252;
+  background: #fafafa;
+  border-bottom: 1px solid var(--sb-border, #e6e6e4);
+}
+
+.role-matrix__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.role-matrix__grid table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.role-matrix__grid table:first-child {
+  border-right: 1px solid var(--sb-border, #e6e6e4);
+}
+
+.role-matrix th,
+.role-matrix td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #f0f0ee;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.role-matrix th:first-child,
+.role-matrix td:first-child {
+  text-align: left;
+  font-weight: 500;
+  width: 46%;
+}
+
+.role-matrix thead th {
+  background: #fcfcfb;
+  color: #707070;
+  font-weight: 600;
+  font-size: 11px;
+}
+
+.role-matrix tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.role-form .fc-form__actions {
+  grid-column: 1 / -1;
+  margin-top: 0;
+  padding-top: 10px;
+}

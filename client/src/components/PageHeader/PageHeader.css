@@ -1,0 +1,19 @@
+.fc-page-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.fc-page-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.fc-page-header p {
+  margin-top: 4px;
+  color: var(--gh-muted);
+  font-size: 14px;
+}

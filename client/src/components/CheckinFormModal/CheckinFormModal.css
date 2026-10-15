@@ -1,0 +1,72 @@
+.checkin-form {
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 16px;
+}
+
+.checkin-form select {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.checkin-form__flag {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.checkin-form__flag.is-ok {
+  color: #006239;
+}
+
+.checkin-form__flag.is-warn {
+  color: #c2410c;
+}
+
+.checkin-form .fc-filedrop--compact {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.checkin-form .fc-filedrop--compact span {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #525252;
+}
+
+.checkin-form .fc-filedrop--compact em {
+  justify-self: end;
+}
+
+.checkin-form .fc-filedrop--compact .fc-filedrop__previews {
+  justify-self: start;
+}
+
+.checkin-form .fc-filedrop--compact .fc-filedrop__previews img {
+  width: 56px;
+  height: 56px;
+}
+
+.checkin-form .fc-form__actions {
+  margin-top: 2px;
+  padding-top: 14px;
+}
+
+@media (max-width: 560px) {
+  .checkin-form,
+  .checkin-form .fc-filedrop--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .checkin-form .fc-filedrop--compact em {
+    justify-self: start;
+  }
+}

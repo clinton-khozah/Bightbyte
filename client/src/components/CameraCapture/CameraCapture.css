@@ -1,0 +1,19 @@
+.gh-cam {
+  display: grid;
+  gap: 10px;
+}
+
+.gh-cam video,
+.gh-cam img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #0d1117;
+}
+
+.gh-cam__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}

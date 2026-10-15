@@ -1,0 +1,9 @@
+.fc-modal--xl .checkin-form {
+  grid-template-columns: 1fr 1fr;
+}
+
+.checkin-form .fc-filedrop {
+  min-height: 132px;
+  padding: 18px;
+  align-content: center;
+}

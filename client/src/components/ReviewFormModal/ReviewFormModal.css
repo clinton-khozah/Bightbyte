@@ -1,0 +1,16 @@
+.review-form {
+  display: grid;
+  gap: 14px;
+}
+
+.review-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .review-form__row {
+    grid-template-columns: 1fr;
+  }
+}

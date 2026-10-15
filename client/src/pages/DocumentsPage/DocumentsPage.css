@@ -1,0 +1,54 @@
+.docs-page__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.docs-page__search {
+  width: 300px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  border: 1px solid var(--fc-color-border, #e6e6e4);
+  border-radius: 8px;
+  background: #fff;
+  color: #656d76;
+}
+
+.docs-page__search input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: inherit;
+}
+
+.docs-page__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.docs-page__tab {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  font-size: 13px;
+  color: #656d76;
+  cursor: pointer;
+}
+
+.docs-page__tab.is-on {
+  background: #f3fbf6;
+  border-color: #c6ead6;
+  color: #006239;
+  font-weight: 600;
+}

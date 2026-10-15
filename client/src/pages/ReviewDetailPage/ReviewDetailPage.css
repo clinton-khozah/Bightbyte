@@ -1,0 +1,131 @@
+.review-detail {
+  min-height: 0;
+}
+
+.review-detail__back {
+  display: inline-block;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.review-detail h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.review-detail h2 + p {
+  margin: 4px 0 0;
+  color: var(--gh-muted, #707070);
+}
+
+.review-detail h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.review-detail .gh-vehicle-hero {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.review-detail .gh-vehicle-hero img.fc-avatar,
+.review-detail .review-detail__by img.fc-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+}
+
+.review-detail .review-detail__by img.fc-avatar,
+.review-detail .review-detail__by .fc-avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.review-detail__portraits {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.review-detail__portraits > div {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: 120px;
+}
+
+.review-detail__portraits span {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: #525252;
+}
+
+.review-detail .gh-vehicle-hero > img,
+.review-detail .gh-vehicle-hero > div:empty {
+  display: none;
+}
+
+.review-detail__by {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-detail__notes {
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid var(--gh-border, #e6e6e4);
+  border-radius: 10px;
+  background: #fafafa;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.review-detail__photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.review-detail__photo {
+  margin: 0;
+  width: 88px;
+}
+
+.review-detail__photo button {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  line-height: 0;
+}
+
+.review-detail__photo img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 1px solid var(--gh-border, #e6e6e4);
+}
+
+.review-detail__photo figcaption {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #707070;
+  text-align: center;
+}
+
+.review-detail__empty {
+  padding: 14px;
+  border: 1px dashed var(--gh-border, #e6e6e4);
+  border-radius: 8px;
+  color: #707070;
+  font-size: 13px;
+}
+

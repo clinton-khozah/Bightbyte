@@ -1,0 +1,139 @@
+.fc-onboard__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(23, 23, 23, 0.45);
+}
+
+.fc-onboard__dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(720px, 100%);
+  max-height: min(90vh, 760px);
+  background: #fff;
+  border: 1px solid var(--gh-border);
+  border-radius: 10px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+
+.fc-onboard__header {
+  padding: 20px 22px 0;
+}
+
+.fc-onboard__header-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fc-onboard__title {
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.fc-onboard__step-label {
+  margin-top: 4px;
+  color: var(--gh-muted);
+  font-size: 13px;
+}
+
+.fc-onboard__close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gh-muted);
+}
+
+.fc-onboard__progress {
+  height: 4px;
+  margin-top: 16px;
+  background: var(--gh-canvas-subtle);
+}
+
+.fc-onboard__progress-fill {
+  height: 100%;
+  background: #006239;
+}
+
+.fc-onboard__body {
+  flex: 1;
+  overflow: auto;
+  padding: 18px 22px;
+}
+
+.fc-onboard__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.fc-onboard__grid--full {
+  grid-column: 1 / -1;
+}
+
+.fc-onboard__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fc-onboard__label {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.fc-onboard__required {
+  color: var(--gh-accent);
+}
+
+.fc-onboard__input,
+.fc-onboard__select,
+.fc-onboard__textarea {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--gh-border);
+  border-radius: 6px;
+  background: var(--gh-canvas-subtle);
+  font-size: 14px;
+}
+
+.fc-onboard__input:focus,
+.fc-onboard__select:focus,
+.fc-onboard__textarea:focus {
+  outline: 2px solid #0969da33;
+  border-color: var(--gh-accent);
+  background: #fff;
+}
+
+.fc-onboard__upload {
+  display: grid;
+  place-items: center;
+  min-height: 88px;
+  border: 1px dashed var(--gh-border);
+  border-radius: 6px;
+  background: var(--gh-canvas-subtle);
+  font-size: 13px;
+  color: var(--gh-muted);
+  cursor: pointer;
+}
+
+.fc-onboard__footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 22px 18px;
+  border-top: 1px solid var(--gh-border);
+}
+
+@media (max-width: 640px) {
+  .fc-onboard__grid {
+    grid-template-columns: 1fr;
+  }
+}

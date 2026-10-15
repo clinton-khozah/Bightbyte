@@ -1,0 +1,194 @@
+.fc-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 23, 23, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  z-index: 80;
+  overflow: auto;
+}
+
+.fc-modal {
+  width: min(520px, 100%);
+  background: #fff;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 10px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.16);
+}
+
+.fc-modal--wide {
+  width: min(720px, 100%);
+  max-height: min(92vh, 820px);
+  display: flex;
+  flex-direction: column;
+}
+
+.fc-modal--wide .fc-modal__body {
+  overflow: auto;
+}
+
+.fc-modal--xl {
+  width: min(1100px, 96vw);
+  max-height: min(94vh, 920px);
+  display: flex;
+  flex-direction: column;
+}
+
+.fc-modal--xl .fc-modal__body {
+  overflow: auto;
+}
+
+.fc-modal--compact {
+  max-height: none;
+}
+
+.fc-modal--compact .fc-modal__body {
+  overflow: visible;
+}
+
+.fc-modal--xl .fc-form {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.fc-modal--wide .fc-form {
+  grid-template-columns: 1fr 1fr;
+}
+
+.fc-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 14px;
+  border-bottom: 1px solid var(--sb-border, #e6e6e4);
+}
+
+.fc-modal h3,
+.fc-modal__head h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.fc-modal__sub {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #707070;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.fc-modal__close {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #707070;
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.fc-modal__close:hover {
+  background: #f3f3f3;
+  color: #171717;
+}
+
+.fc-modal__body {
+  padding: 20px 22px 22px;
+}
+
+.fc-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+}
+
+.fc-form label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #525252;
+}
+
+.fc-form > .fc-filedrop,
+.fc-form > .fc-form__full,
+.fc-form > .fc-form__actions,
+.fc-form > .fc-error,
+.fc-form > h2,
+.fc-form > p,
+.fc-form > div:not(.fc-form__actions),
+.fc-form > label:has(textarea),
+.fc-form > label:has(input[type="file"]),
+.fc-form > label.fc-form__full {
+  grid-column: 1 / -1;
+}
+
+.fc-form label.fc-form__span-2 {
+  grid-column: span 2;
+}
+
+.fc-form .fc-filedrop input,
+.fc-form input[type="file"] {
+  display: none;
+}
+
+.fc-form input,
+.fc-form select,
+.fc-form textarea {
+  min-height: 38px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fff;
+  color: #171717;
+}
+
+.fc-form input:focus,
+.fc-form select:focus,
+.fc-form textarea:focus {
+  outline: 2px solid #cce8d8;
+  border-color: #006239;
+}
+
+.fc-form textarea {
+  min-height: 92px;
+}
+
+.fc-form__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--sb-border, #e6e6e4);
+}
+
+@media (max-width: 900px) {
+  .fc-modal--xl .fc-form {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .fc-form,
+  .fc-modal--xl .fc-form,
+  .fc-modal--wide .fc-form {
+    grid-template-columns: 1fr;
+  }
+}
+
+.fc-form__hint {
+  margin: 0;
+  font-size: 12px;
+  color: #707070;
+  font-weight: 400;
+}

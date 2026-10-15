@@ -1,0 +1,66 @@
+.fc-app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--sb-canvas);
+  scrollbar-width: none;
+}
+
+.fc-app-layout::-webkit-scrollbar,
+.fc-app-layout *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.fc-app-layout__main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.fc-app-layout__content {
+  flex: 1;
+  min-height: 0;
+  padding: 28px 40px 48px;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  background: var(--sb-canvas);
+}
+
+.fc-app-layout__content::-webkit-scrollbar {
+  display: none;
+}
+
+.fc-page-fade {
+  min-height: 100%;
+  animation: fcPageIn 0.32s ease;
+}
+
+@keyframes fcPageIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fc-app-layout__nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 39;
+  border: 0;
+  background: rgba(23, 23, 23, 0.28);
+}
+
+@media (max-width: 900px) {
+  .fc-app-layout__content {
+    padding: 20px 16px 32px;
+  }
+}

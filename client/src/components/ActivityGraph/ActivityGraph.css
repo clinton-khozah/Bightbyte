@@ -1,0 +1,27 @@
+.gh-graph {
+  margin: 8px 0 20px;
+}
+
+.gh-graph h3 {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.gh-graph__grid {
+  display: grid;
+  grid-template-columns: repeat(28, 11px);
+  gap: 3px;
+}
+
+.gh-graph__cell {
+  width: 11px;
+  height: 11px;
+  border-radius: 2px;
+  background: #ebedf0;
+}
+
+.gh-graph__cell--1 { background: #9be9a8; }
+.gh-graph__cell--2 { background: #40c463; }
+.gh-graph__cell--3 { background: #30a14e; }
+.gh-graph__cell--4 { background: #216e39; }

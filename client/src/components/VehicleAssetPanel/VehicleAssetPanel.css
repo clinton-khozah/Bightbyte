@@ -1,0 +1,139 @@
+.vehicle-asset-panel {
+  margin-top: 28px;
+  border: 1px solid var(--gh-border, #e6e6e4);
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.vehicle-asset-panel__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--gh-border, #e6e6e4);
+  background: #fafafa;
+}
+
+.vehicle-asset-panel__head h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0.01em;
+}
+
+.vehicle-asset-panel__head p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #707070;
+  max-width: 52ch;
+}
+
+.vehicle-asset-panel__body {
+  display: grid;
+}
+
+.vehicle-asset-panel__empty {
+  margin: 0;
+  padding: 22px 18px;
+  font-size: 13px;
+  color: #707070;
+}
+
+.vehicle-asset-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--gh-border, #e6e6e4);
+  color: inherit;
+  text-decoration: none;
+}
+
+.vehicle-asset-row:last-child {
+  border-bottom: 0;
+}
+
+a.vehicle-asset-row:hover {
+  background: #f8f8f7;
+}
+
+.vehicle-asset-row__mark {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e6f4ec;
+  color: #006239;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.vehicle-asset-row__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.vehicle-asset-row__kicker {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #707070;
+}
+
+.vehicle-asset-row__copy strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.vehicle-asset-row__detail {
+  font-size: 12px;
+  color: #707070;
+}
+
+.vehicle-asset-row__status {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.vehicle-asset-row__status--ok {
+  background: #e6f4ec;
+  color: #006239;
+}
+
+.vehicle-asset-row__status--warn {
+  background: #f7f0e4;
+  color: #8a5b00;
+}
+
+.vehicle-asset-row__status--muted {
+  background: #f3f3f3;
+  color: #555;
+}
+
+.vehicle-asset-row__action {
+  font-size: 12px;
+  font-weight: 650;
+  color: #006239;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .vehicle-asset-row {
+    grid-template-columns: 40px minmax(0, 1fr);
+  }
+
+  .vehicle-asset-row__status,
+  .vehicle-asset-row__action {
+    grid-column: 2;
+  }
+}

@@ -1,0 +1,28 @@
+.gh-selfie-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(31, 35, 40, 0.45);
+}
+
+.gh-selfie {
+  width: min(480px, 100%);
+  background: #fff;
+  border: 1px solid var(--gh-border);
+  border-radius: 12px;
+  padding: 22px;
+  box-shadow: var(--fc-shadow-md);
+}
+
+.gh-selfie h3 {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.gh-selfie p {
+  color: var(--gh-muted);
+  margin-bottom: 16px;
+}

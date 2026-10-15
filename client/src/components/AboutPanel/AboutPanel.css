@@ -1,0 +1,62 @@
+.gh-about h3 {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+
+.gh-about p {
+  color: var(--gh-muted);
+  font-size: 13px;
+  margin-bottom: 14px;
+}
+
+.gh-about__row {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--gh-text);
+  margin: 8px 0;
+}
+
+.gh-about__row span:first-child {
+  color: var(--gh-muted);
+  width: 18px;
+}
+
+.gh-bars {
+  margin-top: 22px;
+}
+
+.gh-bar {
+  margin-bottom: 10px;
+}
+
+.gh-bar span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.gh-bar i {
+  display: block;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--gh-canvas-inset);
+  overflow: hidden;
+}
+
+.gh-bar i b {
+  display: block;
+  height: 100%;
+  background: #2f81f7;
+}
+
+.gh-certs {
+  margin-top: 22px;
+  font-size: 13px;
+}
+
+.gh-certs li {
+  margin: 8px 0;
+  color: var(--gh-muted);
+}

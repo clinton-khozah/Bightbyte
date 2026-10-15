@@ -1,0 +1,56 @@
+.user-profile {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.user-profile--edit {
+  align-items: center;
+}
+
+.user-profile__photo {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--sb-border, #e6e6e4);
+}
+
+.user-profile__photo--fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e6f4ec;
+  color: #006239;
+  font-weight: 700;
+}
+
+.user-profile h4 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.user-profile p {
+  margin: 4px 0 12px;
+  color: #707070;
+  font-size: 13px;
+}
+
+.user-profile dl {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.user-profile dl > div {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 8px;
+  font-size: 13px;
+}
+
+.user-profile dt {
+  color: #707070;
+}

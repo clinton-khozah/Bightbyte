@@ -1,0 +1,75 @@
+.fc-chip {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.fc-chip--good,
+.fc-chip--approved,
+.fc-chip--available,
+.fc-chip--active,
+.fc-chip--reviewed {
+  background: #ecfdf3;
+  color: #16a34a;
+}
+
+.fc-chip--in_use,
+.fc-chip--scheduled,
+.fc-chip--checked_out {
+  background: #e6f4ec;
+  color: #006239;
+}
+
+.fc-chip--submitted {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.fc-chip--fair,
+.fc-chip--open,
+.fc-chip--in_progress,
+.fc-chip--maintenance {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.fc-chip--poor,
+.fc-chip--rejected,
+.fc-chip--pending,
+.fc-chip--high {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.fc-chip--closed,
+.fc-chip--claim,
+.fc-chip--low {
+  background: #ecfdf3;
+  color: #16a34a;
+}
+
+.fc-chip--under_review,
+.fc-chip--review,
+.fc-chip--incident,
+.fc-chip--medium,
+.fc-chip--monthly,
+.fc-chip--expense {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.fc-chip--once_off,
+.fc-chip--check-in,
+.fc-chip--checkin,
+.fc-chip--completed {
+  background: #e6f4ec;
+  color: #006239;
+}
+
+.fc-chip--due {
+  background: #fee2e2;
+  color: #dc2626;
+}

@@ -1,0 +1,31 @@
+.fc-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #e6f4ec;
+  color: #006239;
+  font-weight: 700;
+}
+
+.fc-avatar--md {
+  width: 36px;
+  height: 36px;
+  font-size: 0.75rem;
+}
+
+.fc-avatar--lg {
+  width: 88px;
+  height: 88px;
+  font-size: 1.25rem;
+  border: 1px solid var(--sb-border, #e6e6e4);
+}
+
+.fc-avatar--xl {
+  width: 120px;
+  height: 120px;
+  font-size: 2rem;
+  border: 1px solid var(--sb-border, #e6e6e4);
+}

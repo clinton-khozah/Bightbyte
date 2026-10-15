@@ -1,0 +1,68 @@
+.finance-chart {
+  display: flex;
+  flex-direction: column;
+  min-height: 320px;
+}
+
+.finance-chart svg {
+  width: 100%;
+  height: 292px;
+}
+
+.finance-chart__grid {
+  stroke: #eef2f7;
+  stroke-width: 1;
+}
+
+.finance-chart__tick,
+.finance-chart__label {
+  fill: #94a3b8;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.finance-chart__bar--expense {
+  fill: #7d7d7d;
+}
+
+.finance-chart__bar--total {
+  fill: #3ecf8e;
+}
+
+.finance-chart__bar--profit {
+  fill: #006239;
+}
+
+.finance-chart__legend {
+  display: flex;
+  gap: 18px;
+  list-style: none;
+  margin: 4px 0 0;
+  padding: 0;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.finance-chart__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.finance-chart__swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+
+.finance-chart__swatch--expense {
+  background: #7d7d7d;
+}
+
+.finance-chart__swatch--total {
+  background: #3ecf8e;
+}
+
+.finance-chart__swatch--profit {
+  background: #006239;
+}

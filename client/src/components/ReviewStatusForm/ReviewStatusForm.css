@@ -1,0 +1,44 @@
+.review-status {
+  margin: 0 0 24px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 14px;
+  align-items: start;
+}
+
+.review-status label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #525252;
+}
+
+.review-status select {
+  min-height: 38px;
+  width: 100%;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: #fff;
+  color: #171717;
+}
+
+.review-status select:focus {
+  outline: 2px solid #cce8d8;
+  border-color: #006239;
+}
+
+.review-status .fc-form__hint,
+.review-status .fc-form__actions,
+.review-status .fc-error {
+  grid-column: 1 / -1;
+}
+
+.review-status .fc-form__actions {
+  border-top: 0;
+  padding-top: 0;
+  justify-content: flex-start;
+}

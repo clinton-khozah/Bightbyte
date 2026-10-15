@@ -1,0 +1,163 @@
+.vehicle-report {
+  display: grid;
+  gap: 20px;
+}
+
+.vehicle-report__tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.vehicle-report__tabs button[aria-pressed="true"] {
+  background: #006239;
+  color: #fff;
+  border-color: #006239;
+}
+
+.vehicle-report__hero {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 18px;
+}
+
+.vehicle-report__hero img,
+.vehicle-report__hero-fallback {
+  width: 100%;
+  height: 132px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  background: #f3f3f3;
+}
+
+.vehicle-report__hero-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #707070;
+  font-weight: 600;
+}
+
+.vehicle-report__hero h4 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.vehicle-report__hero p {
+  margin: 6px 0 12px;
+  color: #707070;
+  font-size: 13px;
+}
+
+.vehicle-report__kpis,
+.vehicle-report__facts,
+.vehicle-report__months {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.vehicle-report__facts {
+  grid-template-columns: 1fr 1fr;
+}
+
+.vehicle-report__kpi,
+.vehicle-report__month {
+  padding: 12px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 8px;
+  background: #f8f8f7;
+}
+
+.vehicle-report__kpi span,
+.vehicle-report__month span,
+.vehicle-report__facts dt {
+  display: block;
+  font-size: 12px;
+  color: #707070;
+}
+
+.vehicle-report__kpi strong,
+.vehicle-report__month strong,
+.vehicle-report__facts dd {
+  display: block;
+  margin-top: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.vehicle-report__facts dd {
+  font-weight: 500;
+  font-size: 13px;
+}
+
+.vehicle-report h5 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.vehicle-report__list {
+  display: grid;
+  gap: 8px;
+}
+
+.vehicle-report__row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 8px;
+}
+
+.vehicle-report__row small {
+  color: #707070;
+}
+
+.vehicle-report__photos {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.vehicle-report__photos img {
+  width: 100%;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.vehicle-report__empty {
+  padding: 14px;
+  border: 1px dashed var(--sb-border, #e6e6e4);
+  border-radius: 8px;
+  color: #707070;
+  font-size: 13px;
+}
+
+.vehicle-report__docs a,
+.vehicle-report__docs div {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+}
+
+@media (max-width: 720px) {
+  .vehicle-report__hero,
+  .vehicle-report__kpis,
+  .vehicle-report__months {
+    grid-template-columns: 1fr 1fr;
+  }
+}

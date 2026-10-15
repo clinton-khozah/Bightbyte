@@ -1,0 +1,5 @@
+.mechanics-grid {
+  display: grid;
+  gap: 10px;
+  padding: 8px 4px 16px;
+}

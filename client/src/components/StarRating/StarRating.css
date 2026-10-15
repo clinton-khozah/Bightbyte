@@ -1,0 +1,39 @@
+.star-rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+
+.star-rating__stars {
+  display: flex;
+  gap: 1px;
+  letter-spacing: 1px;
+}
+
+.star-rating__star {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.star-rating__star--full {
+  color: #c9a227;
+}
+
+.star-rating__star--half {
+  color: #e2c56a;
+}
+
+.star-rating__star--empty {
+  color: #d6d6d4;
+}
+
+.star-rating strong {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.star-rating span {
+  font-size: 12px;
+  color: #707070;
+}

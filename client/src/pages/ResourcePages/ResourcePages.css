@@ -1,0 +1,12 @@
+.fc-resource-page {
+  min-height: 0;
+}
+
+.fc-panel {
+  background: #fff;
+  border: 1px solid var(--fc-color-border);
+  border-radius: var(--fc-radius-lg);
+  padding: 16px;
+  color: var(--fc-color-text-secondary);
+  line-height: 1.55;
+}

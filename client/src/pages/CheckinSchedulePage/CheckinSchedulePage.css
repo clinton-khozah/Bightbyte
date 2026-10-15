@@ -1,0 +1,34 @@
+.schedule-form {
+  display: grid;
+  gap: 14px;
+  max-width: 640px;
+  margin-bottom: 28px;
+  padding: 18px;
+  border: 1px solid var(--sb-border, #e6e6e4);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.schedule-form h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.schedule-form p {
+  margin: 0;
+  font-size: 13px;
+  color: #707070;
+}
+
+.schedule-form__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .schedule-form__row {
+    grid-template-columns: 1fr;
+  }
+}

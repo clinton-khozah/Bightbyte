@@ -1,0 +1,56 @@
+.gh-vehicle-detail {
+  min-height: 0;
+}
+
+.vehicle-profile__portrait {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  line-height: 0;
+  cursor: zoom-in;
+}
+
+.vehicle-profile__value {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--gh-border, #e6e6e4);
+  border-radius: 10px;
+  background: #f8f8f7;
+}
+
+.vehicle-profile__value span {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #707070;
+}
+
+.vehicle-profile__value strong {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.vehicle-mechanics {
+  margin-top: 28px;
+}
+
+.vehicle-mechanics h3 {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.vehicle-supplies__empty {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: #707070;
+}
+
+.vehicle-mechanics__list {
+  display: grid;
+  gap: 10px;
+}
