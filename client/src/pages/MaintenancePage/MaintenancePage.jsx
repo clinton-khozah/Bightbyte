@@ -29,6 +29,7 @@ const toDateInput = (iso) => (iso ? String(iso).slice(0, 10) : "");
 const MaintenancePage = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -43,13 +44,16 @@ const MaintenancePage = () => {
 
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
 
-  const load = () =>
-    Promise.all([api("/api/maintenance"), api("/api/vehicles")])
+  const load = () => {
+    setLoading(true);
+    return Promise.all([api("/api/maintenance"), api("/api/vehicles")])
       .then(([jobs, list]) => {
         setRows(jobs);
         setVehicles(list);
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -172,6 +176,7 @@ const MaintenancePage = () => {
         {error ? <p className="fc-error">{error}</p> : null}
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="services"
           totalCount={rows.length}

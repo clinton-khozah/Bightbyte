@@ -16,7 +16,7 @@ import {
   syncVehicleOdometer,
 } from "./serviceDue.js";
 import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, notifyInvite, runMissedCheckinMails } from "./mail.js";
-import { signInAuth, upsertAuthUser } from "./supabaseAuth.js";
+import { deleteAuthUser, signInAuth, upsertAuthUser } from "./supabaseAuth.js";
 import { ensurePlatformAdmin } from "./platformAdmin.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 import { persistUploads, uploadDir } from "./storage.js";
@@ -636,8 +636,28 @@ app.delete("/api/users/:id", requireAuth, requirePermission("drivers", "delete")
     if (isDemoProfile(existing) && req.user.role !== "super_admin") {
       return res.status(404).json({ error: "User not found" });
     }
-    await assignVehicleToDriver(existing.company_id, existing.id, null);
+    if (existing.role === "super_admin" || existing.role_key === "super_admin") {
+      return res.status(400).json({ error: "The super admin account cannot be deleted." });
+    }
+    const links = [
+      ["vehicles", "assigned_driver_id"],
+      ["checkins", "driver_id"],
+      ["expenses", "driver_id"],
+      ["checkin_schedules", "driver_id"],
+      ["reviews", "driver_id"],
+      ["incidents", "driver_id"],
+      ["incidents", "logged_by"],
+      ["refuels", "driver_id"],
+      ["documents", "uploaded_by"],
+      ["notifications", "user_id"],
+    ];
+    for (const [table, column] of links) {
+      await db.clearMatches(table, column, existing.id).catch((error) => {
+        console.error("[delete user]", table, column, error.message);
+      });
+    }
     await db.remove("profiles", existing.id);
+    await deleteAuthUser(existing.id).catch((error) => console.error("[delete user] auth", error.message));
     res.json({ ok: true });
   } catch (error) {
     res.status(error.status || 500).json({ error: error.message });

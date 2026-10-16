@@ -47,6 +47,7 @@ const IncidentsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState([]);
   const [people, setPeople] = useState([]);
   const [open, setOpen] = useState(false);
@@ -62,20 +63,24 @@ const IncidentsPage = () => {
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
   const personFor = (id) => people.find((p) => p.id === id);
 
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setLoading(true);
+    return Promise.all([
       api("/api/incidents"),
       api("/api/vehicles"),
       api("/api/users").catch(() => api("/api/drivers")),
-    ]).then(([incidents, list, users = []]) => {
-      setRows(
-        user?.role === "driver"
-          ? incidents.filter((row) => row.driver_id === user.id || row.logged_by === user.id)
-          : incidents,
-      );
-      setVehicles(list);
-      setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
-    });
+    ])
+      .then(([incidents, list, users = []]) => {
+        setRows(
+          user?.role === "driver"
+            ? incidents.filter((row) => row.driver_id === user.id || row.logged_by === user.id)
+            : incidents,
+        );
+        setVehicles(list);
+        setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -218,6 +223,7 @@ const IncidentsPage = () => {
       >
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="records"
           totalCount={rows.length}

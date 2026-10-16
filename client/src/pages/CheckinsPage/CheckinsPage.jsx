@@ -155,6 +155,8 @@ const CheckinsPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetched, setFetched] = useState(false);
   const [vehicles, setVehicles] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [people, setPeople] = useState([]);
@@ -184,6 +186,8 @@ const CheckinsPage = () => {
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
 
   const load = () => {
+    setLoading(true);
+    setFetched(false);
     const driverView = isDriverUser(user);
     const peopleReq = driverView
       ? api("/api/drivers").catch(() => [])
@@ -209,7 +213,8 @@ const CheckinsPage = () => {
       setSchedules(scheduleRows);
       const mine = scheduleRows.find((s) => samePerson(s.driver_id, user?.id));
       setLateFee(Number(mine?.late_fee_now || 0));
-    });
+      setFetched(true);
+    }).catch(() => setFetched(true));
   };
 
   useEffect(load, [user?.id, user?.role, user?.role_key]);
@@ -246,14 +251,15 @@ const CheckinsPage = () => {
         ];
       });
       setRows(pendingRows);
-      return;
+    } else {
+      const merged = [
+        ...checkins.map((row) => ({ ...row, record_type: "checkin" })),
+        ...expenses.map((row) => ({ ...row, record_type: "expense" })),
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      setRows(merged);
     }
-    const merged = [
-      ...checkins.map((row) => ({ ...row, record_type: "checkin" })),
-      ...expenses.map((row) => ({ ...row, record_type: "expense" })),
-    ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    setRows(merged);
-  }, [checkins, expenses, schedules, vehicles, user]);
+    if (fetched) setLoading(false);
+  }, [checkins, expenses, schedules, vehicles, user, fetched]);
 
   const lastOdometerFor = (vehicleId) => Number(vehicles.find((v) => v.id === vehicleId)?.odometer || 0);
 
@@ -698,6 +704,7 @@ const CheckinsPage = () => {
       >
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="records"
           totalCount={rows.length}

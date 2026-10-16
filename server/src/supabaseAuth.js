@@ -78,6 +78,11 @@ export const upsertAuthUser = async ({ email, password, fullName, userId }) => {
   }
 };
 
+export const deleteAuthUser = async (userId) => {
+  if (!useSupabase || !userId) return;
+  await authFetch(`/admin/users/${userId}`, { method: "DELETE" });
+};
+
 export const signInAuth = async (email, password) => {
   if (!useSupabase) return { ok: false };
   const key = config.supabaseAnonKey || config.supabaseServiceKey;

@@ -30,6 +30,7 @@ const CompaniesPage = () => {
   const canEdit = can(user, "companies", "edit");
   const canDelete = can(user, "companies", "delete");
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -37,7 +38,12 @@ const CompaniesPage = () => {
   const [approveTarget, setApproveTarget] = useState(null);
   const [success, setSuccess] = useState("");
 
-  const load = () => api("/api/companies").then(setRows);
+  const load = () => {
+    setLoading(true);
+    return api("/api/companies")
+      .then(setRows)
+      .finally(() => setLoading(false));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -130,6 +136,7 @@ const CompaniesPage = () => {
       >
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="companies"
           totalCount={rows.length}

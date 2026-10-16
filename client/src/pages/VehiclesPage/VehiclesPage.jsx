@@ -62,6 +62,7 @@ const VehiclesPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
@@ -75,18 +76,22 @@ const VehiclesPage = () => {
   const [models, setModels] = useState([]);
   const [years, setYears] = useState([]);
 
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setLoading(true);
+    return Promise.all([
       api("/api/vehicles"),
       api("/api/companies").catch(() => []),
       api("/api/vehicle-makes").catch(() => []),
       api("/api/vehicle-years").catch(() => []),
-    ]).then(([fleet, tenants, makeRows, yearRows]) => {
-      setRows(fleet);
-      setCompanies(tenants);
-      setMakes(makeRows);
-      setYears(yearRows);
-    });
+    ])
+      .then(([fleet, tenants, makeRows, yearRows]) => {
+        setRows(fleet);
+        setCompanies(tenants);
+        setMakes(makeRows);
+        setYears(yearRows);
+      })
+      .finally(() => setLoading(false));
+  };
   useEffect(() => {
     load();
   }, []);
@@ -188,6 +193,7 @@ const VehiclesPage = () => {
       >
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="assets"
           totalCount={rows.length}

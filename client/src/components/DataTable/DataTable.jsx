@@ -17,6 +17,7 @@ const DataTable = ({
   onTab,
   emptyText,
   hideToolbar = false,
+  loading = false,
 }) => {
   const list = Array.isArray(rows) ? rows : [];
   const total = totalCount ?? list.length;
@@ -61,11 +62,15 @@ const DataTable = ({
           ) : null}
         </div>
         <p className="fc-table-count">
-          Showing {from}–{to} of {total} {noun}
+          {loading ? `Loading ${noun}…` : `Showing ${from}–${to} of ${total} ${noun}`}
         </p>
       </div>
       )}
-      {!list.length ? (
+      {loading ? (
+        <div className="fc-table-loading" role="status" aria-label={`Loading ${noun}`}>
+          <span className="fc-table-loading__spinner" aria-hidden="true" />
+        </div>
+      ) : !list.length ? (
         <div className="fc-empty">{emptyText || `No ${noun} have been logged yet.`}</div>
       ) : (
         <>

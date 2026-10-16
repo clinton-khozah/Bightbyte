@@ -27,6 +27,7 @@ const ReviewsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState([]);
   const [people, setPeople] = useState([]);
   const [open, setOpen] = useState(false);
@@ -51,15 +52,18 @@ const ReviewsPage = () => {
   });
 
   const load = () => {
+    setLoading(true);
     Promise.all([
       api("/api/reviews"),
       api("/api/vehicles"),
       api("/api/users").catch(() => api("/api/drivers")),
-    ]).then(([reviews, list, users = []]) => {
-      setRows(user?.role === "driver" ? reviews.filter((row) => row.driver_id === user.id) : reviews);
-      setVehicles(list);
-      setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
-    });
+    ])
+      .then(([reviews, list, users = []]) => {
+        setRows(user?.role === "driver" ? reviews.filter((row) => row.driver_id === user.id) : reviews);
+        setVehicles(list);
+        setPeople(user?.role === "driver" ? users.filter((row) => row.id === user.id) : users);
+      })
+      .finally(() => setLoading(false));
   };
 
   useEffect(load, [user?.role, user?.id]);
@@ -173,6 +177,7 @@ const ReviewsPage = () => {
       >
       <DataTable
         rows={filtered}
+        loading={loading}
         noun="reviews"
         totalCount={rows.length}
         search={query}

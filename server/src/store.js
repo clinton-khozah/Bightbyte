@@ -1082,6 +1082,27 @@ export const db = {
     return true;
   },
 
+  async clearMatches(table, column, value) {
+    if (!value) return;
+    const map = { reviews: "vehicle_reviews" };
+    const name = map[table] || table;
+    if (!useSupabase) {
+      (memory[table] || []).forEach((row) => {
+        if (String(row[column] || "") === String(value)) row[column] = null;
+      });
+      if (LOCAL_TABLES.includes(table)) persistLocal();
+      return;
+    }
+    const cleared = await supabase.from(name).update({ [column]: null }).eq(column, value);
+    if (!cleared.error) return;
+    const message = cleared.error.message || "";
+    if (/could not find the|schema cache|does not exist/i.test(message)) return;
+    const removed = await supabase.from(name).delete().eq(column, value);
+    if (removed.error && !/could not find the|schema cache|does not exist/i.test(removed.error.message || "")) {
+      throw removed.error;
+    }
+  },
+
   async nextEmployeeId(company) {
     const prefix =
       String(company?.code || company?.name || "EMP")

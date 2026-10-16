@@ -27,6 +27,7 @@ const empty = {
 const MechanicsPage = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [companies, setCompanies] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -38,8 +39,9 @@ const MechanicsPage = () => {
   const canCreate = can(user, "mechanics", "create");
   const canDelete = can(user, "mechanics", "delete");
 
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setLoading(true);
+    return Promise.all([
       api("/api/mechanics"),
       user?.role === "super_admin" ? api("/api/companies").catch(() => []) : Promise.resolve([]),
     ])
@@ -47,7 +49,9 @@ const MechanicsPage = () => {
         setRows(list);
         setCompanies((companyRows || []).filter((row) => row.status !== "pending"));
       })
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -91,6 +95,7 @@ const MechanicsPage = () => {
         {error ? <p className="fc-error">{error}</p> : null}
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={[
             {
               key: "full_name",

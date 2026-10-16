@@ -30,6 +30,7 @@ const whenStamp = (value) =>
 const DocumentsPage = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(null);
   const [error, setError] = useState("");
@@ -40,10 +41,13 @@ const DocumentsPage = () => {
     searchKeys: ["title", "description", "category", "type", "uploaded_by_name"],
   });
 
-  const load = () =>
-    api("/api/documents")
+  const load = () => {
+    setLoading(true);
+    return api("/api/documents")
       .then(setRows)
-      .catch((err) => setError(err.message));
+      .catch((err) => setError(err.message))
+      .finally(() => setLoading(false));
+  };
 
   const canCreate = can(user, "documents", "create");
   const canDelete = can(user, "documents", "delete");
@@ -153,7 +157,7 @@ const DocumentsPage = () => {
             ))}
           </div>
         </div>
-        <FilesSheet rows={sheetRows} emptyText="No documents uploaded yet." />
+        <FilesSheet rows={sheetRows} loading={loading} emptyText="No documents uploaded yet." />
       </OpsPage>
       {open ? (
         <Modal title="Upload document" subtitle="Only a super admin can open these files." onClose={() => setOpen(false)}>

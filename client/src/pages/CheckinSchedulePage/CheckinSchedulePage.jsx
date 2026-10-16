@@ -37,6 +37,7 @@ const empty = {
 const CheckinSchedulePage = () => {
   const { user } = useAuth();
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [form, setForm] = useState(empty);
@@ -45,16 +46,20 @@ const CheckinSchedulePage = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setLoading(true);
+    return Promise.all([
       api("/api/checkin-schedules").catch(() => []),
       api("/api/users").catch(() => api("/api/drivers")).then((rows) => rows.filter((p) => p.role === "driver" || !p.role)),
       api("/api/vehicles").catch(() => []),
-    ]).then(([schedules, people, fleet]) => {
-      setRows(schedules);
-      setDrivers(people);
-      setVehicles(fleet);
-    });
+    ])
+      .then(([schedules, people, fleet]) => {
+        setRows(schedules);
+        setDrivers(people);
+        setVehicles(fleet);
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -228,6 +233,7 @@ const CheckinSchedulePage = () => {
         </form>
         <DataTable
           rows={rows}
+          loading={loading}
           noun="schedules"
           totalCount={rows.length}
           columns={[

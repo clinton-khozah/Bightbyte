@@ -34,6 +34,7 @@ const DriversPage = () => {
   const navigate = useNavigate();
   const [roles, setRoles] = useState([]);
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [vehicles, setVehicles] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [open, setOpen] = useState(false);
@@ -46,21 +47,24 @@ const DriversPage = () => {
   const [pending, setPending] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [success, setSuccess] = useState("");
-  const [editError, setEditError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
 
-  const load = () =>
-    Promise.all([
+  const load = () => {
+    setLoading(true);
+    return Promise.all([
       api("/api/users"),
       api("/api/vehicles"),
       api("/api/companies").catch(() => []),
       api("/api/roles").catch(() => []),
-    ]).then(([users, list, tenants, roleRows]) => {
+    ])
+      .then(([users, list, tenants, roleRows]) => {
         setRows(users);
         setVehicles(list);
         setCompanies(tenants);
         setRoles(roleRows);
-      },
-    );
+      })
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -172,6 +176,7 @@ const DriversPage = () => {
 
   return (
     <>
+      {deleteError ? <p className="fc-error">{deleteError}</p> : null}
       <OpsPage
         crumb={managePeople ? ["Administration", "Users"] : ["Account", "My Profile"]}
         title={managePeople ? "User Management" : "My Profile"}
@@ -194,6 +199,7 @@ const DriversPage = () => {
       >
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="users"
           totalCount={rows.length}
@@ -526,10 +532,16 @@ const DriversPage = () => {
         confirmLabel="Delete"
         onCancel={() => setPendingDelete(null)}
         onConfirm={async () => {
-          await api(`/api/users/${pendingDelete.id}`, { method: "DELETE" });
-          setPendingDelete(null);
-          setSuccess("User was deleted.");
-          load();
+          setDeleteError("");
+          try {
+            await api(`/api/users/${pendingDelete.id}`, { method: "DELETE" });
+            setPendingDelete(null);
+            setSuccess("User was deleted.");
+            load();
+          } catch (err) {
+            setPendingDelete(null);
+            setDeleteError(err.message || "Could not delete this user.");
+          }
         }}
       />
       <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />

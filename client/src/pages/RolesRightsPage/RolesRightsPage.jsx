@@ -16,6 +16,7 @@ const RolesRightsPage = () => {
   const { user, refreshUser } = useAuth();
   const [roles, setRoles] = useState([]);
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState({ open: false, mode: "add", role: null });
   const [pending, setPending] = useState(null);
   const [success, setSuccess] = useState("");
@@ -25,14 +26,17 @@ const RolesRightsPage = () => {
   const canEdit = can(user, "roles-rights", "edit");
   const canDelete = can(user, "roles-rights", "delete");
 
-  const load = () =>
-    Promise.all([api("/api/roles"), api("/api/users").catch(() => [])])
+  const load = () => {
+    setLoading(true);
+    return Promise.all([api("/api/roles"), api("/api/users").catch(() => [])])
       .then(([roleRows, userRows]) => {
         setRoles(Array.isArray(roleRows) ? roleRows : []);
         setUsers(userRows);
         setError("");
       })
-      .catch((err) => setError(err.message || "Could not load roles."));
+      .catch((err) => setError(err.message || "Could not load roles."))
+      .finally(() => setLoading(false));
+  };
 
   useEffect(() => {
     load();
@@ -105,6 +109,7 @@ const RolesRightsPage = () => {
         {error ? <p className="fc-error">{error}</p> : null}
         <DataTable
           rows={filtered}
+          loading={loading}
           columns={columns}
           noun="roles"
           totalCount={rows.length}

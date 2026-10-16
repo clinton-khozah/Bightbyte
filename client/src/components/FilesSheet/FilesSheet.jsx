@@ -7,14 +7,18 @@ const FolderIcon = () => (
   </svg>
 );
 
-const FilesSheet = ({ rows = [], emptyText = "Nothing here yet." }) => (
+const FilesSheet = ({ rows = [], emptyText = "Nothing here yet.", loading = false }) => (
   <div className="files-sheet">
     <div className="files-sheet__head">
       <span>Name</span>
       <span>Stack</span>
       <span>Actions</span>
     </div>
-    {!rows.length ? (
+    {loading ? (
+      <div className="files-sheet__loading" role="status" aria-label="Loading documents">
+        <span className="files-sheet__spinner" aria-hidden="true" />
+      </div>
+    ) : !rows.length ? (
       <div className="files-sheet__empty">{emptyText}</div>
     ) : (
       rows.map((row) => (
