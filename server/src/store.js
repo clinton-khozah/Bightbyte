@@ -14,7 +14,7 @@ const now = () => new Date().toISOString();
 const isUuid = (value) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 
-const STATUS_TRIES = ["active", "available", "pending", "in_use", "idle"];
+const STATUS_TRIES = ["active", "available", "pending", "idle"];
 const ROLE_TRIES = ["driver", "admin", "fleet_manager", "finance", "super_admin", "user", "member"];
 
 const compactRow = (row) => {
@@ -98,6 +98,13 @@ const writeRemote = async (run) => {
       }
       delete payload.assigned_driver_id;
       continue;
+    }
+    if (/invalid input value for enum/i.test(last)) {
+      if (/status/i.test(last)) {
+        delete payload.status;
+        continue;
+      }
+      break;
     }
     if (/invalid input syntax for type json/i.test(last)) {
       delete payload.documents;

@@ -297,7 +297,7 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
       servicesDue,
       kpis: {
         vehicles: assignedVehicles.length,
-        inUse: assignedVehicles.filter((v) => v.status === "in_use").length,
+        inUse: assignedVehicles.filter((v) => v.assigned_driver_id || v.status === "in_use").length,
         checkins: mineCheckins.length,
         reviews: mineReviews.length,
         checkinTotal: mine ? 0 : checkinTotal,
@@ -1218,12 +1218,7 @@ const assignVehicleToDriver = async (companyId, driverId, vehicleId) => {
   await Promise.all(
     vehicles
       .filter((v) => v.assigned_driver_id === driverId && v.id !== vehicleId)
-      .map((v) =>
-        db.update("vehicles", v.id, {
-          assigned_driver_id: null,
-          status: v.status === "in_use" ? "available" : v.status,
-        }),
-      ),
+      .map((v) => db.update("vehicles", v.id, { assigned_driver_id: null })),
   );
   if (vehicleId) {
     const current = vehicles.find((v) => v.id === vehicleId);
@@ -1231,10 +1226,7 @@ const assignVehicleToDriver = async (companyId, driverId, vehicleId) => {
     if (current.assigned_driver_id && current.assigned_driver_id !== driverId) {
       await db.update("profiles", current.assigned_driver_id, { assigned_vehicle_id: null });
     }
-    await db.update("vehicles", vehicleId, {
-      assigned_driver_id: driverId,
-      status: current.status === "maintenance" ? "maintenance" : "in_use",
-    });
+    await db.update("vehicles", vehicleId, { assigned_driver_id: driverId });
   }
   return db.update("profiles", driverId, { assigned_vehicle_id: vehicleId || null });
 };
