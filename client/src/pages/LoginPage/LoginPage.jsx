@@ -1,12 +1,20 @@
 import React, { useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import "./LoginPage.css";
 
+const emailFromLink = (value) => {
+  let email = String(value || "").trim();
+  const angled = email.match(/<([^>]+@[^>]+)>/);
+  if (angled) email = angled[1];
+  return email.replace(/^mailto:/i, "").trim();
+};
+
 const LoginPage = () => {
   const { user, login, register } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState("login");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -14,7 +22,7 @@ const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [form, setForm] = useState({
-    email: "",
+    email: emailFromLink(searchParams.get("email")),
     password: "",
     companyName: "",
     fullName: "",
@@ -112,7 +120,8 @@ const LoginPage = () => {
         <label className="bb-auth__field">
           Email
           <input
-            type="email"
+            type="text"
+            inputMode="email"
             autoComplete="username"
             required={isLogin}
             value={form.email}

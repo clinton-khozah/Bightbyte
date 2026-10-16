@@ -50,6 +50,7 @@ export const sendFleetEmail = async ({
     });
   }
   try {
+    const loginUrl = extra.login_url || config.appLoginUrl;
     await sendEmailJs({
       to_email: address,
       to_name: toName || "",
@@ -58,8 +59,12 @@ export const sendFleetEmail = async ({
       message,
       company_name: companyName || "Fleet21",
       action_label: "Sign in",
-      login_url: config.appLoginUrl,
-      username: extra.username || "",
+      login_url: loginUrl,
+      link: loginUrl,
+      action_url: loginUrl,
+      username: extra.username || address,
+      email: extra.username || address,
+      user_email: extra.username || address,
       password: extra.password || "",
       user_password: extra.password || "",
     });
@@ -179,9 +184,22 @@ export const notifyCompanyApproved = async ({ company, people }) => {
   );
 };
 
+const inviteLoginUrl = (email) => {
+  const base = config.appLoginUrl || "https://brightbyte.co.za/login";
+  try {
+    const url = new URL(base);
+    if (email) url.searchParams.set("email", email);
+    return url.toString();
+  } catch {
+    const join = base.includes("?") ? "&" : "?";
+    return `${base}${join}email=${encodeURIComponent(email || "")}`;
+  }
+};
+
 export const notifyInvite = async ({ company, person, username, password, inviterName }) => {
   if (!person?.email) return;
-  const login = config.appLoginUrl;
+  const email = String(username || person.email).trim().toLowerCase();
+  const login = inviteLoginUrl(email);
   await notifyAndMail({
     companyId: company.id,
     userId: person.id,
@@ -191,12 +209,12 @@ export const notifyInvite = async ({ company, person, username, password, invite
     title: "You're invited to BrightByte",
     subject: `You're invited to ${company.name} on BrightByte`,
     headline: "You're invited",
-    message: `${inviterName ? `${inviterName} invited you` : "You have been invited"} to join ${company.name} on BrightByte. Sign in at ${login} with email ${username} and password ${password}. This is your login password. It does not expire.`,
+    message: `${inviterName ? `${inviterName} invited you` : "You have been invited"} to join ${company.name} on BrightByte. Click Sign in, then use this email: ${email} and this password: ${password}. This password does not expire.`,
     companyName: company.name,
-    link: "/login",
+    link: login,
     type: "invite",
     force: true,
-    extra: { username, password },
+    extra: { username: email, password, login_url: login },
   });
 };
 

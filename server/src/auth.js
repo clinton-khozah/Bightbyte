@@ -48,6 +48,14 @@ export const requirePermission = (module, action = "view") => (req, res, next) =
   return res.status(403).json({ error: "Not allowed for this role" });
 };
 
+export const normalizeEmail = (value) => {
+  let email = String(value || "").trim().toLowerCase();
+  const angled = email.match(/<([^>]+@[^>]+)>/);
+  if (angled) email = angled[1].trim().toLowerCase();
+  email = email.replace(/^mailto:/i, "").replace(/\s+/g, "");
+  return email;
+};
+
 export const verifyPassword = (plain, hash) => {
   if (!plain || typeof hash !== "string" || hash.length < 20) return false;
   try {

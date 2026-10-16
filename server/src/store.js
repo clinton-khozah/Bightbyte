@@ -684,22 +684,16 @@ export const db = {
   supabase,
 
   async findUserByEmail(email) {
+    const needle = String(email || "").trim().toLowerCase();
+    if (!needle) return null;
+    const same = (value) => String(value || "").trim().toLowerCase() === needle;
     if (!useSupabase) {
-      return memory.profiles.find(
-        (p) => p.email.toLowerCase() === String(email).toLowerCase(),
-      );
+      return memory.profiles.find((p) => same(p.email));
     }
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("*")
-      .ilike("email", email)
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await supabase.from("profiles").select("*").ilike("email", needle).limit(8);
     if (error) throw error;
-    return (
-      data ||
-      memory.profiles.find((p) => p.email.toLowerCase() === String(email).toLowerCase())
-    );
+    const match = (data || []).find((p) => same(p.email));
+    return match || memory.profiles.find((p) => same(p.email)) || null;
   },
 
   async getUser(id) {

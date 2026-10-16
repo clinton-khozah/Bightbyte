@@ -6,7 +6,7 @@ import { moduleDir } from "./moduleDir.js";
 import multer from "multer";
 import { config, useSupabase } from "./config.js";
 import { db } from "./store.js";
-import { requireAuth, requirePermission, requireRole, signToken, verifyPassword } from "./auth.js";
+import { normalizeEmail, requireAuth, requirePermission, requireRole, signToken, verifyPassword } from "./auth.js";
 import { hasPermission, resolvePermissions, ROLE_TEMPLATES } from "./permissions.js";
 import {
   evaluateAllCompanyServices,
@@ -70,11 +70,14 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   try {
-    const email = String(req.body?.email || "").trim().toLowerCase();
+    const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
     const user = await db.findUserByEmail(email);
-    if (!user || !verifyPassword(password, user.password_hash)) {
-      return res.status(401).json({ error: "Wrong email or password" });
+    if (!user) {
+      return res.status(401).json({ error: "No account for that email. Use the email address from your invite." });
+    }
+    if (!verifyPassword(password, user.password_hash)) {
+      return res.status(401).json({ error: "Wrong password" });
     }
     const company = user.company_id ? await db.getById("companies", user.company_id) : null;
     if (company?.status === "pending" || user.status === "pending") {
@@ -1122,7 +1125,7 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
     const companyId = req.body.company_id || req.body.companyId || req.user.company_id;
     const company = await db.getById("companies", companyId);
     if (!company) return res.status(400).json({ error: "Select a valid company" });
-    const email = String(req.body.email || req.body.emailAddress || "").trim().toLowerCase();
+    const email = normalizeEmail(req.body.email || req.body.emailAddress);
     const fullName = req.body.full_name || `${req.body.firstName || ""} ${req.body.lastName || ""}`.trim();
     if (!email || !fullName) return res.status(400).json({ error: "Name and email are required" });
     const roleMap = { supervisor: "fleet_manager" };
