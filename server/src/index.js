@@ -42,6 +42,15 @@ app.use("/uploads", express.static(uploadDir));
 const fileUrl = (req, filename) =>
   `${req.protocol}://${req.get("host")}/uploads/${filename}`;
 
+const companyStatusOf = (row) => String(row?.status || "").trim().toLowerCase();
+
+const isAwaitingCompanyApproval = (company, person) => {
+  const companyStatus = companyStatusOf(company);
+  if (companyStatus === "active" || companyStatus === "approved") return false;
+  if (companyStatus === "pending" || companyStatus === "submitted") return true;
+  return !company && companyStatusOf(person) === "pending";
+};
+
 const ROLE_IDS = { super_admin: "R000", admin: "R001", fleet_manager: "R002", driver: "R003" };
 const ROLE_LABELS = {
   super_admin: "Super admin",
@@ -92,7 +101,7 @@ app.post("/api/auth/login", async (req, res) => {
       return res.status(401).json({ error: "Wrong password" });
     }
     const company = user.company_id ? await db.getById("companies", user.company_id) : null;
-    if (company?.status === "pending" || user.status === "pending") {
+    if (isAwaitingCompanyApproval(company, user)) {
       return res.status(403).json({
         error: "This company has been submitted. Wait for a super admin to approve it.",
       });
@@ -133,7 +142,7 @@ app.get("/api/me", requireAuth, async (req, res) => {
   await evaluateWorkspaceServices(req.user).catch(() => {});
   const full = await db.getUser(req.user.id);
   const company = full?.company_id ? await db.getById("companies", full.company_id) : null;
-  if (company?.status === "pending" || full?.status === "pending") {
+  if (isAwaitingCompanyApproval(company, full)) {
     return res.status(403).json({
       error: "This company has been submitted. Wait for a super admin to approve it.",
     });
