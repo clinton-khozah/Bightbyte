@@ -1564,7 +1564,16 @@ app.post("/api/expenses", requireAuth, async (req, res) => {
       driverId,
       vehicleId: req.body.vehicle_id,
     });
+    let backdated = null;
+    if (req.body.expense_date) {
+      const when = new Date(req.body.expense_date);
+      if (Number.isNaN(when.getTime()) || when.getTime() > Date.now() + 60 * 1000) {
+        return res.status(400).json({ error: "Enter a valid expense date" });
+      }
+      backdated = when.toISOString();
+    }
     const row = await db.insert("expenses", {
+      ...(backdated ? { created_at: backdated } : {}),
       company_id: companyId,
       driver_id: driverId,
       vehicle_id: req.body.vehicle_id,

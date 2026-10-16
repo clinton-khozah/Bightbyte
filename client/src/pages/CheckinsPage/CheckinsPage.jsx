@@ -150,6 +150,7 @@ const emptyExpense = {
   proof_url: "",
   frequency: "once_off",
   status: "submitted",
+  expense_date: "",
 };
 
 const CheckinsPage = () => {
@@ -457,9 +458,11 @@ const CheckinsPage = () => {
         });
         setSuccess("Expense was updated.");
       } else {
+        const { expense_date, ...payload } = expenseForm;
+        if (expense_date) payload.expense_date = new Date(expense_date).toISOString();
         await api("/api/expenses", {
           method: "POST",
-          body: JSON.stringify(expenseForm),
+          body: JSON.stringify(payload),
         });
         setSuccess("Expense was logged.");
       }
@@ -796,6 +799,7 @@ const CheckinsPage = () => {
         vehicles={vehicles}
         showDriver={!isDriver}
         showStatus={editing?.record_type === "expense" && canManage}
+        showDate={editing?.record_type !== "expense" && !isDriver}
       />
       <ConfirmModal
         open={Boolean(pendingDelete)}

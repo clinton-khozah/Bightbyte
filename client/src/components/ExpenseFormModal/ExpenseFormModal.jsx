@@ -43,6 +43,7 @@ const ExpenseFormModal = ({
   vehicles = [],
   showDriver,
   showStatus,
+  showDate,
 }) => {
   if (!open) return null;
 
@@ -116,6 +117,17 @@ const ExpenseFormModal = ({
             required
           />
         </label>
+        {showDate ? (
+          <label>
+            Expense date
+            <input
+              type="datetime-local"
+              value={form.expense_date || ""}
+              max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+              onChange={(e) => set({ expense_date: e.target.value })}
+            />
+          </label>
+        ) : null}
         <LineSelect
           label="Frequency"
           value={form.frequency}
