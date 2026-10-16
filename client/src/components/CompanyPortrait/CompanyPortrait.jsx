@@ -14,10 +14,15 @@ const CompanyPortrait = ({ name = "Company" }) => {
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
+    setFailed(false);
     api("/api/company")
       .then((company) => setSrc(company?.photo_url || ""))
       .catch(() => setSrc(""));
   }, []);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
 
   const showPhoto = Boolean(src) && !failed;
 

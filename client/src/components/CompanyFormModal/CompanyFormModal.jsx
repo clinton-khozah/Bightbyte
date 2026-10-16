@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useState } from "react";
 import Modal from "../Modal/Modal";
 import PhotoUploadField from "../PhotoUploadField/PhotoUploadField";
 import { uploadFiles } from "../../api";
 import "./CompanyFormModal.css";
 
 const CompanyFormModal = ({ open, editing, form, onChange, onClose, onSubmit }) => {
+  const [photoError, setPhotoError] = useState("");
   if (!open) return null;
 
   const set = (patch) => onChange({ ...form, ...patch });
@@ -24,10 +25,17 @@ const CompanyFormModal = ({ open, editing, form, onChange, onClose, onSubmit }) 
             label={form.photo_url ? "Replace photograph" : "Attach photograph"}
             onChange={async (ev) => {
               if (!ev.target.files?.length) return;
-              const { urls } = await uploadFiles(ev.target.files);
-              set({ photo_url: urls[0] });
+              setPhotoError("");
+              try {
+                const { urls } = await uploadFiles(ev.target.files);
+                if (!urls?.[0]) throw new Error("The photo did not upload. Try again.");
+                set({ photo_url: urls[0] });
+              } catch (err) {
+                setPhotoError(err.message || "Could not upload the company photo.");
+              }
             }}
           />
+          {photoError ? <p className="fc-error">{photoError}</p> : null}
           <div className="company-form__identity-copy">
             <p className="company-form__eyebrow">Workspace</p>
             <span className="company-form__rule" aria-hidden="true" />

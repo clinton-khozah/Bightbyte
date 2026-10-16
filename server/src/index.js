@@ -2,7 +2,6 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
-import { moduleDir } from "./moduleDir.js";
 import multer from "multer";
 import { config, useSupabase } from "./config.js";
 import { db } from "./store.js";
@@ -20,28 +19,14 @@ import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, no
 import { signInAuth, upsertAuthUser } from "./supabaseAuth.js";
 import { ensurePlatformAdmin } from "./platformAdmin.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
+import { persistUploads, uploadDir } from "./storage.js";
 
-const __dirname = moduleDir(import.meta.url);
-const onLambda = Boolean(process.env.LAMBDA_TASK_ROOT || process.env.NETLIFY);
-const uploadDir = onLambda ? path.join("/tmp", "fleet21-uploads") : path.join(__dirname, "..", "uploads");
-fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const safe = String(file.originalname || "file").replace(/[^\w.-]/g, "_");
-    cb(null, `${Date.now()}-${safe}`);
-  },
-});
-const upload = multer({ storage, limits: { fileSize: 12 * 1024 * 1024 } });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 
 const app = express();
 app.use(cors({ origin: config.clientOrigin, credentials: true }));
 app.use(express.json({ limit: "8mb" }));
 app.use("/uploads", express.static(uploadDir));
-
-const fileUrl = (req, filename) =>
-  `${req.protocol}://${req.get("host")}/uploads/${filename}`;
 
 const companyStatusOf = (row) => String(row?.status || "").trim().toLowerCase();
 
@@ -161,7 +146,12 @@ app.get("/api/me", requireAuth, async (req, res) => {
 });
 
 app.get("/api/company", requireAuth, async (req, res) => {
-  const company = await loadCompany(req.user.company_id);
+  const scoped = await db.hydrateProfile(req.user);
+  let company = await loadCompany(scoped?.company_id || req.user.company_id);
+  if (!company && req.user.role === "super_admin") {
+    const ids = await companyIdsForUser(scoped || req.user);
+    company = await loadCompany(ids[0]);
+  }
   if (!company) return res.status(404).json({ error: "Company not found" });
   res.json(company);
 });
@@ -186,9 +176,14 @@ app.patch("/api/me", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/api/uploads", requireAuth, upload.array("files", 12), (req, res) => {
-  const urls = (req.files || []).map((file) => fileUrl(req, file.filename));
-  res.json({ urls });
+app.post("/api/uploads", requireAuth, upload.array("files", 12), async (req, res) => {
+  try {
+    const urls = await persistUploads(req.files || []);
+    if (!urls.length) return res.status(400).json({ error: "No files were received. Try a smaller photo." });
+    res.json({ urls });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Could not store the photo." });
+  }
 });
 
 const skipSeedRow = (row) =>
@@ -620,28 +615,66 @@ app.delete("/api/users/:id", requireAuth, requirePermission("drivers", "delete")
   }
 });
 
-const seedRolesForCompany = async (companyId) => {
-  if (!companyId) return [];
-  let rows = await db.fetchAll("roles", companyId);
-  if (rows.length) return rows;
-  await Promise.all(
-    ROLE_TEMPLATES.map((template) =>
-      db.insert("roles", {
+const asRoleRow = (row, companyId) => ({
+  ...row,
+  id: row.id || `${companyId || "platform"}-${row.RoleID || row.roleid || "role"}`,
+  company_id: row.company_id || companyId,
+  RoleID: row.RoleID || row.roleid,
+  RoleName: row.RoleName || row.rolename,
+  Permissions: row.Permissions || row.permissions,
+  permissionsMatrix: row.permissionsMatrix || row.permissionsmatrix || {},
+  description: row.description || "",
+  state: row.state || "active",
+  key: row.key,
+});
+
+const roleTemplateRows = (companyId) =>
+  ROLE_TEMPLATES.map((template) =>
+    asRoleRow(
+      {
         ...template,
         company_id: companyId,
         state: "active",
-        isSystem: false,
-      }),
+        isSystem: true,
+      },
+      companyId,
     ),
   );
-  return db.fetchAll("roles", companyId);
+
+const seedRolesForCompany = async (companyId) => {
+  if (!companyId) return roleTemplateRows("");
+  try {
+    const rows = await db.fetchAll("roles", companyId);
+    if (rows.length) return rows.map((row) => asRoleRow(row, companyId));
+    for (const template of ROLE_TEMPLATES) {
+      await db
+        .insert("roles", {
+          company_id: companyId,
+          RoleID: template.RoleID,
+          RoleName: template.RoleName,
+          key: template.key,
+          description: template.description,
+          Permissions: template.Permissions,
+          permissionsMatrix: template.permissionsMatrix || {},
+          state: "active",
+          isSystem: false,
+        })
+        .catch((error) => console.error("[roles] seed", error.message));
+    }
+    const seeded = await db.fetchAll("roles", companyId);
+    return seeded.length ? seeded.map((row) => asRoleRow(row, companyId)) : roleTemplateRows(companyId);
+  } catch (error) {
+    console.error("[roles] load", error.message);
+    return roleTemplateRows(companyId);
+  }
 };
 
 const rolesCompanyId = async (user, body = {}) => {
-  if (user.role !== "super_admin") return user.company_id;
+  const scoped = await db.hydrateProfile(user);
+  if (user.role !== "super_admin") return scoped?.company_id || user.company_id;
   if (body.company_id) return body.company_id;
-  const ids = await companyIdsForUser(user);
-  return ids[0] || user.company_id;
+  const ids = await companyIdsForUser(scoped || user);
+  return ids[0] || scoped?.company_id || user.company_id;
 };
 
 const nextRoleCode = (rows) => {
@@ -653,15 +686,22 @@ const nextRoleCode = (rows) => {
 };
 
 app.get("/api/roles", requireAuth, async (req, res) => {
-  if (!hasPermission(req.user, "roles-rights", "view") && !hasPermission(req.user, "drivers", "view")) {
-    return res.status(403).json({ error: "Not allowed for this role" });
+  try {
+    if (!hasPermission(req.user, "roles-rights", "view") && !hasPermission(req.user, "drivers", "view")) {
+      return res.status(403).json({ error: "Not allowed for this role" });
+    }
+    const scoped = await db.hydrateProfile(req.user);
+    if (req.user.role === "super_admin") {
+      const ids = await companyIdsForUser(scoped || req.user);
+      if (!ids.length) return res.json(await seedRolesForCompany(scoped?.company_id));
+      const packs = await Promise.all(ids.map((id) => seedRolesForCompany(id)));
+      return res.json(packs.flat());
+    }
+    res.json(await seedRolesForCompany(scoped?.company_id || req.user.company_id));
+  } catch (error) {
+    console.error("[roles] list", error.message);
+    res.json(await seedRolesForCompany(req.user?.company_id));
   }
-  if (req.user.role === "super_admin") {
-    const ids = await companyIdsForUser(req.user);
-    const packs = await Promise.all(ids.map((id) => seedRolesForCompany(id)));
-    return res.json(packs.flat());
-  }
-  res.json(await seedRolesForCompany(req.user.company_id));
 });
 
 app.post("/api/roles", requireAuth, requirePermission("roles-rights", "create"), async (req, res) => {
@@ -748,10 +788,16 @@ app.post("/api/companies", requireAuth, requirePermission("companies", "create")
   }
 });
 
-app.patch("/api/companies/:id", requireAuth, requirePermission("companies", "edit"), async (req, res) => {
+app.patch("/api/companies/:id", requireAuth, async (req, res) => {
+  if (!hasPermission(req.user, "companies", "edit") && !hasPermission(req.user, "settings", "edit")) {
+    return res.status(403).json({ error: "Not allowed for this role" });
+  }
   const existing = await db.getById("companies", req.params.id);
   if (!existing) return res.status(404).json({ error: "Company not found" });
-  const patch = { ...(req.body || {}) };
+  const patch = {};
+  ["name", "code", "city", "address", "contact_email", "photo_url", "status"].forEach((key) => {
+    if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+  });
   if (req.user.role !== "super_admin") {
     delete patch.status;
     if (existing.status === "pending") {

@@ -26,24 +26,35 @@ const RolesRightsPage = () => {
   const canDelete = can(user, "roles-rights", "delete");
 
   const load = () =>
-    Promise.all([api("/api/roles"), api("/api/users").catch(() => [])]).then(([roleRows, userRows]) => {
-      setRoles(roleRows);
-      setUsers(userRows);
-    });
+    Promise.all([api("/api/roles"), api("/api/users").catch(() => [])])
+      .then(([roleRows, userRows]) => {
+        setRoles(Array.isArray(roleRows) ? roleRows : []);
+        setUsers(userRows);
+        setError("");
+      })
+      .catch((err) => setError(err.message || "Could not load roles."));
 
   useEffect(() => {
     load();
   }, []);
 
-  const rows = roles.map((role) => ({
-    ...role,
-    users: users.filter(
-      (person) =>
-        person.role_id === role.RoleID ||
-        person.role === role.key ||
-        String(person.role || "").toLowerCase() === String(role.RoleName || "").toLowerCase(),
-    ).length,
-  }));
+  const rows = roles.map((role) => {
+    const RoleID = role.RoleID || role.roleid;
+    const RoleName = role.RoleName || role.rolename;
+    return {
+      ...role,
+      RoleID,
+      RoleName,
+      Permissions: role.Permissions || role.permissions,
+      state: role.state || "active",
+      users: users.filter(
+        (person) =>
+          person.role_id === RoleID ||
+          person.role === role.key ||
+          String(person.role || "").toLowerCase() === String(RoleName || "").toLowerCase(),
+      ).length,
+    };
+  });
 
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
     tabKey: "state",

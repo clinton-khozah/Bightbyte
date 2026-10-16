@@ -119,6 +119,9 @@ create table if not exists vehicles (
 );
 
 alter table vehicles add column if not exists company_id uuid references companies(id) on delete cascade;
+alter table vehicles add column if not exists organisation_id uuid;
+update vehicles set organisation_id = company_id where organisation_id is null and company_id is not null;
+alter table vehicles alter column organisation_id drop not null;
 alter table vehicles add column if not exists registration text;
 alter table vehicles add column if not exists make text;
 alter table vehicles add column if not exists model text;
@@ -129,6 +132,8 @@ alter table vehicles add column if not exists colour text;
 alter table vehicles add column if not exists fuel_type text;
 alter table vehicles add column if not exists engine text;
 alter table vehicles add column if not exists licence_expiry text;
+alter table vehicles add column if not exists status text default 'available';
+alter table vehicles add column if not exists odometer int default 0;
 alter table vehicles add column if not exists value numeric(14,2) default 0;
 alter table vehicles add column if not exists photo_url text;
 alter table vehicles add column if not exists photos jsonb default '[]'::jsonb;
@@ -440,3 +445,20 @@ create index if not exists incidents_vehicle_id_idx on incidents (vehicle_id);
 create index if not exists maintenance_vehicle_id_idx on maintenance (vehicle_id);
 
 -- API uses the service role key, which bypasses RLS. No anon policies on purpose.
+insert into storage.buckets (id, name, public)
+values ('fleet21', 'fleet21', true)
+on conflict (id) do update set public = true;
+
+drop policy if exists "fleet21_public_read" on storage.objects;
+create policy "fleet21_public_read"
+on storage.objects for select
+to public
+using (bucket_id = 'fleet21');
+
+drop policy if exists "fleet21_auth_insert" on storage.objects;
+create policy "fleet21_auth_insert"
+on storage.objects for insert
+to authenticated
+with check (bucket_id = 'fleet21');
+
+notify pgrst, 'reload schema';

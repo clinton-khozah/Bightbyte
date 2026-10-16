@@ -14,6 +14,37 @@ const now = () => new Date().toISOString();
 const isUuid = (value) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 
+const withOrganisationId = (row) => {
+  if (!row || typeof row !== "object") return row;
+  const companyId = row.company_id || row.organisation_id;
+  if (!companyId) return { ...row };
+  return {
+    ...row,
+    company_id: row.company_id || companyId,
+    organisation_id: row.organisation_id || companyId,
+  };
+};
+
+const missingSchemaColumn = (message) => {
+  const match = String(message || "").match(/Could not find the '([^']+)' column/i);
+  return match?.[1] || "";
+};
+
+const writeRemote = async (run) => {
+  let payload = withOrganisationId(run.payload);
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const { data, error } = await run.exec(payload);
+    if (!error) return data;
+    const column = missingSchemaColumn(error.message);
+    if (column && Object.prototype.hasOwnProperty.call(payload, column)) {
+      delete payload[column];
+      continue;
+    }
+    throw error;
+  }
+  throw new Error("Could not write row");
+};
+
 const seedPasswordHash = bcrypt.hashSync("fleet21", 10);
 
 const memory = {
@@ -871,9 +902,10 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
-    const { data, error } = await supabase.from(name).insert(row).select().single();
-    if (error) throw error;
-    return data;
+    return writeRemote({
+      payload: row,
+      exec: (payload) => supabase.from(name).insert(payload).select().single(),
+    });
   },
 
   async getById(table, id) {
@@ -896,14 +928,10 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
-    const { data, error } = await supabase
-      .from(name)
-      .update(patch)
-      .eq("id", id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    return writeRemote({
+      payload: patch,
+      exec: (payload) => supabase.from(name).update(payload).eq("id", id).select().single(),
+    });
   },
 
   async remove(table, id) {

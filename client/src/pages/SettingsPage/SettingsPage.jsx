@@ -42,8 +42,14 @@ const SettingsPage = () => {
   const onCompanyPhoto = async (event) => {
     const files = event.target.files;
     if (!files?.length) return;
-    const { urls } = await uploadFiles(files);
-    setCompany((c) => ({ ...c, photo_url: urls[0] }));
+    setError("");
+    try {
+      const { urls } = await uploadFiles(files);
+      if (!urls?.[0]) throw new Error("The photo did not upload. Try again.");
+      setCompany((c) => ({ ...c, photo_url: urls[0] }));
+    } catch (err) {
+      setError(err.message || "Could not upload the company photo.");
+    }
   };
 
   const onProfilePhoto = async (event) => {
@@ -73,7 +79,9 @@ const SettingsPage = () => {
                 setError("");
                 if (!canManage) return;
                 try {
-                  const saved = await api(`/api/companies/${user.company_id}`, {
+                  const companyId = company.id || user.company_id;
+                  if (!companyId) throw new Error("Company not found.");
+                  const saved = await api(`/api/companies/${companyId}`, {
                     method: "PATCH",
                     body: JSON.stringify({
                       name: company.name,

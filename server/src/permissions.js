@@ -104,8 +104,9 @@ export const ROLE_TEMPLATES = [
 
 export const hasPermission = (user, module, action = "view") => {
   if (!user) return false;
-  if (user.role === "super_admin") return true;
-  return Boolean(user.permissions?.[module]?.[action]);
+  if (user.role === "super_admin" || user.role_key === "super_admin") return true;
+  if (user.permissions?.[module]?.[action]) return true;
+  return Boolean(matrixForKey(user.role_key || user.role)?.[module]?.[action]);
 };
 
 const parseMatrix = (value) => {
@@ -149,10 +150,14 @@ export const resolvePermissions = async (user, db) => {
     pool.find((role) => role.key === user.role && role.company_id === user.company_id) ||
     pool.find((role) => role.key === user.role);
   const key = row?.key || user.role || "driver";
-  const permissions = mergeMatrix(row?.permissionsMatrix ?? row?.permissionsmatrix) || matrixForKey(key);
+  const base = matrixForKey(key);
+  const extra = parseMatrix(row?.permissionsMatrix ?? row?.permissionsmatrix);
+  const permissions = Object.fromEntries(
+    MODULES.map((id) => [id, extra[id] ? { ...base[id], ...extra[id] } : { ...base[id] }]),
+  );
   return {
     permissions: row?.state === "inactive" ? emptyMatrix() : permissions,
-    role_label: row?.RoleName || user.role,
+    role_label: row?.RoleName || row?.rolename || ROLE_TEMPLATES.find((item) => item.key === key)?.RoleName || user.role,
     role_key: key,
   };
 };
