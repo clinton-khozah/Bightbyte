@@ -669,7 +669,7 @@ try {
 let supabase = null;
 if (useSupabase) {
   supabase = createClient(config.supabaseUrl, config.supabaseServiceKey, {
-    auth: { persistSession: false },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
 }
 
