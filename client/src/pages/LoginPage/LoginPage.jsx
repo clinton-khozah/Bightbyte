@@ -8,7 +8,8 @@ const emailFromLink = (value) => {
   let email = String(value || "").trim();
   const angled = email.match(/<([^>]+@[^>]+)>/);
   if (angled) email = angled[1];
-  return email.replace(/^mailto:/i, "").trim();
+  email = email.replace(/^mailto:/i, "").trim();
+  return email.includes("@") ? email : "";
 };
 
 const LoginPage = () => {

@@ -76,12 +76,15 @@ app.post("/api/auth/login", async (req, res) => {
     if (!email || !password) {
       return res.status(401).json({ error: "Enter your email and password." });
     }
-    const user = await db.findUserByEmail(email);
+    const auth = useSupabase ? await signInAuth(email, password) : { ok: false };
+    let user = await db.findUserByEmail(email);
+    if (!user && auth.ok && auth.user?.id) {
+      user = await db.getUser(auth.user.id);
+    }
     if (!user) {
       return res.status(401).json({ error: "No account for that email. Use the email address from your invite." });
     }
     if (useSupabase) {
-      const auth = await signInAuth(email, password);
       if (!auth.ok && !verifyPassword(password, user.password_hash)) {
         return res.status(401).json({ error: "Wrong password" });
       }

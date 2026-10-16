@@ -688,16 +688,18 @@ export const db = {
     const needle = String(email || "").trim().toLowerCase();
     if (!needle) return null;
     const same = (value) => String(value || "").trim().toLowerCase() === needle;
-    const fromMemory = () => memory.profiles.find((p) => same(p.email));
+    const rowEmails = (row) => [row?.email, row?.Email, row?.email_address, row?.emailAddress];
+    const matches = (row) => rowEmails(row).some((value) => same(value));
+    const fromMemory = () => memory.profiles.find(matches);
     if (!useSupabase) return fromMemory() || null;
-    const { data, error } = await supabase.from("profiles").select("*").eq("email", needle).limit(1);
-    if (error) throw error;
-    if (data?.[0] && same(data[0].email)) return data[0];
-    const { data: rows, error: listErr } = await supabase.from("profiles").select("*");
-    if (listErr) throw listErr;
-    const match = (rows || []).find((p) => same(p.email));
-    if (!match) return fromMemory() || null;
-    return (await this.getUser(match.id)) || match;
+    const companies = await this.fetchAll("companies");
+    for (const company of companies) {
+      if (!company?.id || company.demo) continue;
+      const people = await this.fetchAll("profiles", company.id);
+      const hit = people.find(matches);
+      if (hit) return hit;
+    }
+    return fromMemory() || null;
   },
 
   async getUser(id) {
