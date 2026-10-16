@@ -1228,18 +1228,35 @@ app.patch("/api/vehicles/:id", requireAuth, requirePermission("vehicles", "edit"
 });
 
 app.delete("/api/vehicles/:id", requireAuth, requirePermission("vehicles", "delete"), async (req, res) => {
-  const existing = await db.getById("vehicles", req.params.id);
-  if (!existing || isDemoVehicle(existing) || !companyScopeOk(req.user, existing.company_id)) {
-    return res.status(404).json({ error: "Vehicle not found" });
+  try {
+    const existing = await db.getById("vehicles", req.params.id);
+    if (!existing || isDemoVehicle(existing) || !companyScopeOk(req.user, existing.company_id)) {
+      return res.status(404).json({ error: "Vehicle not found" });
+    }
+    const links = [
+      ["profiles", "assigned_vehicle_id"],
+      ["checkins", "vehicle_id"],
+      ["expenses", "vehicle_id"],
+      ["checkin_schedules", "vehicle_id"],
+      ["reviews", "vehicle_id"],
+      ["incidents", "vehicle_id"],
+      ["maintenance", "vehicle_id"],
+      ["refuels", "vehicle_id"],
+      ["supplies", "vehicle_id"],
+      ["mechanics", "vehicle_id"],
+      ["documents", "vehicle_id"],
+    ];
+    for (const [table, column] of links) {
+      await db.clearMatches(table, column, existing.id).catch((error) => {
+        console.error("[delete vehicle]", table, column, error.message);
+      });
+    }
+    await db.remove("vehicles", req.params.id);
+    res.json({ ok: true });
+  } catch (error) {
+    const message = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    res.status(500).json({ error: message || "Could not delete this vehicle." });
   }
-  const drivers = await db.fetchAll("profiles", existing.company_id);
-  await Promise.all(
-    drivers
-      .filter((d) => d.assigned_vehicle_id === existing.id)
-      .map((d) => db.update("profiles", d.id, { assigned_vehicle_id: null })),
-  );
-  await db.remove("vehicles", req.params.id);
-  res.json({ ok: true });
 });
 
 const assignVehicleToDriver = async (companyId, driverId, vehicleId) => {

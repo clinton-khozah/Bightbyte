@@ -72,6 +72,7 @@ const VehiclesPage = () => {
   const [success, setSuccess] = useState("");
   const [companies, setCompanies] = useState([]);
   const [formError, setFormError] = useState("");
+  const [deleteError, setDeleteError] = useState("");
   const [makes, setMakes] = useState([]);
   const [models, setModels] = useState([]);
   const [years, setYears] = useState([]);
@@ -176,6 +177,7 @@ const VehiclesPage = () => {
 
   return (
     <div className="vehicles-page">
+      {deleteError ? <p className="fc-error">{deleteError}</p> : null}
       <OpsPage
         crumb={["Operations", "Assets"]}
         title="Asset Management"
@@ -413,11 +415,15 @@ const VehiclesPage = () => {
         onCancel={() => setPendingDelete(null)}
         onConfirm={async () => {
           setBusy(true);
+          setDeleteError("");
           try {
             await api(`/api/vehicles/${pendingDelete.id}`, { method: "DELETE" });
             setPendingDelete(null);
             setSuccess("Vehicle was deleted.");
             load();
+          } catch (err) {
+            setPendingDelete(null);
+            setDeleteError(err.message || "Could not delete this vehicle.");
           } finally {
             setBusy(false);
           }
