@@ -31,8 +31,9 @@ const DashboardPage = () => {
   };
 
   useEffect(() => {
+    if (!user) return;
     load();
-  }, []);
+  }, [user?.id]);
 
   const kpis = data?.kpis || {};
   const totals = data?.finance?.totals || { expense: 0, total: 0, profit: 0 };

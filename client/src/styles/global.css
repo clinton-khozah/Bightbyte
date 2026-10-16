@@ -90,8 +90,6 @@ p {
 .fc-onboard__input,
 .fc-onboard__select,
 .fc-onboard__textarea,
-.bb-auth__field > input,
-.bb-auth__password,
 .review-status select {
   width: 100%;
   min-height: 36px;
@@ -110,8 +108,6 @@ p {
 .fc-onboard__input:focus,
 .fc-onboard__select:focus,
 .fc-onboard__textarea:focus,
-.bb-auth__field > input:focus,
-.bb-auth__password:focus-within,
 .review-status select:focus {
   outline: none;
   border-bottom-color: #006239;
