@@ -30,14 +30,55 @@ const missingSchemaColumn = (message) => {
   return match?.[1] || "";
 };
 
+const nullSchemaColumn = (message) => {
+  const match = String(message || "").match(/null value in column "([^"]+)"/i);
+  return match?.[1] || "";
+};
+
+const fillRequiredColumn = (payload, column) => {
+  const companyId = payload.company_id || payload.organisation_id;
+  if (column === "organisation_id" || column === "organization_id" || column === "company_id") {
+    if (!companyId) return false;
+    payload[column] = companyId;
+    return true;
+  }
+  if (["number", "vehicle_number", "fleet_number", "unit_number"].includes(column)) {
+    const current = Number(String(payload.number || payload.vehicle_number || "0").replace(/\D/g, "")) || 0;
+    const next = String(current + 1).padStart(5, "0");
+    payload.number = next;
+    payload.vehicle_number = next;
+    payload[column] = next;
+    return true;
+  }
+  if (column === "status") {
+    payload.status = payload.status || "available";
+    return true;
+  }
+  if (column === "odometer") {
+    payload.odometer = Number(payload.odometer) || 0;
+    return true;
+  }
+  if (column === "registration") {
+    payload.registration = payload.registration || "PENDING";
+    return true;
+  }
+  return false;
+};
+
 const writeRemote = async (run) => {
   let payload = withOrganisationId(run.payload);
   for (let attempt = 0; attempt < 12; attempt += 1) {
     const { data, error } = await run.exec(payload);
     if (!error) return data;
-    const column = missingSchemaColumn(error.message);
-    if (column && Object.prototype.hasOwnProperty.call(payload, column)) {
-      delete payload[column];
+    const missing = missingSchemaColumn(error.message);
+    if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
+      delete payload[missing];
+      continue;
+    }
+    const required = nullSchemaColumn(error.message);
+    if (required && fillRequiredColumn(payload, required)) continue;
+    if (/duplicate key|unique constraint/i.test(error.message) && /number/i.test(error.message)) {
+      fillRequiredColumn(payload, "number");
       continue;
     }
     throw error;

@@ -134,6 +134,12 @@ alter table vehicles add column if not exists engine text;
 alter table vehicles add column if not exists licence_expiry text;
 alter table vehicles add column if not exists status text default 'available';
 alter table vehicles add column if not exists odometer int default 0;
+alter table vehicles add column if not exists number text;
+alter table vehicles add column if not exists vehicle_number text;
+do $$ begin
+  alter table vehicles alter column number drop not null;
+exception when undefined_column then null; when others then null;
+end $$;
 alter table vehicles add column if not exists value numeric(14,2) default 0;
 alter table vehicles add column if not exists photo_url text;
 alter table vehicles add column if not exists photos jsonb default '[]'::jsonb;

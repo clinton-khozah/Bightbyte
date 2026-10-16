@@ -108,7 +108,10 @@ const VehiclesPage = () => {
   const openCreate = () => {
     setEditing(null);
     setFormError("");
-    setForm(emptyForm);
+    setForm({
+      ...emptyForm,
+      company_id: user?.company_id || companies[0]?.id || "",
+    });
     setOpen(true);
   };
 

@@ -226,4 +226,8 @@
   .fc-top-nav__bell-wrap {
     display: none;
   }
+
+  .fc-top-nav__role {
+    display: none;
+  }
 }

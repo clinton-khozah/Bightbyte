@@ -24,9 +24,9 @@ const TopNav = ({ user }) => {
         <span className="fc-top-nav__crumb">BrightByte</span>
         <span className="fc-top-nav__sep">/</span>
         <span className="fc-top-nav__crumb">{user?.company_name || "BrightByte"}</span>
-        <span className="fc-top-nav__sep">/</span>
-        <span className="fc-top-nav__crumb">{user?.role_label || user?.role || "—"}</span>
-        <span className="fc-top-nav__sep">/</span>
+        <span className="fc-top-nav__sep fc-top-nav__role">/</span>
+        <span className="fc-top-nav__crumb fc-top-nav__role">{user?.role_label || user?.role || "—"}</span>
+        <span className="fc-top-nav__sep fc-top-nav__role">/</span>
       </div>
       <div className="fc-top-nav__tools">
         <div className="fc-top-nav__bell-wrap">

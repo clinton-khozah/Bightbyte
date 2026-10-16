@@ -394,8 +394,30 @@ const publicVehicle = (user, row, extras = {}) => {
   return next;
 };
 
-const companyScopeOk = (user, companyId) =>
-  user.role === "super_admin" || user.company_id === companyId;
+const sameId = (left, right) =>
+  String(left || "").trim().toLowerCase() === String(right || "").trim().toLowerCase() && Boolean(left);
+
+const isSuperUser = (user) =>
+  user?.role === "super_admin" ||
+  user?.role_key === "super_admin" ||
+  user?.role_id === "R000" ||
+  String(user?.email || "").trim().toLowerCase() ===
+    String(config.platformAdminEmail || "admin@brightbyte.co.za").trim().toLowerCase();
+
+const nextVehicleNumber = (rows = []) => {
+  const max = rows.reduce((n, row) => {
+    const match = String(row.number ?? row.vehicle_number ?? "").match(/(\d+)/);
+    return match ? Math.max(n, Number(match[1])) : n;
+  }, 0);
+  return String(max + 1).padStart(5, "0");
+};
+
+const companyScopeOk = (user, companyId, row = null) => {
+  if (isSuperUser(user)) return true;
+  const userIds = [user?.company_id, user?.organisation_id].filter(Boolean);
+  const targetIds = [companyId, row?.id, row?.organisation_id, row?.company_id].filter(Boolean);
+  return userIds.some((id) => targetIds.some((other) => sameId(id, other)));
+};
 
 const listWorkspacePeople = async (user) => {
   if (!canListCompanyPeople(user)) {
@@ -1086,16 +1108,31 @@ app.get("/api/vehicles/:id", requireAuth, async (req, res) => {
 
 app.post("/api/vehicles", requireAuth, requirePermission("vehicles", "create"), async (req, res) => {
   try {
-    const companyId = req.body.company_id || req.user.company_id;
+    const scoped = (await db.hydrateProfile(req.user)) || req.user;
+    const actor = { ...req.user, company_id: scoped.company_id || req.user.company_id };
+    const companyId = req.body.company_id || actor.company_id;
     const company = await db.getById("companies", companyId);
     if (!company || company.demo) return res.status(400).json({ error: "Select a valid company" });
-    if (!companyScopeOk(req.user, company.id)) return res.status(403).json({ error: "Not allowed for this company" });
+    const ownsCompany =
+      isSuperUser(actor) ||
+      companyScopeOk(actor, company.id, company) ||
+      (actor.email &&
+        company.contact_email &&
+        String(actor.email).trim().toLowerCase() === String(company.contact_email).trim().toLowerCase());
+    if (!ownsCompany) {
+      return res.status(403).json({ error: "Not allowed for this company" });
+    }
     const registration = String(req.body.registration || "").trim();
     if (!registration) return res.status(400).json({ error: "Registration is required" });
     const photos = Array.isArray(req.body.photos) ? req.body.photos : [];
     if (photos.length < 5) return res.status(400).json({ error: "Upload at least five vehicle photos" });
+    const fleet = await db.fetchAll("vehicles", company.id).catch(() => []);
+    const vehicleNo = req.body.number || req.body.vehicle_number || nextVehicleNumber(fleet);
     const row = await db.insert("vehicles", {
       company_id: company.id,
+      organisation_id: company.organisation_id || company.id,
+      number: vehicleNo,
+      vehicle_number: vehicleNo,
       registration: req.body.registration,
       make: req.body.make,
       model: req.body.model,
@@ -1122,12 +1159,37 @@ app.post("/api/vehicles", requireAuth, requirePermission("vehicles", "create"), 
 
 app.patch("/api/vehicles/:id", requireAuth, requirePermission("vehicles", "edit"), async (req, res) => {
   const existing = await db.getById("vehicles", req.params.id);
-  if (!existing || isDemoVehicle(existing) || !companyScopeOk(req.user, existing.company_id)) {
+  if (!existing || isDemoVehicle(existing) || !companyScopeOk(req.user, existing.company_id, existing)) {
     return res.status(404).json({ error: "Vehicle not found" });
   }
-  const patch = { ...(req.body || {}) };
-  delete patch.id;
-  if (req.user.role !== "super_admin") delete patch.company_id;
+  const patch = {};
+  [
+    "registration",
+    "make",
+    "model",
+    "year",
+    "vin",
+    "colour",
+    "fuel_type",
+    "engine",
+    "licence_expiry",
+    "status",
+    "odometer",
+    "value",
+    "assigned_driver_id",
+    "photo_url",
+    "photos",
+    "documents",
+    "number",
+    "vehicle_number",
+    "company_id",
+  ].forEach((key) => {
+    if (req.body?.[key] !== undefined) patch[key] = req.body[key];
+  });
+  if (!isSuperUser(req.user)) delete patch.company_id;
+  if (patch.year !== undefined) patch.year = Number(patch.year) || null;
+  if (patch.odometer !== undefined) patch.odometer = Number(patch.odometer) || 0;
+  if (patch.value !== undefined) patch.value = Number(patch.value) || 0;
   if (Array.isArray(patch.photos) && patch.photos.length < 5) {
     return res.status(400).json({ error: "Upload at least five vehicle photos" });
   }
