@@ -1787,6 +1787,8 @@ ensurePlatformAdmin().catch((error) => console.error("[seed] platform admin", er
 
 export { app };
 
+const onLambda = Boolean(process.env.LAMBDA_TASK_ROOT || process.env.NETLIFY);
+
 if (!onLambda) {
   app.listen(config.port, () => {
     console.log(`Fleet21 API on http://localhost:${config.port} (${useSupabase ? "supabase" : "local"})`);
