@@ -378,8 +378,11 @@ app.get("/api/vehicles", requireAuth, async (req, res) => {
 });
 const mapUser = (p, vehicles = []) => {
   const assigned = vehicles.find((v) => v.assigned_driver_id === p.id);
+  const photo =
+    p?.photo_url || p?.avatar_url || p?.image_url || p?.photo || p?.profile_photo || p?.picture || "";
   return {
     ...db.publicUser(p),
+    photo_url: photo,
     assigned_vehicle_id: assigned?.id || p.assigned_vehicle_id || null,
   };
 };

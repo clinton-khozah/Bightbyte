@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import OpsPage from "../../components/OpsPage/OpsPage";
@@ -38,6 +38,8 @@ const DriversPage = () => {
   const [companies, setCompanies] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const photoRef = useRef("");
   const [editForm, setEditForm] = useState({});
   const [assigning, setAssigning] = useState(null);
   const [vehicleId, setVehicleId] = useState("");
@@ -124,6 +126,7 @@ const DriversPage = () => {
               ? () => {
             setEditing(d);
             setEditError("");
+            photoRef.current = d.photo_url || "";
             setEditForm({
               full_name: d.full_name || "",
               email: d.email || "",
@@ -240,17 +243,27 @@ const DriversPage = () => {
                 }
               }
               setEditError("");
+              if (photoBusy) {
+                setEditError("Wait for the photo to finish uploading.");
+                return;
+              }
               const { confirmPassword, password, ...rest } = editForm;
-              await api(`/api/users/${editing.id}`, {
-                method: "PATCH",
-                body: JSON.stringify({
-                  ...rest,
-                  assigned_vehicle_id: editForm.assigned_vehicle_id || null,
-                  ...(password ? { password } : {}),
-                }),
-              });
+              try {
+                await api(`/api/users/${editing.id}`, {
+                  method: "PATCH",
+                  body: JSON.stringify({
+                    ...rest,
+                    photo_url: photoRef.current || editForm.photo_url || "",
+                    assigned_vehicle_id: editForm.assigned_vehicle_id || null,
+                    ...(password ? { password } : {}),
+                  }),
+                });
+              } catch (err) {
+                setEditError(err.message || "Could not save this user.");
+                return;
+              }
               setEditing(null);
-              setSuccess(password ? "User profile and password were updated." : "User profile was updated.");
+              setSuccess("Submitted successfully.");
               load();
             }}
           >
@@ -259,8 +272,18 @@ const DriversPage = () => {
               name={editForm.full_name}
               onChange={async (ev) => {
                 if (!ev.target.files?.length) return;
-                const { urls } = await uploadFiles(ev.target.files);
-                setEditForm((f) => ({ ...f, photo_url: urls[0] }));
+                setPhotoBusy(true);
+                setEditError("");
+                try {
+                  const { urls } = await uploadFiles(ev.target.files);
+                  if (!urls?.[0]) throw new Error("The photo did not upload. Try again.");
+                  photoRef.current = urls[0];
+                  setEditForm((f) => ({ ...f, photo_url: urls[0] }));
+                } catch (err) {
+                  setEditError(err.message || "Could not upload the photo.");
+                } finally {
+                  setPhotoBusy(false);
+                }
               }}
             />
             <label>
@@ -416,8 +439,8 @@ const DriversPage = () => {
               <button className="fc-btn" type="button" onClick={() => setEditing(null)}>
                 Cancel
               </button>
-              <button className="fc-btn fc-btn--primary" type="submit">
-                Save changes
+              <button className="fc-btn fc-btn--primary" type="submit" disabled={photoBusy}>
+                {photoBusy ? "Uploading photo…" : "Save changes"}
               </button>
             </div>
           </form>

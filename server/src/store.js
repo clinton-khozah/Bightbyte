@@ -1045,6 +1045,13 @@ export const db = {
     if (keys.includes("company_id") && !next.company_id && payload.organisation_id) {
       next.company_id = payload.organisation_id;
     }
+    const photo = payload.photo_url || payload.avatar_url || payload.photo || payload.image_url;
+    if (photo) {
+      const photoKey = ["photo_url", "avatar_url", "image_url", "photo", "profile_photo", "picture"].find((key) =>
+        keys.includes(key),
+      );
+      if (photoKey) next[photoKey] = photo;
+    }
     return next;
   },
 
