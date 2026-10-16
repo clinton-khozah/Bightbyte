@@ -1294,13 +1294,18 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
       return res.status(400).json({ error: "Password must be at least 6 characters" });
     }
     const password_hash = bcrypt.hashSync(loginPassword, 10);
-    const existing = await db.findUserByEmail(email);
-    const authUser = await upsertAuthUser({
-      email,
-      password: loginPassword,
-      fullName,
-      userId: existing?.id,
-    });
+    const existing = await db.findUserByEmail(email).catch(() => null);
+    let authUser = null;
+    try {
+      authUser = await upsertAuthUser({
+        email,
+        password: loginPassword,
+        fullName,
+        userId: existing?.id,
+      });
+    } catch (error) {
+      console.error("[invite] auth", error.message);
+    }
     const prior =
       existing ||
       (authUser?.id ? await db.getById("profiles", authUser.id).catch(() => null) : null);
@@ -1324,25 +1329,26 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
       documents,
       status,
       password_hash,
+      organisation_id: company.organisation_id || company.id,
     };
+    const employeeId = prior?.employee_id || (await db.nextEmployeeId(company).catch(() => "EMP-001"));
     let row;
     if (prior?.id) {
-      row = await db.update("profiles", prior.id, {
-        ...profileFields,
-        employee_id: prior.employee_id || (await db.nextEmployeeId(company)),
-      });
+      row = await db.update("profiles", prior.id, { ...profileFields, employee_id: employeeId });
     } else {
       try {
         row = await db.insert("profiles", {
           ...profileFields,
           ...(authUser?.id ? { id: authUser.id } : {}),
-          employee_id: await db.nextEmployeeId(company),
+          employee_id: employeeId,
         });
       } catch (error) {
-        if (!/23505|duplicate key/i.test(error.message) || !authUser?.id) throw error;
-        row = await db.update("profiles", authUser.id, profileFields);
+        const targetId = authUser?.id || prior?.id;
+        if (!/23505|duplicate key/i.test(error.message) || !targetId) throw error;
+        row = await db.update("profiles", targetId, profileFields);
       }
     }
+    if (!row?.id) throw new Error("Could not save this user.");
     if (row && !row.password_hash) {
       row = await db.update("profiles", row.id, { password_hash });
     }
@@ -1355,13 +1361,17 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
     }).catch((error) => console.error("[mail] invite", error.message));
     const vehicleId = req.body.assigned_vehicle_id || req.body.vehicle_id || "";
     if (vehicleId) {
-      await assignVehicleToDriver(company.id, row.id, vehicleId);
-      const assigned = await db.getUser(row.id);
-      return res.json(db.publicUser(assigned));
+      await assignVehicleToDriver(company.id, row.id, vehicleId).catch((error) =>
+        console.error("[invite] vehicle", error.message),
+      );
+      const assigned = await db.getUser(row.id).catch(() => row);
+      return res.json(db.publicUser(assigned || row));
     }
     res.json(db.publicUser(row));
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const message = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    console.error("[invite]", message);
+    res.status(500).json({ error: message || "Could not create this user." });
   }
 });
 

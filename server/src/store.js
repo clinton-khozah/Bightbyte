@@ -14,7 +14,8 @@ const now = () => new Date().toISOString();
 const isUuid = (value) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 
-const STATUS_TRIES = ["available", "active", "in_use", "idle", "Available", "Active"];
+const STATUS_TRIES = ["active", "available", "pending", "in_use", "idle"];
+const ROLE_TRIES = ["driver", "admin", "fleet_manager", "finance", "super_admin", "user", "member"];
 
 const compactRow = (row) => {
   const next = {};
@@ -73,6 +74,7 @@ const writeRemote = async (run) => {
       continue;
     }
     if (/duplicate key|unique constraint/i.test(last)) {
+      if (/profiles_pkey|profiles_email|Key \(id\)|Key \(email\)/i.test(last)) break;
       const n = Date.now() % 100000000;
       payload.number = n;
       payload.vehicle_number = String(n);
@@ -97,10 +99,23 @@ const writeRemote = async (run) => {
       delete payload.assigned_driver_id;
       continue;
     }
-    if (/check constraint|violates check/i.test(last) && statusTry < STATUS_TRIES.length) {
-      payload.status = STATUS_TRIES[statusTry];
-      statusTry += 1;
+    if (/invalid input syntax for type json/i.test(last)) {
+      delete payload.documents;
+      delete payload.ratings;
+      delete payload.photos;
       continue;
+    }
+    if (/check constraint|violates check/i.test(last)) {
+      if (/role/i.test(last) && statusTry < ROLE_TRIES.length) {
+        payload.role = ROLE_TRIES[statusTry];
+        statusTry += 1;
+        continue;
+      }
+      if (statusTry < STATUS_TRIES.length) {
+        payload.status = STATUS_TRIES[statusTry];
+        statusTry += 1;
+        continue;
+      }
     }
     break;
   }
@@ -937,7 +952,12 @@ export const db = {
     const name = map[table] || table;
     let query = supabase.from(name).select("*");
     if (table !== "companies") query = query.eq("company_id", companyId);
-    const { data, error } = await query.order("created_at", { ascending: false });
+    let { data, error } = await query.order("created_at", { ascending: false });
+    if (error && table !== "companies" && /company_id/i.test(error.message)) {
+      const retry = await supabase.from(name).select("*").eq("organisation_id", companyId).order("created_at", { ascending: false });
+      data = retry.data;
+      error = retry.error;
+    }
     if (error) throw error;
     const remote = data || [];
     if (table === "companies") {
@@ -964,26 +984,7 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
-    let payload = compactRow(row);
-    if (table === "vehicles") {
-      const sample = await supabase.from(name).select("*").limit(1);
-      const keys = sample.data?.[0] ? Object.keys(sample.data[0]) : null;
-      if (keys?.length) {
-        const aliases = { vehicle_number: "number", organization_id: "organisation_id" };
-        const next = {};
-        Object.entries(payload).forEach(([key, value]) => {
-          if (keys.includes(key)) next[key] = value;
-          else if (aliases[key] && keys.includes(aliases[key])) next[aliases[key]] = value;
-        });
-        payload = next;
-      } else {
-        delete payload.vehicle_number;
-        delete payload.number;
-        delete payload.organisation_id;
-        delete payload.assigned_driver_id;
-        delete payload.documents;
-      }
-    }
+    const payload = await this.fitColumns(name, compactRow(row));
     return writeRemote({
       payload,
       exec: async (body) => {
@@ -1015,10 +1016,36 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
+    const payload = await this.fitColumns(name, compactRow(patch));
+    delete payload.id;
     return writeRemote({
-      payload: patch,
-      exec: (payload) => supabase.from(name).update(payload).eq("id", id).select().single(),
+      payload,
+      exec: async (body) => {
+        const { data, error } = await supabase.from(name).update(body).eq("id", id).select();
+        if (error) return { data: null, error };
+        const saved = Array.isArray(data) ? data[0] : data;
+        return { data: saved || { id, ...body }, error: null };
+      },
     });
+  },
+
+  async fitColumns(name, payload) {
+    const sample = await supabase.from(name).select("*").limit(1);
+    const keys = sample.data?.[0] ? Object.keys(sample.data[0]) : null;
+    if (!keys?.length) return payload;
+    const aliases = { vehicle_number: "number", organization_id: "organisation_id" };
+    const next = {};
+    Object.entries(payload).forEach(([key, value]) => {
+      if (keys.includes(key)) next[key] = value;
+      else if (aliases[key] && keys.includes(aliases[key]) && next[aliases[key]] == null) next[aliases[key]] = value;
+    });
+    if (keys.includes("organisation_id") && !next.organisation_id && payload.company_id) {
+      next.organisation_id = payload.company_id;
+    }
+    if (keys.includes("company_id") && !next.company_id && payload.organisation_id) {
+      next.company_id = payload.organisation_id;
+    }
+    return next;
   },
 
   async remove(table, id) {
