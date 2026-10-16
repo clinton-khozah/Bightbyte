@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { createClient } from "@supabase/supabase-js";
 import { config, useSupabase } from "./config.js";
+import { upsertAuthUser } from "./supabaseAuth.js";
 import { MAKE_MODELS, vehicleYearList } from "./vehicleCatalog.js";
 import { ROLE_TEMPLATES } from "./permissions.js";
 
@@ -770,9 +771,11 @@ export const db = {
       .select()
       .single();
     if (cErr) throw cErr;
+    const authUser = await upsertAuthUser({ email, password, fullName });
     const { data: user, error: uErr } = await supabase
       .from("profiles")
       .insert({
+        ...(authUser?.id ? { id: authUser.id } : {}),
         company_id: company.id,
         email,
         full_name: fullName,

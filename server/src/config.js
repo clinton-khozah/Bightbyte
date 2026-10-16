@@ -17,7 +17,7 @@ export const config = {
   jwtSecret: process.env.JWT_SECRET || "fleet21-dev-secret",
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
-  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+  supabaseAnonKey: process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET || "fleet21",
   superAdminNotifyEmail: process.env.SUPER_ADMIN_NOTIFY_EMAIL || "",
   appLoginUrl: process.env.APP_LOGIN_URL || "https://brightbyte.co.za/login",

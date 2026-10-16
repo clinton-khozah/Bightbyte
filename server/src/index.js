@@ -17,6 +17,7 @@ import {
   syncVehicleOdometer,
 } from "./serviceDue.js";
 import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, notifyInvite, runMissedCheckinMails } from "./mail.js";
+import { signInAuth, upsertAuthUser } from "./supabaseAuth.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 
 const __dirname = moduleDir(import.meta.url);
@@ -72,11 +73,19 @@ app.post("/api/auth/login", async (req, res) => {
   try {
     const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
+    if (!email || !password) {
+      return res.status(401).json({ error: "Enter your email and password." });
+    }
     const user = await db.findUserByEmail(email);
     if (!user) {
       return res.status(401).json({ error: "No account for that email. Use the email address from your invite." });
     }
-    if (!verifyPassword(password, user.password_hash)) {
+    if (useSupabase) {
+      const auth = await signInAuth(email, password);
+      if (!auth.ok && !verifyPassword(password, user.password_hash)) {
+        return res.status(401).json({ error: "Wrong password" });
+      }
+    } else if (!verifyPassword(password, user.password_hash)) {
       return res.status(401).json({ error: "Wrong password" });
     }
     const company = user.company_id ? await db.getById("companies", user.company_id) : null;
@@ -102,7 +111,7 @@ app.post("/api/auth/register", async (req, res) => {
     const { company, user } = await db.registerCompany({
       companyName,
       fullName,
-      email: String(email).toLowerCase(),
+      email: normalizeEmail(email),
       password,
       address: String(companyAddress).trim(),
       role: "admin",
@@ -542,6 +551,12 @@ app.patch("/api/users/:id", requireAuth, requirePermission("drivers", "edit"), a
       }
       const bcrypt = (await import("bcryptjs")).default;
       allowed.password_hash = bcrypt.hashSync(nextPassword, 10);
+      await upsertAuthUser({
+        email: normalizeEmail(allowed.email || existing.email),
+        password: nextPassword,
+        fullName: allowed.full_name || existing.full_name,
+        userId: existing.id,
+      }).catch((error) => console.error("[auth] password", error.message));
     }
     let row = await db.update("profiles", req.params.id, allowed);
     if (Object.prototype.hasOwnProperty.call(req.body || {}, "assigned_vehicle_id")) {
@@ -1151,6 +1166,12 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
     }
     const password_hash = bcrypt.hashSync(loginPassword, 10);
     const existing = await db.findUserByEmail(email);
+    const authUser = await upsertAuthUser({
+      email,
+      password: loginPassword,
+      fullName,
+      userId: existing?.id,
+    });
     const profileFields = {
       company_id: company.id,
       email,
@@ -1178,6 +1199,7 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
     } else {
       row = await db.insert("profiles", {
         ...profileFields,
+        ...(authUser?.id ? { id: authUser.id } : {}),
         employee_id: await db.nextEmployeeId(company),
       });
     }
