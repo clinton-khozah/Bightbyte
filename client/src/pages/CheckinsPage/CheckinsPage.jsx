@@ -72,12 +72,21 @@ const checkinCash = (row) => {
   return Math.max(0, Number(row?.amount || 0) - Number(row?.late_fee_applied || 0));
 };
 
+const countsTowardPay = (row) => String(row?.status || "").toLowerCase() !== "rejected";
+
+const lastDueFromSchedule = (schedule, now = new Date()) => {
+  const next = dueFromSchedule(schedule, now);
+  if (!next) return null;
+  if (now >= next) return next;
+  return dueClockZa(addZaDays(zaDay(next), -7), schedule.due_time);
+};
+
 const scheduleBalance = (schedule, checkins = [], due = dueFromSchedule(schedule)) => {
   const expected = roundMoney(schedule?.expected_amount);
   const dueDay = zaDay(due);
   const paid = roundMoney(
     checkins
-      .filter((row) => zaDay(row.created_at) === dueDay)
+      .filter((row) => countsTowardPay(row) && zaDay(row.created_at) === dueDay)
       .reduce((sum, row) => sum + checkinCash(row), 0),
   );
   const remaining = expected > 0 ? roundMoney(Math.max(0, expected - paid)) : 0;
@@ -86,20 +95,15 @@ const scheduleBalance = (schedule, checkins = [], due = dueFromSchedule(schedule
 };
 
 const pendingFromSchedule = (schedule, checkins = []) => {
-  const due = dueFromSchedule(schedule);
-  if (!due) return null;
-  const balance = scheduleBalance(schedule, checkins, due);
-  if (!balance.settled) return { due, balance };
-  const next = dueClockZa(addZaDays(zaDay(due), 7), schedule.due_time);
-  return {
-    due: next,
-    balance: {
-      expected: balance.expected,
-      paid: 0,
-      remaining: balance.expected,
-      settled: false,
-    },
-  };
+  const last = lastDueFromSchedule(schedule);
+  if (!last) return null;
+  const lastBalance = scheduleBalance(schedule, checkins, last);
+  if (!lastBalance.settled) return { due: last, balance: lastBalance };
+  const next = dueFromSchedule(schedule);
+  if (!next || zaDay(next) === zaDay(last)) return null;
+  const nextBalance = scheduleBalance(schedule, checkins, next);
+  if (!nextBalance.settled) return { due: next, balance: nextBalance };
+  return null;
 };
 
 const emptyForm = {
@@ -204,11 +208,12 @@ const CheckinsPage = () => {
             expected_amount: balance.expected,
             paid_amount: balance.paid,
             remaining: balance.remaining,
-            status: Date.now() > due.getTime() ? "overdue" : "pending",
+            status: "pending",
           },
         ];
       });
       const submittedRows = [...checkins]
+        .filter((row) => String(row.status || "").toLowerCase() !== "approved")
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .map((row) => ({
           ...row,
@@ -369,7 +374,7 @@ const CheckinsPage = () => {
             : 0;
         setSuccess(
           leftover > 0
-            ? `Check-in received. Remaining ${money(leftover)} still due.`
+            ? `Check-in was submitted. Remaining ${money(leftover)} still due.`
             : "Check-in was submitted.",
         );
       }
@@ -656,8 +661,7 @@ const CheckinsPage = () => {
         stats={
           isDriver
             ? [
-                { id: "all", label: "Pending", value: rows.filter((r) => r.record_type === "pending").length, tone: "amber", icon: "⏱" },
-                { id: "overdue", label: "Overdue", value: rows.filter((r) => r.status === "overdue").length, tone: "red", icon: "!" },
+                { id: "all", label: "Pending", value: rows.filter((r) => r.status === "pending" || r.record_type === "pending").length, tone: "amber", icon: "⏱" },
               ]
             : [
                 { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "R" },

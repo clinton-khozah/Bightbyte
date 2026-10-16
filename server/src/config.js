@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
-import { fileURLToPath } from "url";
+import { moduleDir } from "./moduleDir.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = moduleDir(import.meta.url);
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
 

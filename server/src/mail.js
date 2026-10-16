@@ -1,6 +1,6 @@
 import { config } from "./config.js";
 import { db } from "./store.js";
-import { dueAtToday, isPastDueTime, isPeriodSettled, zaDay } from "./zaTime.js";
+import { isMissedNotifyWindow, isPeriodSettled, lastDueAt, zaDay } from "./zaTime.js";
 
 const skipDemo = (row) => Boolean(row?.demo) || ["u-admin", "u-driver"].includes(row?.id);
 
@@ -178,22 +178,19 @@ export const notifyInvite = async ({ company, person, username, password, invite
   });
 };
 
-const rand = (n) => `R${Number(n || 0).toFixed(2)}`;
-
-export const notifyCheckinSuccess = async ({ company, driver, vehicle, checkin, lateFee }) => {
+export const notifyCheckinSuccess = async ({ company, driver, vehicle, checkin }) => {
   if (!driver || skipDemo(driver)) return;
   const plate = vehicle?.registration || "your vehicle";
-  const received = Number(checkin.cash_amount || 0) || Math.max(0, Number(checkin.amount || 0) - Number(lateFee || 0));
   await notifyAndMail({
     companyId: company.id,
     userId: driver.id,
     key: `checkin-ok-${checkin.id}`,
     to: driver.email,
     toName: driver.full_name,
-    title: "Check-in received",
-    subject: `Check-in received for ${plate}`,
-    headline: "Your check-in was received",
-    message: `We received your cash check-in of ${rand(received)} for ${plate}.`,
+    title: "Check-in submitted",
+    subject: `Check-in submitted for ${plate}`,
+    headline: "Your check-in was submitted",
+    message: `Hi ${driver.full_name}, your check-in for ${plate} was submitted and is awaiting confirmation.`,
     companyName: company.name,
     link: "/checkins",
     type: "checkin",
@@ -208,27 +205,32 @@ export const runMissedCheckinMails = async () => {
       db.fetchAll("checkins", company.id),
       db.fetchAll("profiles", company.id),
     ]);
-    const today = zaDay(new Date());
     for (const schedule of schedules) {
       if (schedule.demo || schedule.id === "sch-1" || schedule.active === false || schedule.notify === false) {
         continue;
       }
-      if (!isPastDueTime(schedule)) continue;
-      if (isPeriodSettled(schedule, checkins, dueAtToday(schedule))) continue;
+      if (!isMissedNotifyWindow(schedule)) continue;
+      const due = lastDueAt(schedule);
+      if (isPeriodSettled(schedule, checkins, due)) continue;
       const driver = people.find((row) => row.id === schedule.driver_id);
       if (!driver || skipDemo(driver) || !driver.email) continue;
-      const due = dueAtToday(schedule);
-      const dueLabel = due.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false });
+      const dueDay = zaDay(due);
+      const dueLabel = due.toLocaleString("en-ZA", {
+        weekday: "long",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
       await notifyAndMail({
         companyId: company.id,
         userId: driver.id,
-        key: `checkin-missed-${schedule.id}-${today}`,
+        key: `checkin-missed-${schedule.id}-${dueDay}`,
         to: driver.email,
         toName: driver.full_name,
         title: "Missed check-in",
-        subject: "You missed today's cash check-in",
-        headline: "Check-in was not received",
-        message: `Hi ${driver.full_name}, today's check-in was due at ${dueLabel} and we have not received it. Please submit it on Check-in as soon as you can.`,
+        subject: "You missed your scheduled check-in",
+        headline: "Scheduled check-in was missed",
+        message: `Hi ${driver.full_name}, your check-in was due ${dueLabel} and was not submitted. Please submit it on Check-in.`,
         companyName: company.name,
         link: "/checkins",
         type: "checkin",

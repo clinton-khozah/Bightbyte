@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { moduleDir } from "./moduleDir.js";
 import multer from "multer";
 import { config, useSupabase } from "./config.js";
 import { db } from "./store.js";
@@ -19,7 +19,7 @@ import {
 import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, notifyInvite, runMissedCheckinMails } from "./mail.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __dirname = moduleDir(import.meta.url);
 const onLambda = Boolean(process.env.LAMBDA_TASK_ROOT || process.env.NETLIFY);
 const uploadDir = onLambda ? path.join("/tmp", "fleet21-uploads") : path.join(__dirname, "..", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
@@ -763,7 +763,10 @@ const remainingOnSchedule = async (companyId, driverId, schedule) => {
       rows
         .filter(
           (row) =>
-            !row.demo && String(row.driver_id) === String(driverId) && zaDay(row.created_at) === dueDay,
+            !row.demo &&
+            String(row.status || "").toLowerCase() !== "rejected" &&
+            String(row.driver_id) === String(driverId) &&
+            zaDay(row.created_at) === dueDay,
         )
         .reduce((sum, row) => sum + cashPaid(row), 0) * 100,
     ) / 100;

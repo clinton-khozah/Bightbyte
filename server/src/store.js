@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import { moduleDir } from "./moduleDir.js";
 import bcrypt from "bcryptjs";
 import { v4 as uuid } from "uuid";
 import { createClient } from "@supabase/supabase-js";
@@ -541,7 +541,7 @@ const memory = {
   ],
 };
 
-const dataFile = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "data", "local-store.json");
+const dataFile = path.join(moduleDir(import.meta.url), "..", "data", "local-store.json");
 
 const LOCAL_TABLES = ["companies", "profiles", "vehicles", "supplies", "mechanics", "checkins", "expenses", "checkin_schedules", "reviews", "incidents", "maintenance", "documents", "roles", "notifications", "emails"];
 

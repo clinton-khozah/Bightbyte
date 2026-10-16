@@ -69,6 +69,21 @@ const cashToward = (row) => {
   return Math.max(0, Number(row?.amount || 0) - Number(row?.late_fee_applied || 0));
 };
 
+const countsTowardPay = (row) => String(row?.status || "").toLowerCase() !== "rejected";
+
+export const lastDueAt = (schedule, now = new Date()) => {
+  const next = dueAtToday(schedule, now);
+  if (now >= next) return next;
+  const weekly = WEEKDAYS.indexOf(parseDueWeekday(schedule?.due_weekday)) >= 0;
+  return dueClock(addZaDays(zaDay(next), weekly ? -7 : -1), schedule);
+};
+
+export const isMissedNotifyWindow = (schedule, now = new Date()) => {
+  const last = lastDueAt(schedule, now);
+  const { day, hour } = zaNowParts(now);
+  return day === addZaDays(zaDay(last), 1) && hour >= 11;
+};
+
 export const isPeriodSettled = (schedule, checkins = [], due = dueAtToday(schedule)) => {
   const expected = Number(schedule?.expected_amount || 0);
   const dueDay = zaDay(due);
@@ -76,6 +91,7 @@ export const isPeriodSettled = (schedule, checkins = [], due = dueAtToday(schedu
     .filter(
       (row) =>
         !row?.demo &&
+        countsTowardPay(row) &&
         String(row.driver_id) === String(schedule?.driver_id) &&
         zaDay(row.created_at) === dueDay,
     )
