@@ -26,14 +26,23 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
     String(job?.completed_odometer ?? job?.odometer ?? vehicle?.odometer ?? ""),
   );
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const items = slipItems(slips);
 
   const onFiles = async (event) => {
     const files = event.target.files;
     if (!files?.length) return;
-    const { urls } = await uploadFiles(files);
-    setSlips((current) => [...(current || []), ...urls]);
-    event.target.value = "";
+    setError("");
+    setBusy(true);
+    try {
+      const { urls } = await uploadFiles(files);
+      setSlips((current) => [...(current || []), ...urls]);
+    } catch (err) {
+      setError(err.message || "Could not upload the service document.");
+    } finally {
+      setBusy(false);
+      event.target.value = "";
+    }
   };
 
   const intervalMonths = Number(job?.interval_months || 2);
@@ -56,7 +65,7 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
       onClose={onClose}
     >
       <form
-        className="fc-form checkin-form service-complete"
+        className={`fc-form checkin-form service-complete${busy ? " is-busy" : ""}`}
         onSubmit={async (event) => {
           event.preventDefault();
           setError("");
@@ -68,6 +77,7 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
             setError("Upload at least one service document before marking it done.");
             return;
           }
+          setBusy(true);
           try {
             await onSave({
               slips,
@@ -76,9 +86,17 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
             });
           } catch (err) {
             setError(err.message);
+          } finally {
+            setBusy(false);
           }
         }}
       >
+        {busy ? (
+          <div className="service-complete__loading" role="status">
+            <span className="service-complete__spinner" aria-hidden="true" />
+            Saving service…
+          </div>
+        ) : null}
         <dl className="service-complete__facts">
           <div>
             <dt>Vehicle</dt>
@@ -162,8 +180,8 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
             Close
           </button>
           {viewOnly ? null : (
-            <button className="fc-btn fc-btn--primary" type="submit">
-              Mark done
+            <button className="fc-btn fc-btn--primary" type="submit" disabled={busy}>
+              {busy ? "Saving…" : "Mark done"}
             </button>
           )}
         </div>

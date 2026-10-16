@@ -65,16 +65,22 @@ const DocumentsPage = () => {
   ];
 
   const openFile = async (row) => {
+    const url = String(row.file_url || "");
+    if (/^https?:\/\//i.test(url)) {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return;
+    }
     const res = await fetch(`/api/documents/${row.id}/file`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     if (!res.ok) {
-      setError("This file is only available to a super admin.");
+      const body = await res.json().catch(() => ({}));
+      setError(body.error || "Could not open this file.");
       return;
     }
     const blob = await res.blob();
-    const url = URL.createObjectURL(blob);
-    window.open(url, "_blank", "noopener,noreferrer");
+    const localUrl = URL.createObjectURL(blob);
+    window.open(localUrl, "_blank", "noopener,noreferrer");
   };
 
   const oldCopy = [

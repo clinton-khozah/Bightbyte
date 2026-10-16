@@ -10,6 +10,7 @@ import ReviewStatusForm from "../../components/ReviewStatusForm/ReviewStatusForm
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
 import "../VehiclesPage/VehiclesPage.css";
 import "./ReviewDetailPage.css";
+import PageLoader from "../../components/PageLoader/PageLoader";
 
 const ANGLES = ["Front", "Rear", "Left side", "Right side"];
 
@@ -52,7 +53,7 @@ const ReviewDetailPage = () => {
   }, [id]);
 
   if (error) return <p className="fc-error">{error}</p>;
-  if (!review) return <p>Loading</p>;
+  if (!review) return <PageLoader />;
 
   const photos = review.photos || [];
   const month = monthLabel(review.review_month || review.created_at);

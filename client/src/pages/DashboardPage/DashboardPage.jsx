@@ -6,6 +6,7 @@ import OperatingPosition from "../../components/OperatingPosition/OperatingPosit
 import CompanyApprovals from "../../components/CompanyApprovals/CompanyApprovals";
 import DriverDashboard from "../../components/DriverDashboard/DriverDashboard";
 import Avatar from "../../components/Avatar/Avatar";
+import PageLoader from "../../components/PageLoader/PageLoader";
 import "./DashboardPage.css";
 
 const money = (n) =>
@@ -73,7 +74,7 @@ const DashboardPage = () => {
         </p>
       ) : null}
 
-      {!data && !error ? <p>Loading</p> : null}
+      {!data && !error ? <PageLoader /> : null}
 
       {data ? (
         <>

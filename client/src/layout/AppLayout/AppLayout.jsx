@@ -7,6 +7,7 @@ import SideNav from "../SideNav/SideNav";
 import TopNav from "../TopNav/TopNav";
 import WorkspaceNav from "../../components/WorkspaceNav/WorkspaceNav";
 import FirstLoginSelfie from "../../components/FirstLoginSelfie/FirstLoginSelfie";
+import PageLoader from "../../components/PageLoader/PageLoader";
 import "./AppLayout.css";
 
 export const SearchContext = createContext("");
@@ -33,7 +34,7 @@ const AppLayout = () => {
   const location = useLocation();
   const search = "";
 
-  if (!ready) return <div className="fc-app-layout__content">Loading</div>;
+  if (!ready) return <PageLoader screen />;
   if (!user) return <Navigate to="/login" replace />;
 
   const moduleId = moduleFromPath(location.pathname);

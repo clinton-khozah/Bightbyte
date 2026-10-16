@@ -1062,7 +1062,12 @@ app.get("/api/documents/:id/file", requireAuth, requirePermission("documents", "
   if (!row || row.demo || ["d-1", "d-2", "d-3", "d-4", "d-5"].includes(row.id)) {
     return res.status(404).json({ error: "Document not found" });
   }
-  const match = String(row.file_url || "").match(/\/uploads\/([^/?#]+)/);
+  if (!companyScopeOk(req.user, row.company_id)) {
+    return res.status(404).json({ error: "Document not found" });
+  }
+  const url = String(row.file_url || "");
+  if (/^https?:\/\//i.test(url)) return res.redirect(url);
+  const match = url.match(/\/uploads\/([^/?#]+)/);
   if (!match) return res.status(404).json({ error: "File not found" });
   const root = path.resolve(uploadDir);
   const filePath = path.resolve(root, path.basename(decodeURIComponent(match[1])));

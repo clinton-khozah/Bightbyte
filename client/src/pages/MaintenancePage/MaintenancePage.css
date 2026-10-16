@@ -1,5 +1,13 @@
-.fc-modal--xl .checkin-form {
-  grid-template-columns: 1fr 1fr;
+.service-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.service-actions .fc-btn {
+  min-height: 32px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .checkin-form .fc-filedrop {

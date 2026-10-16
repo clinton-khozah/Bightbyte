@@ -7,6 +7,7 @@ import VehicleReportModal from "../../components/VehicleReportModal/VehicleRepor
 import "../UserDetailPage/UserDetailPage.css";
 import "../VehiclesPage/VehiclesPage.css";
 import "./CheckinDetailPage.css";
+import PageLoader from "../../components/PageLoader/PageLoader";
 
 const money = (n) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(n || 0));
@@ -51,7 +52,7 @@ const CheckinDetailPage = () => {
   }, [id]);
 
   if (error) return <p className="fc-error">{error}</p>;
-  if (!checkin) return <p>Loading</p>;
+  if (!checkin) return <PageLoader />;
 
   const letter = (String(driver?.full_name || "U").trim().split(/\s+/)[0]?.[0] || "U").toUpperCase();
 

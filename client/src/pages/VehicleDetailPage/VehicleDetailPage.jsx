@@ -10,6 +10,7 @@ import OperatingHoursField from "../../components/OperatingHoursField/OperatingH
 import VehicleAssetPanel, { VehicleAssetRow } from "../../components/VehicleAssetPanel/VehicleAssetPanel";
 import StarRating from "../../components/StarRating/StarRating";
 import PhotoViewer from "../../components/PhotoViewer/PhotoViewer";
+import PageLoader from "../../components/PageLoader/PageLoader";
 import "../VehiclesPage/VehiclesPage.css";
 import "../UserDetailPage/UserDetailPage.css";
 import "./VehicleDetailPage.css";
@@ -74,7 +75,7 @@ const VehicleDetailPage = () => {
   }, [vehicle]);
 
   if (error) return <p className="fc-error">{error}</p>;
-  if (!vehicle) return <p>Loading</p>;
+  if (!vehicle) return <PageLoader />;
 
   const scored = reviews.map((r) => starsFromCondition(r.condition)).filter(Boolean);
   const rating = scored.length ? scored.reduce((sum, n) => sum + n, 0) / scored.length : 0;

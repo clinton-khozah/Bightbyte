@@ -6,6 +6,7 @@ import Avatar from "../../components/Avatar/Avatar";
 import PhotoViewer from "../../components/PhotoViewer/PhotoViewer";
 import "../VehiclesPage/VehiclesPage.css";
 import "./IncidentDetailPage.css";
+import PageLoader from "../../components/PageLoader/PageLoader";
 
 const money = (n) =>
   new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(Number(n || 0));
@@ -39,7 +40,7 @@ const IncidentDetailPage = () => {
   }, [id]);
 
   if (error) return <p className="fc-error">{error}</p>;
-  if (!row) return <p>Loading</p>;
+  if (!row) return <PageLoader />;
 
   const photos = row.photos || [];
   const kind = row.kind || "incident";

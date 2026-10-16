@@ -110,32 +110,46 @@ const MaintenancePage = () => {
     {
       key: "actions",
       label: "Actions",
-      render: (r) => (
-        <ActionIcons
-          onView={() => {
-            setComplete(r);
-            setError("");
-          }}
-          onEdit={
-            canManage
-              ? () => {
-                  setEditing(r);
-                  setForm({
-                    vehicle_id: r.vehicle_id,
-                    title: r.title || "Service",
-                    interval_km: String(r.interval_km || 10000),
-                    interval_months: String(r.interval_months || 2),
-                    last_service_odometer: String(r.last_service_odometer ?? ""),
-                    last_service_at: toDateInput(r.last_service_at),
-                    due_date: toDateInput(r.due_date || r.next_due_date),
-                  });
-                  setOpen(true);
+          render: (r) => (
+            <div className="service-actions">
+              {canManage && r.status !== "completed" ? (
+                <button
+                  type="button"
+                  className="fc-btn fc-btn--primary"
+                  onClick={() => {
+                    setComplete(r);
+                    setError("");
+                  }}
+                >
+                  Load service
+                </button>
+              ) : null}
+              <ActionIcons
+                onView={() => {
+                  setComplete(r);
+                  setError("");
+                }}
+                onEdit={
+                  canManage
+                    ? () => {
+                        setEditing(r);
+                        setForm({
+                          vehicle_id: r.vehicle_id,
+                          title: r.title || "Service",
+                          interval_km: String(r.interval_km || 10000),
+                          interval_months: String(r.interval_months || 2),
+                          last_service_odometer: String(r.last_service_odometer ?? ""),
+                          last_service_at: toDateInput(r.last_service_at),
+                          due_date: toDateInput(r.due_date || r.next_due_date),
+                        });
+                        setOpen(true);
+                      }
+                    : undefined
                 }
-              : undefined
-          }
-          onDelete={canDelete && r.status === "completed" ? () => setPending(r) : undefined}
-        />
-      ),
+                onDelete={canDelete && r.status === "completed" ? () => setPending(r) : undefined}
+              />
+            </div>
+          ),
     },
   ];
 

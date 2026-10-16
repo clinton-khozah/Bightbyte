@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import SuccessModal from "../../components/SuccessModal/SuccessModal";
+import PageLoader from "../../components/PageLoader/PageLoader";
 import "./LoginPage.css";
 
 const emailFromLink = (value) => {
@@ -64,6 +65,8 @@ const LoginPage = () => {
   };
 
   const isLogin = mode === "login";
+
+  if (busy || leaving) return <PageLoader screen />;
 
   return (
     <div className={`bb-auth${leaving ? " is-leaving" : ""}`}>
@@ -157,7 +160,7 @@ const LoginPage = () => {
         ) : null}
         {error ? <p className="fc-error">{error}</p> : null}
         <button className="bb-auth__submit" type="submit" disabled={busy}>
-          {busy ? "Opening…" : isLogin ? "Sign in" : "Create workspace"}
+          {isLogin ? "Sign in" : "Create workspace"}
         </button>
         <p className="bb-auth__footer">
           {isLogin ? "New to BrightByte? " : "Already have an account? "}

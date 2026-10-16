@@ -10,6 +10,7 @@ import StarRating from "../../components/StarRating/StarRating";
 import { computeDriverScore } from "../../lib/driverScore";
 import "../VehiclesPage/VehiclesPage.css";
 import "./UserDetailPage.css";
+import PageLoader from "../../components/PageLoader/PageLoader";
 
 const formatLogin = (value) =>
   value
@@ -61,7 +62,7 @@ const UserDetailPage = () => {
   }, [id]);
 
   if (error) return <p className="fc-error">{error}</p>;
-  if (!profile) return <p>Loading</p>;
+  if (!profile) return <PageLoader />;
 
   const letter = (String(profile.full_name).trim().split(/\s+/)[0]?.[0] || "U").toUpperCase();
   const score = computeDriverScore({
