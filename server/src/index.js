@@ -18,6 +18,7 @@ import {
 } from "./serviceDue.js";
 import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, notifyInvite, runMissedCheckinMails } from "./mail.js";
 import { signInAuth, upsertAuthUser } from "./supabaseAuth.js";
+import { ensurePlatformAdmin } from "./platformAdmin.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 
 const __dirname = moduleDir(import.meta.url);
@@ -88,6 +89,7 @@ app.get("/api/health", (_req, res) => {
 
 app.post("/api/auth/login", async (req, res) => {
   try {
+    await ensurePlatformAdmin().catch((error) => console.error("[seed] platform admin", error.message));
     const email = normalizeEmail(req.body?.email);
     const password = String(req.body?.password || "").trim();
     if (!email || !password) {
@@ -159,7 +161,7 @@ app.get("/api/me", requireAuth, async (req, res) => {
 });
 
 app.get("/api/company", requireAuth, async (req, res) => {
-  const company = await db.getById("companies", req.user.company_id);
+  const company = await loadCompany(req.user.company_id);
   if (!company) return res.status(404).json({ error: "Company not found" });
   res.json(company);
 });
@@ -435,9 +437,11 @@ const listWorkspacePeople = async (user) => {
       vehicles: packs.flatMap((pack) => pack.fleet),
     };
   }
+  const scoped = await db.hydrateProfile(user);
+  const companyId = scoped?.company_id || user.company_id;
   const [people, vehicles] = await Promise.all([
-    db.fetchAll("profiles", user.company_id),
-    db.fetchAll("vehicles", user.company_id),
+    db.fetchAll("profiles", companyId),
+    db.fetchAll("vehicles", companyId),
   ]);
   return {
     people: people.filter((row) => !isDemoProfile(row)),
@@ -1732,6 +1736,8 @@ app.post("/api/refuels", requireAuth, async (req, res) => {
   });
   res.json(row);
 });
+
+ensurePlatformAdmin().catch((error) => console.error("[seed] platform admin", error.message));
 
 export { app };
 

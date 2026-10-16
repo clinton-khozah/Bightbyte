@@ -22,8 +22,10 @@ export const requireAuth = async (req, res, next) => {
   if (!token) return res.status(401).json({ error: "Sign in required" });
   try {
     const payload = jwt.verify(token, config.jwtSecret);
-    const user = await db.getUser(payload.sub);
+    let user = await db.getUser(payload.sub);
+    if (!user && payload.email) user = await db.findUserByEmail(payload.email);
     if (!user) return res.status(401).json({ error: "Account not found" });
+    user = await db.hydrateProfile(user);
     const pub = db.publicUser(user);
     const extra = await resolvePermissions(pub, db);
     req.user = { ...pub, ...extra };

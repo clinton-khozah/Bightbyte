@@ -21,6 +21,8 @@ export const config = {
   storageBucket: process.env.SUPABASE_STORAGE_BUCKET || "fleet21",
   superAdminNotifyEmail: process.env.SUPER_ADMIN_NOTIFY_EMAIL || "",
   appLoginUrl: process.env.APP_LOGIN_URL || "https://brightbyte.co.za/login",
+  platformAdminEmail: process.env.PLATFORM_ADMIN_EMAIL || "admin@brightbyte.co.za",
+  platformAdminPassword: process.env.PLATFORM_ADMIN_PASSWORD || "Salvation@21",
   emailjs: {
     serviceId: process.env.EMAILJS_SERVICE_ID || "",
     templateId: process.env.EMAILJS_TEMPLATE_ID || "template_nr0z4if",

@@ -687,6 +687,20 @@ export const db = {
   useSupabase,
   supabase,
 
+  async hydrateProfile(row) {
+    if (!row) return null;
+    if (isUuid(row.company_id)) return row;
+    if (row.email) {
+      const found = await this.findUserByEmail(row.email);
+      if (found?.company_id) return found;
+    }
+    if (isUuid(row.id)) {
+      const fresh = await this.getUser(row.id);
+      if (fresh?.company_id) return fresh;
+    }
+    return row;
+  },
+
   async findUserByEmail(email) {
     const needle = String(email || "").trim().toLowerCase();
     if (!needle) return null;
