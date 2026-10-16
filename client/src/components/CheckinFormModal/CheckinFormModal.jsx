@@ -34,12 +34,14 @@ const CheckinFormModal = ({
 
   const set = (patch) => onChange({ ...form, ...patch });
   const driver = drivers.find((row) => row.id === form.driver_id);
-  const fleet = form.driver_id
+  const assigned = form.driver_id
     ? vehicles.filter(
-        (row) =>
-          row.assigned_driver_id === form.driver_id || driver?.assigned_vehicle_id === row.id,
+        (row) => row.assigned_driver_id === form.driver_id || driver?.assigned_vehicle_id === row.id,
       )
     : [];
+  const fleet = form.driver_id
+    ? [...assigned, ...vehicles.filter((row) => !assigned.some((item) => item.id === row.id))]
+    : vehicles;
 
   return (
     <Modal
@@ -86,7 +88,7 @@ const CheckinFormModal = ({
                 });
               }}
             placeholder="Select a vehicle"
-            emptyText="No vehicle assigned"
+            emptyText="No vehicles to select"
               options={fleet.map((row) => ({
                 id: row.id,
                 label: row.registration,

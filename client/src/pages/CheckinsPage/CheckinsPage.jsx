@@ -28,6 +28,12 @@ const zaDay = (value) =>
 
 const isDriverUser = (user) => user?.role === "driver" || user?.role_key === "driver";
 
+const isDriverProfile = (person) => {
+  const role = String(person?.role || person?.role_key || "").toLowerCase();
+  const label = String(person?.role_label || person?.RoleName || "").toLowerCase();
+  return role === "driver" || person?.role_id === "R003" || label.includes("driver") || !person?.role;
+};
+
 const samePerson = (a, b) => String(a || "") === String(b || "");
 
 const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
@@ -147,32 +153,39 @@ const CheckinsPage = () => {
   const [checkins, setCheckins] = useState([]);
   const [expenses, setExpenses] = useState([]);
 
-  const vehicleForDriver = (list, driverId) =>
-    list.find((v) => v.assigned_driver_id === driverId)?.id || "";
+  const vehicleForDriver = (list, driverId) => {
+    const linked = list.find((v) => v.assigned_driver_id === driverId)?.id;
+    if (linked) return linked;
+    const person = drivers.find((row) => row.id === driverId) || people.find((row) => row.id === driverId);
+    return person?.assigned_vehicle_id || "";
+  };
 
   const personFor = (id) => people.find((p) => p.id === id) || drivers.find((p) => p.id === id) || (user?.id === id ? user : null);
   const vehicleFor = (id) => vehicles.find((v) => v.id === id);
 
   const load = () => {
     const driverView = isDriverUser(user);
-    const peopleReq =
-      driverView ? api("/api/drivers").catch(() => []) : api("/api/users").catch(() => api("/api/drivers"));
+    const peopleReq = driverView
+      ? api("/api/drivers").catch(() => [])
+      : api("/api/users").catch(() => api("/api/drivers").catch(() => []));
     Promise.all([
-      api("/api/checkins"),
+      api("/api/checkins").catch(() => []),
       driverView ? Promise.resolve([]) : api("/api/expenses").catch(() => []),
-      api("/api/vehicles"),
+      api("/api/vehicles").catch(() => []),
       peopleReq,
       api("/api/checkin-schedules").catch(() => []),
     ]).then(([checkinRows, expenseRows = [], list, driverRows = [], scheduleRows]) => {
+      const peopleRows = Array.isArray(driverRows) ? driverRows : [];
+      const fleetRows = Array.isArray(list) ? list : [];
       setCheckins(driverView ? checkinRows.filter((row) => samePerson(row.driver_id, user.id)) : checkinRows);
       setExpenses(driverView ? [] : expenseRows);
-      setVehicles(list);
+      setVehicles(fleetRows);
       setDrivers(
         driverView
-          ? driverRows.filter((p) => samePerson(p.id, user.id))
-          : driverRows.filter((p) => p.role === "driver" || !p.role),
+          ? peopleRows.filter((p) => samePerson(p.id, user.id))
+          : peopleRows.filter(isDriverProfile),
       );
-      setPeople(driverView ? driverRows.filter((p) => samePerson(p.id, user.id)) : driverRows);
+      setPeople(driverView ? peopleRows.filter((p) => samePerson(p.id, user.id)) : peopleRows);
       setSchedules(scheduleRows);
       const mine = scheduleRows.find((s) => samePerson(s.driver_id, user?.id));
       setLateFee(Number(mine?.late_fee_now || 0));

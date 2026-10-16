@@ -523,7 +523,14 @@ const resolveTenantCompany = async (user, { driverId, vehicleId }) => {
 
 app.get("/api/drivers", requireAuth, async (req, res) => {
   const { people, vehicles } = await listWorkspacePeople(req.user);
-  res.json(people.filter((p) => p.role === "driver").map((p) => mapUser(p, vehicles)));
+  res.json(
+    people
+      .filter((p) => {
+        const role = String(p.role || "").toLowerCase();
+        return role === "driver" || p.role_id === "R003" || !p.role;
+      })
+      .map((p) => mapUser(p, vehicles)),
+  );
 });
 
 app.get("/api/users", requireAuth, requirePermission("drivers", "view"), async (req, res) => {
