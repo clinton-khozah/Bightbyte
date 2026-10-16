@@ -152,18 +152,3 @@
   align-items: center;
   justify-content: center;
 }
-
-.files-sheet__spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #e6e6e4;
-  border-top-color: #006239;
-  border-radius: 50%;
-  animation: files-sheet-spin 0.7s linear infinite;
-}
-
-@keyframes files-sheet-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}

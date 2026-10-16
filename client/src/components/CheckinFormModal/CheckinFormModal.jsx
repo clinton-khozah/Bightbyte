@@ -3,6 +3,7 @@ import Modal from "../Modal/Modal";
 import FileDrop from "../FileDrop/FileDrop";
 import LineSelect from "../LineSelect/LineSelect";
 import CheckinNoteField from "../CheckinNoteField/CheckinNoteField";
+import PageLoader from "../PageLoader/PageLoader";
 import "./CheckinFormModal.css";
 
 const STATUS_OPTIONS = [
@@ -58,7 +59,7 @@ const CheckinFormModal = ({
       <form className={`fc-form checkin-form${busy ? " is-busy" : ""}`} onSubmit={onSubmit}>
         {busy ? (
           <div className="checkin-form__loading" role="status">
-            <span className="checkin-form__spinner" aria-hidden="true" />
+            <PageLoader compact />
             Submitting check-in…
           </div>
         ) : null}

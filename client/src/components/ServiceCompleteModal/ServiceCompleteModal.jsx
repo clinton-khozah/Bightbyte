@@ -3,6 +3,7 @@ import Modal from "../Modal/Modal";
 import FileDrop from "../FileDrop/FileDrop";
 import StatusChip from "../StatusChip/StatusChip";
 import { uploadFiles } from "../../api";
+import PageLoader from "../PageLoader/PageLoader";
 import "./ServiceCompleteModal.css";
 
 const slipItems = (slips) =>
@@ -93,7 +94,7 @@ const ServiceCompleteModal = ({ job, vehicle, onClose, onSave, canComplete = fal
       >
         {busy ? (
           <div className="service-complete__loading" role="status">
-            <span className="service-complete__spinner" aria-hidden="true" />
+            <PageLoader compact />
             Saving service…
           </div>
         ) : null}

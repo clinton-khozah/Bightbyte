@@ -1,4 +1,5 @@
 import React from "react";
+import PageLoader from "../PageLoader/PageLoader";
 import "./FilesSheet.css";
 
 const FolderIcon = () => (
@@ -16,7 +17,7 @@ const FilesSheet = ({ rows = [], emptyText = "Nothing here yet.", loading = fals
     </div>
     {loading ? (
       <div className="files-sheet__loading" role="status" aria-label="Loading documents">
-        <span className="files-sheet__spinner" aria-hidden="true" />
+        <PageLoader compact />
       </div>
     ) : !rows.length ? (
       <div className="files-sheet__empty">{emptyText}</div>

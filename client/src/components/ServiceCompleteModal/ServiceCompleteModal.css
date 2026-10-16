@@ -21,21 +21,6 @@
   color: #171717;
 }
 
-.service-complete__spinner {
-  width: 28px;
-  height: 28px;
-  border: 3px solid #e6e6e4;
-  border-top-color: #006239;
-  border-radius: 50%;
-  animation: service-spin 0.7s linear infinite;
-}
-
-@keyframes service-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 .service-complete__facts {
   display: grid;
   grid-template-columns: 1fr 1fr;

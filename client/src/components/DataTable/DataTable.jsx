@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PageLoader from "../PageLoader/PageLoader";
 import "./DataTable.css";
 
 const PAGE_SIZE = 15;
@@ -68,7 +69,7 @@ const DataTable = ({
       )}
       {loading ? (
         <div className="fc-table-loading" role="status" aria-label={`Loading ${noun}`}>
-          <span className="fc-table-loading__spinner" aria-hidden="true" />
+          <PageLoader compact />
         </div>
       ) : !list.length ? (
         <div className="fc-empty">{emptyText || `No ${noun} have been logged yet.`}</div>

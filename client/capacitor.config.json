@@ -1,0 +1,10 @@
+{
+  "appId": "za.co.brightbyte.fleet",
+  "appName": "BrightByte",
+  "webDir": "dist",
+  "server": {
+    "url": "https://brightbyte.co.za/login",
+    "androidScheme": "https",
+    "allowNavigation": ["brightbyte.co.za", "*.brightbyte.co.za"]
+  }
+}
