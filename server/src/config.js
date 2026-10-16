@@ -6,9 +6,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", ".env") });
 dotenv.config({ path: path.join(__dirname, "..", "..", ".env") });
 
+const clientOrigins = String(process.env.CLIENT_ORIGIN || "http://localhost:5173,https://brightbyte.co.za")
+  .split(",")
+  .map((row) => row.trim())
+  .filter(Boolean);
+
 export const config = {
   port: Number(process.env.PORT || 5050),
-  clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  clientOrigin: clientOrigins.length === 1 ? clientOrigins[0] : clientOrigins,
   jwtSecret: process.env.JWT_SECRET || "fleet21-dev-secret",
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",

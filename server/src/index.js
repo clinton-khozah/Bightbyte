@@ -20,7 +20,8 @@ import { notifyCheckinSuccess, notifyCompanyApproved, notifyCompanySubmitted, no
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const uploadDir = path.join(__dirname, "..", "uploads");
+const onLambda = Boolean(process.env.LAMBDA_TASK_ROOT || process.env.NETLIFY);
+const uploadDir = onLambda ? path.join("/tmp", "fleet21-uploads") : path.join(__dirname, "..", "uploads");
 fs.mkdirSync(uploadDir, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -1667,8 +1668,12 @@ app.post("/api/refuels", requireAuth, async (req, res) => {
   res.json(row);
 });
 
-app.listen(config.port, () => {
-  console.log(`Fleet21 API on http://localhost:${config.port} (${useSupabase ? "supabase" : "local"})`);
-  tickNotifications();
-  setInterval(tickNotifications, 10 * 60 * 1000);
-});
+export { app };
+
+if (!onLambda) {
+  app.listen(config.port, () => {
+    console.log(`Fleet21 API on http://localhost:${config.port} (${useSupabase ? "supabase" : "local"})`);
+    tickNotifications();
+    setInterval(tickNotifications, 10 * 60 * 1000);
+  });
+}
