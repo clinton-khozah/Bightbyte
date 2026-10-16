@@ -234,10 +234,21 @@ const VehiclesPage = () => {
               try {
                 const photos = form.photos || [];
                 const payload = {
-                  ...form,
+                  company_id: form.company_id || user?.company_id,
+                  registration: form.registration,
+                  make: form.make,
+                  model: form.model,
+                  year: form.year,
+                  vin: form.vin,
+                  colour: form.colour,
+                  fuel_type: form.fuel_type,
+                  engine: form.engine,
+                  odometer: form.odometer,
+                  licence_expiry: form.licence_expiry,
+                  value: form.value,
                   photos,
                   photo_url: photos[0] || form.photo_url || "",
-                  company_id: form.company_id || user?.company_id,
+                  status: form.status || "available",
                 };
                 if (editing) {
                   await api(`/api/vehicles/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });

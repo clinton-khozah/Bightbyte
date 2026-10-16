@@ -14,15 +14,14 @@ const now = () => new Date().toISOString();
 const isUuid = (value) =>
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
 
-const withOrganisationId = (row) => {
-  if (!row || typeof row !== "object") return row;
-  const companyId = row.company_id || row.organisation_id;
-  if (!companyId) return { ...row };
-  return {
-    ...row,
-    company_id: row.company_id || companyId,
-    organisation_id: row.organisation_id || companyId,
-  };
+const STATUS_TRIES = ["available", "active", "in_use", "idle", "Available", "Active"];
+
+const bumpNumber = (payload) => {
+  const current = Number(String(payload.number ?? payload.vehicle_number ?? "0").replace(/\D/g, "")) || 0;
+  const next = current + 1;
+  payload.number = next;
+  payload.vehicle_number = String(next);
+  return true;
 };
 
 const missingSchemaColumn = (message) => {
@@ -35,53 +34,104 @@ const nullSchemaColumn = (message) => {
   return match?.[1] || "";
 };
 
-const fillRequiredColumn = (payload, column) => {
+const fillRequiredColumn = (payload, column, blocked) => {
+  if (blocked.has(column)) return false;
   const companyId = payload.company_id || payload.organisation_id;
-  if (column === "organisation_id" || column === "organization_id" || column === "company_id") {
-    if (!companyId) return false;
-    payload[column] = companyId;
+  if (column === "company_id" && companyId) {
+    payload.company_id = companyId;
+    return true;
+  }
+  if ((column === "organisation_id" || column === "organization_id") && companyId && !blocked.has(column)) {
+    payload[column] = payload.organisation_id || payload.organization_id || companyId;
     return true;
   }
   if (["number", "vehicle_number", "fleet_number", "unit_number"].includes(column)) {
-    const current = Number(String(payload.number || payload.vehicle_number || "0").replace(/\D/g, "")) || 0;
-    const next = String(current + 1).padStart(5, "0");
-    payload.number = next;
-    payload.vehicle_number = next;
-    payload[column] = next;
-    return true;
+    return bumpNumber(payload);
   }
   if (column === "status") {
     payload.status = payload.status || "available";
     return true;
   }
-  if (column === "odometer") {
-    payload.odometer = Number(payload.odometer) || 0;
+  if (column === "odometer" || column === "value" || column === "year") {
+    payload[column] = Number(payload[column]) || 0;
     return true;
   }
   if (column === "registration") {
     payload.registration = payload.registration || "PENDING";
     return true;
   }
+  if (column === "photos" || column === "documents") {
+    payload[column] = payload[column] || [];
+    return true;
+  }
   return false;
 };
 
 const writeRemote = async (run) => {
-  let payload = withOrganisationId(run.payload);
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  let payload = { ...run.payload };
+  const blocked = new Set();
+  let statusTry = 0;
+  for (let attempt = 0; attempt < 16; attempt += 1) {
     const { data, error } = await run.exec(payload);
     if (!error) return data;
-    const missing = missingSchemaColumn(error.message);
+    const msg = String(error.message || error.details || error.hint || "");
+    const missing = missingSchemaColumn(msg);
     if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
       delete payload[missing];
       continue;
     }
-    const required = nullSchemaColumn(error.message);
-    if (required && fillRequiredColumn(payload, required)) continue;
-    if (/duplicate key|unique constraint/i.test(error.message) && /number/i.test(error.message)) {
-      fillRequiredColumn(payload, "number");
+    const required = nullSchemaColumn(msg);
+    if (required && fillRequiredColumn(payload, required, blocked)) continue;
+    if (/duplicate key|unique constraint/i.test(msg) && /number/i.test(msg)) {
+      bumpNumber(payload);
       continue;
     }
-    throw error;
+    if (/generated always|cannot insert/i.test(msg) && /number/i.test(msg)) {
+      delete payload.number;
+      delete payload.vehicle_number;
+      blocked.add("number");
+      blocked.add("vehicle_number");
+      continue;
+    }
+    if (/invalid input syntax for type integer/i.test(msg)) {
+      const col = (msg.match(/column "([^"]+)"/i) || [])[1] || "number";
+      payload[col] = parseInt(String(payload[col] ?? "0").replace(/\D/g, ""), 10) || 1;
+      continue;
+    }
+    if (/invalid input syntax for type uuid/i.test(msg)) {
+      ["assigned_driver_id", "organisation_id", "organization_id"].forEach((key) => {
+        if (payload[key] && !isUuid(payload[key])) payload[key] = null;
+      });
+      continue;
+    }
+    if (/foreign key|violates foreign key/i.test(msg)) {
+      if (/organisation/i.test(msg)) {
+        blocked.add("organisation_id");
+        blocked.add("organization_id");
+        delete payload.organisation_id;
+        delete payload.organization_id;
+        continue;
+      }
+      if (/assigned_driver/i.test(msg)) {
+        payload.assigned_driver_id = null;
+        continue;
+      }
+    }
+    if (/check constraint|violates check/i.test(msg)) {
+      if (/status/i.test(msg) && statusTry < STATUS_TRIES.length) {
+        payload.status = STATUS_TRIES[statusTry];
+        statusTry += 1;
+        continue;
+      }
+      if (/number/i.test(msg)) {
+        bumpNumber(payload);
+        continue;
+      }
+    }
+    const err = new Error(msg);
+    err.details = error.details;
+    err.hint = error.hint;
+    throw err;
   }
   throw new Error("Could not write row");
 };

@@ -1127,33 +1127,37 @@ app.post("/api/vehicles", requireAuth, requirePermission("vehicles", "create"), 
     const photos = Array.isArray(req.body.photos) ? req.body.photos : [];
     if (photos.length < 5) return res.status(400).json({ error: "Upload at least five vehicle photos" });
     const fleet = await db.fetchAll("vehicles", company.id).catch(() => []);
-    const vehicleNo = req.body.number || req.body.vehicle_number || nextVehicleNumber(fleet);
-    const row = await db.insert("vehicles", {
+    const vehicleNo = Number(nextVehicleNumber(fleet));
+    const licence = String(req.body.licence_expiry || "").replace(/\//g, "-");
+    const driverId = req.body.assigned_driver_id;
+    const payload = {
       company_id: company.id,
-      organisation_id: company.organisation_id || company.id,
-      number: vehicleNo,
-      vehicle_number: vehicleNo,
-      registration: req.body.registration,
-      make: req.body.make,
-      model: req.body.model,
+      registration,
+      make: req.body.make || "",
+      model: req.body.model || "",
       year: Number(req.body.year) || null,
       vin: req.body.vin || "",
       colour: req.body.colour || "",
       fuel_type: req.body.fuel_type || "",
       engine: req.body.engine || "",
-      licence_expiry: req.body.licence_expiry || "",
+      licence_expiry: licence,
       status: req.body.status || "available",
       odometer: Number(req.body.odometer) || 0,
       value: Number(req.body.value) || 0,
-      assigned_driver_id: req.body.assigned_driver_id || null,
+      assigned_driver_id: driverId && String(driverId).length > 10 ? driverId : null,
       photo_url: req.body.photo_url || photos[0] || "",
       photos,
       documents: Array.isArray(req.body.documents) ? req.body.documents : [],
-    });
-    await evaluateCompanyServices(company.id);
+      number: vehicleNo,
+      vehicle_number: String(vehicleNo),
+    };
+    if (company.organisation_id) payload.organisation_id = company.organisation_id;
+    const row = await db.insert("vehicles", payload);
+    evaluateCompanyServices(company.id).catch((error) => console.error("[vehicles] service", error.message));
     res.json(row);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    const message = [error.message, error.details, error.hint].filter(Boolean).join(" — ");
+    res.status(500).json({ error: message || "Could not save the vehicle" });
   }
 });
 
