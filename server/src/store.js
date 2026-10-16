@@ -16,13 +16,17 @@ const isUuid = (value) =>
 
 const STATUS_TRIES = ["available", "active", "in_use", "idle", "Available", "Active"];
 
-const bumpNumber = (payload) => {
-  const current = Number(String(payload.number ?? payload.vehicle_number ?? "0").replace(/\D/g, "")) || 0;
-  const next = current + 1;
-  payload.number = next;
-  payload.vehicle_number = String(next);
-  return true;
+const compactRow = (row) => {
+  const next = {};
+  Object.entries(row || {}).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") return;
+    next[key] = value;
+  });
+  return next;
 };
+
+const errorText = (error) =>
+  [error?.message, error?.details, error?.hint, error?.code].filter(Boolean).join(" — ");
 
 const missingSchemaColumn = (message) => {
   const match = String(message || "").match(/Could not find the '([^']+)' column/i);
@@ -34,106 +38,73 @@ const nullSchemaColumn = (message) => {
   return match?.[1] || "";
 };
 
-const fillRequiredColumn = (payload, column, blocked) => {
-  if (blocked.has(column)) return false;
-  const companyId = payload.company_id || payload.organisation_id;
-  if (column === "company_id" && companyId) {
-    payload.company_id = companyId;
-    return true;
-  }
-  if ((column === "organisation_id" || column === "organization_id") && companyId && !blocked.has(column)) {
-    payload[column] = payload.organisation_id || payload.organization_id || companyId;
-    return true;
-  }
-  if (["number", "vehicle_number", "fleet_number", "unit_number"].includes(column)) {
-    return bumpNumber(payload);
-  }
-  if (column === "status") {
-    payload.status = payload.status || "available";
-    return true;
-  }
-  if (column === "odometer" || column === "value" || column === "year") {
-    payload[column] = Number(payload[column]) || 0;
-    return true;
-  }
-  if (column === "registration") {
-    payload.registration = payload.registration || "PENDING";
-    return true;
-  }
-  if (column === "photos" || column === "documents") {
-    payload[column] = payload[column] || [];
-    return true;
-  }
-  return false;
-};
-
 const writeRemote = async (run) => {
-  let payload = { ...run.payload };
+  let payload = compactRow(run.payload);
   const blocked = new Set();
   let statusTry = 0;
-  for (let attempt = 0; attempt < 16; attempt += 1) {
+  let last = "Could not write row";
+  const seen = new Set();
+  for (let attempt = 0; attempt < 20; attempt += 1) {
     const { data, error } = await run.exec(payload);
     if (!error) return data;
-    const msg = String(error.message || error.details || error.hint || "");
-    const missing = missingSchemaColumn(msg);
+    last = errorText(error) || last;
+    if (seen.has(last)) break;
+    seen.add(last);
+    const missing = missingSchemaColumn(last);
     if (missing && Object.prototype.hasOwnProperty.call(payload, missing)) {
       delete payload[missing];
       continue;
     }
-    const required = nullSchemaColumn(msg);
-    if (required && fillRequiredColumn(payload, required, blocked)) continue;
-    if (/duplicate key|unique constraint/i.test(msg) && /number/i.test(msg)) {
-      bumpNumber(payload);
+    const required = nullSchemaColumn(last);
+    if (required && !blocked.has(required)) {
+      if (required === "company_id" && payload.organisation_id) payload.company_id = payload.organisation_id;
+      else if ((required === "organisation_id" || required === "organization_id") && payload.company_id) {
+        payload[required] = payload.company_id;
+      } else if (["number", "vehicle_number", "fleet_number", "unit_number"].includes(required)) {
+        const n = Date.now() % 100000000;
+        payload.number = n;
+        payload.vehicle_number = String(n);
+        payload[required] = required === "number" ? n : String(n);
+      } else if (required === "status") payload.status = "available";
+      else if (required === "odometer" || required === "value" || required === "year") payload[required] = 0;
+      else if (required === "photos" || required === "documents") payload[required] = [];
+      else if (required === "registration") payload.registration = "PENDING";
+      else payload[required] = payload.company_id || 0;
       continue;
     }
-    if (/generated always|cannot insert/i.test(msg) && /number/i.test(msg)) {
+    if (/duplicate key|unique constraint/i.test(last)) {
+      const n = Date.now() % 100000000;
+      payload.number = n;
+      payload.vehicle_number = String(n);
+      continue;
+    }
+    if (/generated always|cannot insert/i.test(last)) {
       delete payload.number;
       delete payload.vehicle_number;
-      blocked.add("number");
-      blocked.add("vehicle_number");
       continue;
     }
-    if (/invalid input syntax for type integer/i.test(msg)) {
-      const col = (msg.match(/column "([^"]+)"/i) || [])[1] || "number";
-      payload[col] = parseInt(String(payload[col] ?? "0").replace(/\D/g, ""), 10) || 1;
+    if (/invalid input syntax for type uuid/i.test(last)) {
+      ["assigned_driver_id", "organisation_id", "organization_id"].forEach((key) => delete payload[key]);
       continue;
     }
-    if (/invalid input syntax for type uuid/i.test(msg)) {
-      ["assigned_driver_id", "organisation_id", "organization_id"].forEach((key) => {
-        if (payload[key] && !isUuid(payload[key])) payload[key] = null;
-      });
-      continue;
-    }
-    if (/foreign key|violates foreign key/i.test(msg)) {
-      if (/organisation/i.test(msg)) {
+    if (/foreign key|violates foreign key/i.test(last)) {
+      if (/organisation/i.test(last)) {
         blocked.add("organisation_id");
-        blocked.add("organization_id");
         delete payload.organisation_id;
         delete payload.organization_id;
         continue;
       }
-      if (/assigned_driver/i.test(msg)) {
-        payload.assigned_driver_id = null;
-        continue;
-      }
+      delete payload.assigned_driver_id;
+      continue;
     }
-    if (/check constraint|violates check/i.test(msg)) {
-      if (/status/i.test(msg) && statusTry < STATUS_TRIES.length) {
-        payload.status = STATUS_TRIES[statusTry];
-        statusTry += 1;
-        continue;
-      }
-      if (/number/i.test(msg)) {
-        bumpNumber(payload);
-        continue;
-      }
+    if (/check constraint|violates check/i.test(last) && statusTry < STATUS_TRIES.length) {
+      payload.status = STATUS_TRIES[statusTry];
+      statusTry += 1;
+      continue;
     }
-    const err = new Error(msg);
-    err.details = error.details;
-    err.hint = error.hint;
-    throw err;
+    break;
   }
-  throw new Error("Could not write row");
+  throw new Error(last);
 };
 
 const seedPasswordHash = bcrypt.hashSync("fleet21", 10);
@@ -993,9 +964,34 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
+    let payload = compactRow(row);
+    if (table === "vehicles") {
+      const sample = await supabase.from(name).select("*").limit(1);
+      const keys = sample.data?.[0] ? Object.keys(sample.data[0]) : null;
+      if (keys?.length) {
+        const aliases = { vehicle_number: "number", organization_id: "organisation_id" };
+        const next = {};
+        Object.entries(payload).forEach(([key, value]) => {
+          if (keys.includes(key)) next[key] = value;
+          else if (aliases[key] && keys.includes(aliases[key])) next[aliases[key]] = value;
+        });
+        payload = next;
+      } else {
+        delete payload.vehicle_number;
+        delete payload.number;
+        delete payload.organisation_id;
+        delete payload.assigned_driver_id;
+        delete payload.documents;
+      }
+    }
     return writeRemote({
-      payload: row,
-      exec: (payload) => supabase.from(name).insert(payload).select().single(),
+      payload,
+      exec: async (body) => {
+        const { data, error } = await supabase.from(name).insert(body).select();
+        if (error) return { data: null, error };
+        const saved = Array.isArray(data) ? data[0] : data;
+        return { data: saved || { ...body }, error: null };
+      },
     });
   },
 

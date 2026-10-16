@@ -1126,10 +1126,7 @@ app.post("/api/vehicles", requireAuth, requirePermission("vehicles", "create"), 
     if (!registration) return res.status(400).json({ error: "Registration is required" });
     const photos = Array.isArray(req.body.photos) ? req.body.photos : [];
     if (photos.length < 5) return res.status(400).json({ error: "Upload at least five vehicle photos" });
-    const fleet = await db.fetchAll("vehicles", company.id).catch(() => []);
-    const vehicleNo = Number(nextVehicleNumber(fleet));
     const licence = String(req.body.licence_expiry || "").replace(/\//g, "-");
-    const driverId = req.body.assigned_driver_id;
     const payload = {
       company_id: company.id,
       registration,
@@ -1144,12 +1141,8 @@ app.post("/api/vehicles", requireAuth, requirePermission("vehicles", "create"), 
       status: req.body.status || "available",
       odometer: Number(req.body.odometer) || 0,
       value: Number(req.body.value) || 0,
-      assigned_driver_id: driverId && String(driverId).length > 10 ? driverId : null,
       photo_url: req.body.photo_url || photos[0] || "",
       photos,
-      documents: Array.isArray(req.body.documents) ? req.body.documents : [],
-      number: vehicleNo,
-      vehicle_number: String(vehicleNo),
     };
     if (company.organisation_id) payload.organisation_id = company.organisation_id;
     const row = await db.insert("vehicles", payload);
