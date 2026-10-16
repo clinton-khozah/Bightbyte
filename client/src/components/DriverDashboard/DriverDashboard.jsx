@@ -35,10 +35,6 @@ const DriverDashboard = ({ data }) => {
             <span>{vehicle?.registration || "None"}</span>
           </dd>
         </Link>
-        <Link to="/checkins">
-          <dt>Check-ins</dt>
-          <dd>{kpis.checkins ?? 0}</dd>
-        </Link>
         <Link to="/reviews">
           <dt>Reviews</dt>
           <dd>{kpis.reviews ?? 0}</dd>

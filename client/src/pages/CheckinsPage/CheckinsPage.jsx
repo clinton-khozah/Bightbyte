@@ -99,6 +99,25 @@ const scheduleBalance = (schedule, checkins = [], due = dueFromSchedule(schedule
   return { expected, paid, remaining, settled };
 };
 
+const checkedInForDue = (checkins, due, next) => {
+  const windowEnd = next && next.getTime() !== due.getTime() ? next.getTime() : due.getTime() + 7 * 86400000;
+  return checkins.some((row) => {
+    if (String(row.status || "").toLowerCase() === "rejected") return false;
+    const at = new Date(row.created_at).getTime();
+    return at >= due.getTime() && at < windowEnd;
+  });
+};
+
+const openDriverDue = (schedule, checkins = []) => {
+  const due = lastDueFromSchedule(schedule);
+  if (!due) return null;
+  const next = dueFromSchedule(schedule);
+  if (checkedInForDue(checkins, due, next)) return null;
+  const balance = scheduleBalance(schedule, checkins, due);
+  if (balance.settled) return null;
+  return { due, balance };
+};
+
 const pendingFromSchedule = (schedule, checkins = []) => {
   const last = lastDueFromSchedule(schedule);
   if (!last) return null;
@@ -205,9 +224,9 @@ const CheckinsPage = () => {
           roundMoney(row.expected_amount) > 0,
       );
       const pendingRows = mine.flatMap((schedule) => {
-        const pending = pendingFromSchedule(schedule, checkins);
-        if (!pending) return [];
-        const { due, balance } = pending;
+        const open = openDriverDue(schedule, checkins);
+        if (!open) return [];
+        const { due, balance } = open;
         return [
           {
             id: `due-${schedule.id}`,
@@ -226,15 +245,7 @@ const CheckinsPage = () => {
           },
         ];
       });
-      const submittedRows = [...checkins]
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-        .map((row) => ({
-          ...row,
-          record_type: "checkin",
-          expected_amount: Number(row.cash_amount || row.amount || 0),
-          remaining: null,
-        }));
-      setRows([...pendingRows, ...submittedRows]);
+      setRows(pendingRows);
       return;
     }
     const merged = [
@@ -470,7 +481,7 @@ const CheckinsPage = () => {
       scheduleWeekday(row) >= 0 &&
       roundMoney(row.expected_amount) > 0,
   );
-  const driverPending = driverSchedule ? pendingFromSchedule(driverSchedule, checkins) : null;
+  const driverPending = driverSchedule ? openDriverDue(driverSchedule, checkins) : null;
   const driverBalance = driverPending?.balance || null;
   const dueStamp = driverPending
     ? driverPending.due.toLocaleString("en-ZA", {
@@ -549,11 +560,7 @@ const CheckinsPage = () => {
               <button type="button" className="fc-btn fc-btn--primary" onClick={() => openForm(r)}>
                 Check in
               </button>
-            ) : String(r.status || "").toLowerCase() === "submitted" ? (
-              <span className="fc-muted">Awaiting approval</span>
-            ) : (
-              <StatusChip value={r.status || "submitted"} />
-            ),
+            ) : null,
         },
       ]
     : [
@@ -663,8 +670,8 @@ const CheckinsPage = () => {
         subtitle={
           isDriver
             ? dueStamp
-              ? `Your check-ins are listed below. A payment is still due ${dueStamp}.`
-              : "Every check-in you have submitted."
+              ? `Pending check-in due ${dueStamp}.`
+              : "No check-in is due."
             : "Cash check-ins and vehicle expenses"
         }
         primaryLabel={canCreate ? "New check-in" : undefined}
@@ -677,10 +684,7 @@ const CheckinsPage = () => {
         stats={
           isDriver
             ? [
-                { id: "all", label: "All", value: rows.filter((r) => r.record_type === "checkin").length, tone: "blue", icon: "R" },
-                { id: "submitted", label: "Submitted", value: rows.filter((r) => r.record_type === "checkin" && r.status === "submitted").length, tone: "amber", icon: "↑" },
-                { id: "approved", label: "Approved", value: rows.filter((r) => r.record_type === "checkin" && r.status === "approved").length, tone: "green", icon: "✓" },
-                { id: "pending", label: "Due", value: rows.filter((r) => r.record_type === "pending").length, tone: "amber", icon: "⏱" },
+                { id: "all", label: "Pending", value: rows.filter((r) => r.record_type === "pending").length, tone: "amber", icon: "⏱" },
               ]
             : [
                 { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "R" },
@@ -689,8 +693,8 @@ const CheckinsPage = () => {
                 { id: "rejected", label: "Rejected", value: rows.filter((r) => r.status === "rejected").length, tone: "red", icon: "!" },
               ]
         }
-        activeStat={tab}
-        onStat={setTab}
+        activeStat={isDriver ? "all" : tab}
+        onStat={isDriver ? undefined : setTab}
       >
         <DataTable
           rows={filtered}
@@ -700,15 +704,10 @@ const CheckinsPage = () => {
           search={query}
           onSearch={setQuery}
           searchPlaceholder="Search check-ins and expenses..."
+          hideToolbar={isDriver}
           tabs={
             isDriver
-              ? [
-                  { id: "all", label: "All" },
-                  { id: "submitted", label: "Submitted" },
-                  { id: "approved", label: "Approved" },
-                  { id: "rejected", label: "Rejected" },
-                  { id: "pending", label: "Due" },
-                ]
+              ? []
               : [
                   { id: "all", label: "All" },
                   { id: "submitted", label: "Submitted" },
@@ -719,7 +718,13 @@ const CheckinsPage = () => {
           }
           tab={tab}
           onTab={setTab}
-          emptyText={isDriver ? "No check-in schedule is set for you." : undefined}
+          emptyText={
+            isDriver
+              ? driverSchedule
+                ? "You have already checked in for this due."
+                : "No check-in schedule is set for you."
+              : undefined
+          }
         />
       </OpsPage>
       <CheckinFormModal

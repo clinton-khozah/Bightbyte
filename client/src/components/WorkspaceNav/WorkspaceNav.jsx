@@ -41,8 +41,8 @@ const WorkspaceNav = () => {
           <b>{data?.kpis?.openIncidents ?? "—"}</b>
         </li>
         <li>
-          <span>{user?.role === "driver" ? "Check-ins" : "In use"}</span>
-          <b>{user?.role === "driver" ? data?.kpis?.checkins ?? "—" : data?.kpis?.inUse ?? "—"}</b>
+          <span>In use</span>
+          <b>{data?.kpis?.inUse ?? "—"}</b>
         </li>
       </ul>
       <nav>
