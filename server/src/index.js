@@ -71,7 +71,7 @@ app.get("/api/health", (_req, res) => {
 app.post("/api/auth/login", async (req, res) => {
   try {
     const email = String(req.body?.email || "").trim().toLowerCase();
-    const password = String(req.body?.password || "");
+    const password = String(req.body?.password || "").trim();
     const user = await db.findUserByEmail(email);
     if (!user || !verifyPassword(password, user.password_hash)) {
       return res.status(401).json({ error: "Wrong email or password" });
@@ -1125,7 +1125,6 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
     const email = String(req.body.email || req.body.emailAddress || "").trim().toLowerCase();
     const fullName = req.body.full_name || `${req.body.firstName || ""} ${req.body.lastName || ""}`.trim();
     if (!email || !fullName) return res.status(400).json({ error: "Name and email are required" });
-    if (await db.findUserByEmail(email)) return res.status(409).json({ error: "Email already in use" });
     const roleMap = { supervisor: "fleet_manager" };
     let role = roleMap[req.body.role || req.body.rolePosition] || req.body.role || req.body.rolePosition || "driver";
     let roleId = req.body.role_id || "";
@@ -1138,15 +1137,22 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
         roleId = roleRow.RoleID;
       }
     }
+    const allowedRoles = ["admin", "fleet_manager", "driver", "finance", "super_admin"];
+    role = allowedRoles.includes(role) ? role : "driver";
     const documents = Array.isArray(req.body.documents) ? req.body.documents : [];
     const photo_url = req.body.photo_url || "";
-    const status = !documents.length ? "incomplete" : photo_url ? "active" : "in_progress";
-    const tempPassword = String(req.body.password || req.body.temporaryPassword || "fleet21");
-    const row = await db.insert("profiles", {
+    const status = "active";
+    const loginPassword = String(req.body.password || req.body.temporaryPassword || "").trim();
+    if (loginPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters" });
+    }
+    const password_hash = bcrypt.hashSync(loginPassword, 10);
+    const existing = await db.findUserByEmail(email);
+    const profileFields = {
       company_id: company.id,
       email,
       full_name: fullName,
-      role: ["admin", "fleet_manager", "driver", "finance"].includes(role) ? role : "driver",
+      role,
       role_id: roleId || ROLE_IDS[role] || "",
       phone: req.body.phone || req.body.contactNumber || "",
       license_no: req.body.license_no || req.body.driversLicenseNumber || "",
@@ -1155,20 +1161,31 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
       prdp: req.body.prdp || "not_required",
       id_number: req.body.id_number || req.body.idNumber || "",
       address: req.body.address || req.body.physicalAddress || "",
-      employee_id: await db.nextEmployeeId(company),
       start_date: req.body.start_date || req.body.startDate || "",
       emergency_contact_name: req.body.emergency_contact_name || req.body.emergencyContactName || "",
       emergency_contact_number: req.body.emergency_contact_number || req.body.emergencyContactNumber || "",
       photo_url,
       documents,
       status,
-      password_hash: bcrypt.hashSync(tempPassword, 10),
-    });
+      password_hash,
+    };
+    let row;
+    if (existing) {
+      row = await db.update("profiles", existing.id, profileFields);
+    } else {
+      row = await db.insert("profiles", {
+        ...profileFields,
+        employee_id: await db.nextEmployeeId(company),
+      });
+    }
+    if (row && !row.password_hash) {
+      row = await db.update("profiles", row.id, { password_hash });
+    }
     await notifyInvite({
       company,
       person: row,
       username: email,
-      password: tempPassword,
+      password: loginPassword,
       inviterName: req.user.full_name,
     }).catch((error) => console.error("[mail] invite", error.message));
     const vehicleId = req.body.assigned_vehicle_id || req.body.vehicle_id || "";

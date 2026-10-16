@@ -93,6 +93,13 @@
   color: var(--gh-accent);
 }
 
+.fc-onboard__hint {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 12px;
+  color: #737373;
+}
+
 .fc-onboard__input,
 .fc-onboard__select,
 .fc-onboard__textarea {

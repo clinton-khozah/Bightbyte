@@ -24,18 +24,31 @@ const sendEmailJs = async (params) => {
   return { ok: true };
 };
 
-export const sendFleetEmail = async ({ companyId, key, to, toName, subject, headline, message, companyName }) => {
+export const sendFleetEmail = async ({
+  companyId,
+  key,
+  to,
+  toName,
+  subject,
+  headline,
+  message,
+  companyName,
+  force = false,
+  extra = {},
+}) => {
   const address = String(to || "").trim();
   if (!address || !key) return;
   const existing = (await db.fetchAll("emails", companyId)).find((row) => row.key === key);
-  if (existing) return;
-  await db.insert("emails", {
-    company_id: companyId,
-    key,
-    to: address,
-    subject,
-    body: message,
-  });
+  if (existing && !force) return;
+  if (!existing) {
+    await db.insert("emails", {
+      company_id: companyId,
+      key,
+      to: address,
+      subject,
+      body: message,
+    });
+  }
   try {
     await sendEmailJs({
       to_email: address,
@@ -46,6 +59,9 @@ export const sendFleetEmail = async ({ companyId, key, to, toName, subject, head
       company_name: companyName || "Fleet21",
       action_label: "Sign in",
       login_url: config.appLoginUrl,
+      username: extra.username || "",
+      password: extra.password || "",
+      user_password: extra.password || "",
     });
   } catch (error) {
     console.error(`[mail] ${key}: ${error.message}`);
@@ -65,6 +81,8 @@ export const notifyAndMail = async ({
   companyName,
   link = "",
   type = "ops",
+  force = false,
+  extra = {},
 }) => {
   if (userId) {
     const notes = await db.fetchAll("notifications", companyId);
@@ -84,6 +102,8 @@ export const notifyAndMail = async ({
   await sendFleetEmail({
     companyId,
     key: `mail-${key}`,
+    force,
+    extra,
     to,
     toName,
     subject: subject || title,
@@ -168,13 +188,15 @@ export const notifyInvite = async ({ company, person, username, password, invite
     key: `invite-${person.id}`,
     to: person.email,
     toName: person.full_name,
-    title: "You're invited to Fleet21",
-    subject: `You're invited to ${company.name} on Fleet21`,
+    title: "You're invited to BrightByte",
+    subject: `You're invited to ${company.name} on BrightByte`,
     headline: "You're invited",
-    message: `${inviterName ? `${inviterName} invited you` : "You have been invited"} to join ${company.name} on Fleet21. Username: ${username}. Temporary password: ${password}. Sign in at ${login} and start using the app.`,
+    message: `${inviterName ? `${inviterName} invited you` : "You have been invited"} to join ${company.name} on BrightByte. Sign in at ${login} with email ${username} and password ${password}. This is your login password. It does not expire.`,
     companyName: company.name,
     link: "/login",
     type: "invite",
+    force: true,
+    extra: { username, password },
   });
 };
 

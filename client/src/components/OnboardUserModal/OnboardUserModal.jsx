@@ -183,6 +183,9 @@ const OnboardUserModal = ({ open, onClose, onComplete }) => {
         ? "Assign this driver to a vehicle."
         : "This company has no vehicle. Add a vehicle first, then onboard the driver.";
     }
+    if (step === 3 && String(form.temporaryPassword || "").trim().length < 6) {
+      return "Login password must be at least 6 characters.";
+    }
     return "";
   };
 
@@ -399,9 +402,17 @@ const OnboardUserModal = ({ open, onClose, onComplete }) => {
           ) : null}
           {step === 3 ? (
             <div className="fc-onboard__grid">
-              <Field label="Temporary password" required>
-                <input className="fc-onboard__input" value={form.temporaryPassword} onChange={(e) => set("temporaryPassword", e.target.value)} />
+              <Field label="Login password" required>
+                <input
+                  className="fc-onboard__input"
+                  type="text"
+                  autoComplete="new-password"
+                  minLength={6}
+                  value={form.temporaryPassword}
+                  onChange={(e) => set("temporaryPassword", e.target.value)}
+                />
               </Field>
+              <p className="fc-onboard__hint">They sign in with this password. It does not expire or change after the invite.</p>
               <Field label="Profile photo" full>
                 <CameraCapture
                   label="Take a photo now — drivers also recapture on first login"

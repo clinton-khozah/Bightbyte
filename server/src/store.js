@@ -692,7 +692,8 @@ export const db = {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("email", email)
+      .ilike("email", email)
+      .limit(1)
       .maybeSingle();
     if (error) throw error;
     return (
