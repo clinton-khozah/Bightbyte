@@ -67,6 +67,7 @@ const VehiclesPage = () => {
   const [form, setForm] = useState(emptyForm);
   const [pendingDelete, setPendingDelete] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState("");
   const [companies, setCompanies] = useState([]);
   const [formError, setFormError] = useState("");
@@ -231,6 +232,7 @@ const VehiclesPage = () => {
                 setFormError("Upload at least five vehicle photos.");
                 return;
               }
+              setSaving(true);
               try {
                 const photos = form.photos || [];
                 const payload = {
@@ -253,15 +255,17 @@ const VehiclesPage = () => {
                 if (editing) {
                   await api(`/api/vehicles/${editing.id}`, { method: "PATCH", body: JSON.stringify(payload) });
                   setOpen(false);
-                  setSuccess("Vehicle details were updated.");
+                  setSuccess("Submitted successfully.");
                 } else {
                   await api("/api/vehicles", { method: "POST", body: JSON.stringify(payload) });
                   setOpen(false);
-                  setSuccess("Vehicle was registered.");
+                  setSuccess("Submitted successfully.");
                 }
                 load();
               } catch (err) {
                 setFormError(err.message);
+              } finally {
+                setSaving(false);
               }
             }}
           >
@@ -383,7 +387,9 @@ const VehiclesPage = () => {
             />
             <div className="fc-form__actions">
               <button className="fc-btn" type="button" onClick={() => setOpen(false)}>Cancel</button>
-              <button className="fc-btn fc-btn--primary" type="submit">{editing ? "Save changes" : "Save"}</button>
+              <button className="fc-btn fc-btn--primary" type="submit" disabled={saving}>
+                {saving ? "Submitting…" : editing ? "Save changes" : "Save"}
+              </button>
             </div>
           </form>
         </Modal>
@@ -411,7 +417,13 @@ const VehiclesPage = () => {
           }
         }}
       />
-      <SuccessModal open={Boolean(success)} message={success} onClose={() => setSuccess("")} />
+      <SuccessModal
+        open={Boolean(success)}
+        title="Submitted successfully"
+        subtitle="The vehicle was saved."
+        message={success}
+        onClose={() => setSuccess("")}
+      />
     </div>
   );
 };

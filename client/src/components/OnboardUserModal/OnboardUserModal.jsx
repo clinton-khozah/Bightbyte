@@ -143,8 +143,9 @@ const OnboardUserModal = ({ open, onClose, onComplete }) => {
     return (
       <SuccessModal
         open
-        title="Completed successfully"
-        message={`${created.full_name} was onboarded${created.employee_id ? ` as ${created.employee_id}` : ""}.`}
+        title="Submitted successfully"
+        subtitle="The user was created."
+        message={`${created.full_name || "The user"} was onboarded${created.employee_id ? ` as ${created.employee_id}` : ""}.`}
         onClose={() => {
           setCreated(null);
           setForm(empty);
@@ -428,7 +429,7 @@ const OnboardUserModal = ({ open, onClose, onComplete }) => {
             {step === 0 ? "Cancel" : "Back"}
           </button>
           <button type="button" className="fc-btn fc-btn--primary" disabled={saving} onClick={next}>
-            {step === STEPS.length - 1 ? (saving ? "Saving" : "Create user") : "Continue"}
+            {step === STEPS.length - 1 ? (saving ? "Submitting…" : "Create user") : "Continue"}
           </button>
         </div>
       </div>

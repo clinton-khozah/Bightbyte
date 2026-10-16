@@ -1301,6 +1301,9 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
       fullName,
       userId: existing?.id,
     });
+    const prior =
+      existing ||
+      (authUser?.id ? await db.getById("profiles", authUser.id).catch(() => null) : null);
     const profileFields = {
       company_id: company.id,
       email,
@@ -1323,14 +1326,22 @@ app.post("/api/drivers", requireAuth, requirePermission("drivers", "create"), as
       password_hash,
     };
     let row;
-    if (existing) {
-      row = await db.update("profiles", existing.id, profileFields);
-    } else {
-      row = await db.insert("profiles", {
+    if (prior?.id) {
+      row = await db.update("profiles", prior.id, {
         ...profileFields,
-        ...(authUser?.id ? { id: authUser.id } : {}),
-        employee_id: await db.nextEmployeeId(company),
+        employee_id: prior.employee_id || (await db.nextEmployeeId(company)),
       });
+    } else {
+      try {
+        row = await db.insert("profiles", {
+          ...profileFields,
+          ...(authUser?.id ? { id: authUser.id } : {}),
+          employee_id: await db.nextEmployeeId(company),
+        });
+      } catch (error) {
+        if (!/23505|duplicate key/i.test(error.message) || !authUser?.id) throw error;
+        row = await db.update("profiles", authUser.id, profileFields);
+      }
     }
     if (row && !row.password_hash) {
       row = await db.update("profiles", row.id, { password_hash });
