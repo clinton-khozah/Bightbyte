@@ -70,7 +70,7 @@ const ROLE_LABELS = {
 
 const sessionUser = async (user) => {
   const pub = db.publicUser(user);
-  const company = user.company_id ? await db.getById("companies", user.company_id) : null;
+  const company = await loadCompany(user.company_id);
   const isSuper = pub.role === "super_admin";
   const extra = await resolvePermissions(pub, db);
   return {

@@ -11,6 +11,9 @@ import { ROLE_TEMPLATES } from "./permissions.js";
 
 const now = () => new Date().toISOString();
 
+const isUuid = (value) =>
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ""));
+
 const seedPasswordHash = bcrypt.hashSync("fleet21", 10);
 
 const memory = {
@@ -704,6 +707,7 @@ export const db = {
 
   async getUser(id) {
     if (!useSupabase) return memory.profiles.find((p) => p.id === id);
+    if (!isUuid(id)) return memory.profiles.find((p) => p.id === id) || null;
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
@@ -817,6 +821,9 @@ export const db = {
       if (table === "companies") return [...memory.companies];
       return this.list(table, companyId);
     }
+    if (table !== "companies" && !isUuid(companyId)) {
+      return this.list(table, companyId);
+    }
     const map = {
       reviews: "vehicle_reviews",
     };
@@ -857,6 +864,7 @@ export const db = {
 
   async getById(table, id) {
     if (!useSupabase) return (memory[table] || []).find((r) => r.id === id) || null;
+    if (!isUuid(id)) return (memory[table] || []).find((r) => r.id === id) || null;
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
     const { data, error } = await supabase.from(name).select("*").eq("id", id).maybeSingle();
@@ -865,7 +873,7 @@ export const db = {
   },
 
   async update(table, id, patch) {
-    if (!useSupabase) {
+    if (!useSupabase || !isUuid(id)) {
       const idx = memory[table].findIndex((r) => r.id === id);
       if (idx < 0) return null;
       memory[table][idx] = { ...memory[table][idx], ...patch };
@@ -885,7 +893,7 @@ export const db = {
   },
 
   async remove(table, id) {
-    if (!useSupabase) {
+    if (!useSupabase || !isUuid(id)) {
       const before = memory[table].length;
       memory[table] = memory[table].filter((r) => r.id !== id);
       if (LOCAL_TABLES.includes(table)) persistLocal();

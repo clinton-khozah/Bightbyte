@@ -137,7 +137,12 @@ export const resolvePermissions = async (user, db) => {
     return { permissions: fullMatrix(), role_label: "Super admin", role_key: "super_admin" };
   }
   const own = user.company_id ? await db.fetchAll("roles", user.company_id) : [];
-  const platform = await db.fetchAll("roles", "co-1");
+  const platform = ROLE_TEMPLATES.map((role) => ({
+    ...role,
+    id: role.RoleID,
+    company_id: "co-1",
+    state: "active",
+  }));
   const pool = [...own, ...platform];
   const row =
     pool.find((role) => role.RoleID === user.role_id || role.id === user.role_id) ||
