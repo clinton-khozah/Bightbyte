@@ -20,6 +20,7 @@ const CheckinFormModal = ({
   onProof,
   onClose,
   onSubmit,
+  busy,
   error,
   drivers = [],
   vehicles = [],
@@ -28,7 +29,6 @@ const CheckinFormModal = ({
   assignedLabel,
   assignedOk,
   lateFeeText,
-  minOdometer = 0,
 }) => {
   if (!open) return null;
 
@@ -55,7 +55,13 @@ const CheckinFormModal = ({
       }
       onClose={onClose}
     >
-      <form className="fc-form checkin-form" onSubmit={onSubmit}>
+      <form className={`fc-form checkin-form${busy ? " is-busy" : ""}`} onSubmit={onSubmit}>
+        {busy ? (
+          <div className="checkin-form__loading" role="status">
+            <span className="checkin-form__spinner" aria-hidden="true" />
+            Submitting check-in…
+          </div>
+        ) : null}
         <div className={`checkin-form__pickers${showDriver ? "" : " checkin-form__pickers--solo"}`}>
           {showDriver ? (
             <LineSelect
@@ -79,14 +85,7 @@ const CheckinFormModal = ({
               label="Vehicle"
               required
               value={form.vehicle_id}
-              onChange={(id) => {
-                const lastKm = Number(vehicles.find((row) => row.id === id)?.odometer || 0);
-                const km = Number(form.odometer);
-                set({
-                  vehicle_id: id,
-                  odometer: !Number.isFinite(km) || km < lastKm ? lastKm || "" : form.odometer,
-                });
-              }}
+              onChange={(id) => set({ vehicle_id: id })}
             placeholder="Select a vehicle"
             emptyText="No vehicles to select"
               options={fleet.map((row) => ({
@@ -120,16 +119,12 @@ const CheckinFormModal = ({
           Odometer (km)
           <input
             type="number"
-            min={minOdometer}
+            min="0"
             value={form.odometer}
             onChange={(e) => set({ odometer: e.target.value })}
             required
           />
-          <span className={`checkin-form__flag${minOdometer ? " is-warn" : ""}`}>
-            {minOdometer
-              ? `Cannot be less than the previous reading (${Number(minOdometer).toLocaleString("en-ZA")} km)`
-              : "\u00a0"}
-          </span>
+          <span className="checkin-form__flag">{"\u00a0"}</span>
         </label>
         {showStatus ? (
           <LineSelect
@@ -151,8 +146,8 @@ const CheckinFormModal = ({
           <button className="fc-btn" type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="fc-btn fc-btn--primary" type="submit">
-            {editing ? "Save changes" : "Submit check-in"}
+          <button className="fc-btn fc-btn--primary" type="submit" disabled={busy}>
+            {busy ? "Submitting…" : editing ? "Save changes" : "Submit check-in"}
           </button>
         </div>
       </form>

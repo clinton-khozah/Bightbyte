@@ -991,12 +991,18 @@ export const db = {
     }
     const map = { reviews: "vehicle_reviews" };
     const name = map[table] || table;
-    const payload = await this.fitColumns(name, compactRow(row));
+    const payload = await this.fitColumns(name, compactRow({ ...row, id: row.id || record.id }));
     return writeRemote({
       payload,
       exec: async (body) => {
         const { data, error } = await supabase.from(name).insert(body).select();
-        if (error) return { data: null, error };
+        if (error) {
+          if (body.id && /duplicate key|unique constraint/i.test(error.message || "")) {
+            const existing = await supabase.from(name).select("*").eq("id", body.id).maybeSingle();
+            if (existing.data) return { data: existing.data, error: null };
+          }
+          return { data: null, error };
+        }
         const saved = Array.isArray(data) ? data[0] : data;
         return { data: saved || { ...body }, error: null };
       },

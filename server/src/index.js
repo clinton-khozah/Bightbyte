@@ -525,10 +525,7 @@ app.get("/api/drivers", requireAuth, async (req, res) => {
   const { people, vehicles } = await listWorkspacePeople(req.user);
   res.json(
     people
-      .filter((p) => {
-        const role = String(p.role || "").toLowerCase();
-        return role === "driver" || p.role_id === "R003" || !p.role;
-      })
+      .filter((p) => String(p.role || "").toLowerCase() !== "super_admin")
       .map((p) => mapUser(p, vehicles)),
   );
 });
@@ -1391,22 +1388,30 @@ app.post("/api/checkins", requireAuth, async (req, res) => {
     }
     const driverId = req.user.role === "driver" ? req.user.id : req.body.driver_id;
     if (!driverId) return res.status(400).json({ error: "Select a driver" });
-    const { companyId, vehicle: assigned } = await resolveTenantCompany(req.user, {
+    const { companyId } = await resolveTenantCompany(req.user, {
       driverId,
       vehicleId: req.body.vehicle_id,
     });
     const km = Number(req.body.odometer);
-    const lastKm = Number(assigned?.odometer || 0);
     if (!Number.isFinite(km) || km < 0) {
       return res.status(400).json({ error: "Enter the odometer reading" });
     }
-    if (km < lastKm) {
-      return res.status(400).json({
-        error: `Odometer cannot be less than the previous reading (${lastKm.toLocaleString("en-ZA")} km)`,
-      });
-    }
     const schedule = await scheduleForDriver(companyId, driverId);
     const lateFee = computeLateFee(schedule);
+    const recent = await db.fetchAll("checkins", companyId).catch(() => []);
+    const duplicate = recent.find((row) => {
+      const age = Date.now() - new Date(row.created_at || 0).getTime();
+      return (
+        age >= 0 &&
+        age < 2 * 60 * 1000 &&
+        String(row.driver_id) === String(driverId) &&
+        String(row.vehicle_id) === String(req.body.vehicle_id) &&
+        Number(row.odometer) === km &&
+        Number(row.cash_amount || row.amount) === amount &&
+        String(row.proof_url || "") === String(req.body.proof_url || "")
+      );
+    });
+    if (duplicate) return res.json(duplicate);
     const row = await db.insert("checkins", {
       company_id: companyId,
       driver_id: driverId,
@@ -1439,35 +1444,38 @@ app.post("/api/checkins", requireAuth, async (req, res) => {
 });
 
 app.patch("/api/checkins/:id", requireAuth, requirePermission("checkins", "edit"), async (req, res) => {
-  const existing = await db.getById("checkins", req.params.id);
-  if (!existing || existing.demo || !companyScopeOk(req.user, existing.company_id)) {
-    return res.status(404).json({ error: "Check-in not found" });
-  }
-  const allowed = {};
-  ["status", "amount", "odometer", "note", "proof_url", "vehicle_id", "driver_id"].forEach((key) => {
-    if (req.body[key] !== undefined) allowed[key] = req.body[key];
-  });
-  if (allowed.amount !== undefined) allowed.amount = Number(allowed.amount);
-  if (allowed.odometer !== undefined) {
-    const km = Number(allowed.odometer);
-    const vehicle = await db.getById("vehicles", allowed.vehicle_id || existing.vehicle_id);
-    const lastKm = Number(vehicle?.odometer || 0);
-    if (!Number.isFinite(km) || km < 0) {
-      return res.status(400).json({ error: "Enter the odometer reading" });
+  try {
+    const existing = await db.getById("checkins", req.params.id);
+    if (!existing || existing.demo || !companyScopeOk(req.user, existing.company_id)) {
+      return res.status(404).json({ error: "Check-in not found" });
     }
-    if (km < lastKm) {
-      return res.status(400).json({
-        error: `Odometer cannot be less than the previous reading (${lastKm.toLocaleString("en-ZA")} km)`,
-      });
+    const allowed = {};
+    ["status", "amount", "odometer", "note", "proof_url", "vehicle_id", "driver_id"].forEach((key) => {
+      if (req.body[key] !== undefined) allowed[key] = req.body[key];
+    });
+    if (allowed.amount !== undefined) allowed.amount = Number(allowed.amount);
+    if (allowed.odometer !== undefined) {
+      const km = Number(allowed.odometer);
+      if (!Number.isFinite(km) || km < 0) {
+        return res.status(400).json({ error: "Enter the odometer reading" });
+      }
+      allowed.odometer = Math.round(km);
     }
-    allowed.odometer = km;
+    const row = await db.update("checkins", req.params.id, allowed);
+    if (allowed.odometer !== undefined || allowed.vehicle_id) {
+      await syncVehicleOdometer(row.vehicle_id, row.odometer);
+      await evaluateCompanyServices(row.company_id);
+    }
+    res.json(row);
+  } catch (error) {
+    const message = error.message || "Could not update this check-in.";
+    const tooBig = /out of range for type integer/i.test(message);
+    res.status(400).json({
+      error: tooBig
+        ? "Odometer is too large for the database column. In Supabase SQL editor, run the odometer bigint lines at the bottom of supabase/schema.sql, then save again."
+        : message,
+    });
   }
-  const row = await db.update("checkins", req.params.id, allowed);
-  if (allowed.odometer !== undefined || allowed.vehicle_id) {
-    await syncVehicleOdometer(row.vehicle_id, row.odometer);
-    await evaluateCompanyServices(row.company_id);
-  }
-  res.json(row);
 });
 
 app.delete("/api/checkins/:id", requireAuth, requirePermission("checkins", "delete"), async (req, res) => {

@@ -108,7 +108,7 @@ create table if not exists vehicles (
   engine text,
   licence_expiry text,
   status text default 'available',
-  odometer int default 0,
+  odometer bigint default 0,
   value numeric(14,2) default 0,
   assigned_driver_id uuid references profiles(id),
   photo_url text,
@@ -133,7 +133,8 @@ alter table vehicles add column if not exists fuel_type text;
 alter table vehicles add column if not exists engine text;
 alter table vehicles add column if not exists licence_expiry text;
 alter table vehicles add column if not exists status text default 'available';
-alter table vehicles add column if not exists odometer int default 0;
+alter table vehicles add column if not exists odometer bigint default 0;
+alter table vehicles alter column odometer type bigint;
 alter table vehicles add column if not exists number text;
 alter table vehicles add column if not exists vehicle_number text;
 do $$ begin
@@ -211,11 +212,13 @@ create table if not exists checkins (
   amount numeric(12,2) not null,
   note text,
   proof_url text,
-  odometer int,
+  odometer bigint,
   status text default 'submitted',
   created_at timestamptz default now()
 );
 
+alter table checkins add column if not exists odometer bigint;
+alter table checkins alter column odometer type bigint;
 alter table checkins add column if not exists cash_amount numeric(12,2);
 alter table checkins add column if not exists late_fee_applied numeric(12,2) default 0;
 

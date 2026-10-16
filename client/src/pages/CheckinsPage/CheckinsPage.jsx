@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, uploadFiles } from "../../api";
 import { useAuth } from "../../auth/AuthContext";
@@ -30,8 +30,7 @@ const isDriverUser = (user) => user?.role === "driver" || user?.role_key === "dr
 
 const isDriverProfile = (person) => {
   const role = String(person?.role || person?.role_key || "").toLowerCase();
-  const label = String(person?.role_label || person?.RoleName || "").toLowerCase();
-  return role === "driver" || person?.role_id === "R003" || label.includes("driver") || !person?.role;
+  return role !== "super_admin";
 };
 
 const samePerson = (a, b) => String(a || "") === String(b || "");
@@ -143,6 +142,8 @@ const CheckinsPage = () => {
   const [schedules, setSchedules] = useState([]);
   const [lateFee, setLateFee] = useState(0);
   const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
   const [expenseOpen, setExpenseOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [error, setError] = useState("");
@@ -226,7 +227,6 @@ const CheckinsPage = () => {
         ];
       });
       const submittedRows = [...checkins]
-        .filter((row) => String(row.status || "").toLowerCase() !== "approved")
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
         .map((row) => ({
           ...row,
@@ -336,13 +336,10 @@ const CheckinsPage = () => {
   const onDriverChange = (driverId) => {
     setForm((f) => {
       const vehicle_id = vehicleForDriver(vehicles, driverId) || f.vehicle_id;
-      const lastKm = lastOdometerFor(vehicle_id);
-      const km = Number(f.odometer);
       return {
         ...f,
         driver_id: driverId,
         vehicle_id,
-        odometer: !Number.isFinite(km) || km < lastKm ? lastKm || "" : f.odometer,
       };
     });
     setLateFee(Number(schedules.find((s) => s.driver_id === driverId)?.late_fee_now || 0));
@@ -350,6 +347,7 @@ const CheckinsPage = () => {
 
   const submit = async (event) => {
     event.preventDefault();
+    if (savingRef.current) return;
     setError("");
     if (user?.role !== "driver" && !form.driver_id) {
       setError("Select a driver");
@@ -359,16 +357,13 @@ const CheckinsPage = () => {
       setError("Select a vehicle");
       return;
     }
-    const lastKm = lastOdometerFor(form.vehicle_id);
     const km = Number(form.odometer);
     if (!Number.isFinite(km) || km < 0) {
       setError("Enter the odometer reading");
       return;
     }
-    if (km < lastKm) {
-      setError(`Odometer cannot be less than the previous reading (${lastKm.toLocaleString("en-ZA")} km)`);
-      return;
-    }
+    savingRef.current = true;
+    setSaving(true);
     try {
       if (editing) {
         await api(`/api/checkins/${editing.id}`, {
@@ -397,6 +392,9 @@ const CheckinsPage = () => {
       load();
     } catch (err) {
       setError(err.message);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -454,8 +452,11 @@ const CheckinsPage = () => {
 
   const { query, setQuery, tab, setTab, filtered } = useOpsList(rows, {
     searchKeys: ["note", "status", "record_type", "frequency", "name"],
-    matchTab: (row, current) =>
-      current === "expense" ? row.record_type === "expense" : row.status === current,
+    matchTab: (row, current) => {
+      if (current === "expense") return row.record_type === "expense";
+      if (current === "pending") return row.record_type === "pending";
+      return row.record_type === "checkin" && row.status === current;
+    },
   });
   const canManage = can(user, "checkins", "edit");
   const canCreate = can(user, "checkins", "create");
@@ -548,8 +549,10 @@ const CheckinsPage = () => {
               <button type="button" className="fc-btn fc-btn--primary" onClick={() => openForm(r)}>
                 Check in
               </button>
+            ) : String(r.status || "").toLowerCase() === "submitted" ? (
+              <span className="fc-muted">Awaiting approval</span>
             ) : (
-              <span className="fc-muted">Awaiting confirmation</span>
+              <StatusChip value={r.status || "submitted"} />
             ),
         },
       ]
@@ -660,8 +663,8 @@ const CheckinsPage = () => {
         subtitle={
           isDriver
             ? dueStamp
-              ? `Pending check-in due ${dueStamp}.`
-              : "No check-in schedule is set for you."
+              ? `Your check-ins are listed below. A payment is still due ${dueStamp}.`
+              : "Every check-in you have submitted."
             : "Cash check-ins and vehicle expenses"
         }
         primaryLabel={canCreate ? "New check-in" : undefined}
@@ -674,7 +677,10 @@ const CheckinsPage = () => {
         stats={
           isDriver
             ? [
-                { id: "all", label: "Pending", value: rows.filter((r) => r.status === "pending" || r.record_type === "pending").length, tone: "amber", icon: "⏱" },
+                { id: "all", label: "All", value: rows.filter((r) => r.record_type === "checkin").length, tone: "blue", icon: "R" },
+                { id: "submitted", label: "Submitted", value: rows.filter((r) => r.record_type === "checkin" && r.status === "submitted").length, tone: "amber", icon: "↑" },
+                { id: "approved", label: "Approved", value: rows.filter((r) => r.record_type === "checkin" && r.status === "approved").length, tone: "green", icon: "✓" },
+                { id: "pending", label: "Due", value: rows.filter((r) => r.record_type === "pending").length, tone: "amber", icon: "⏱" },
               ]
             : [
                 { id: "all", label: "Total", value: rows.length, tone: "blue", icon: "R" },
@@ -683,8 +689,8 @@ const CheckinsPage = () => {
                 { id: "rejected", label: "Rejected", value: rows.filter((r) => r.status === "rejected").length, tone: "red", icon: "!" },
               ]
         }
-        activeStat={isDriver ? "all" : tab}
-        onStat={isDriver ? undefined : setTab}
+        activeStat={tab}
+        onStat={setTab}
       >
         <DataTable
           rows={filtered}
@@ -694,10 +700,15 @@ const CheckinsPage = () => {
           search={query}
           onSearch={setQuery}
           searchPlaceholder="Search check-ins and expenses..."
-          hideToolbar={isDriver}
           tabs={
             isDriver
-              ? []
+              ? [
+                  { id: "all", label: "All" },
+                  { id: "submitted", label: "Submitted" },
+                  { id: "approved", label: "Approved" },
+                  { id: "rejected", label: "Rejected" },
+                  { id: "pending", label: "Due" },
+                ]
               : [
                   { id: "all", label: "All" },
                   { id: "submitted", label: "Submitted" },
@@ -723,6 +734,7 @@ const CheckinsPage = () => {
           setEditing(null);
         }}
         onSubmit={submit}
+        busy={saving}
         error={error}
         drivers={drivers}
         vehicles={vehicles}
@@ -730,7 +742,6 @@ const CheckinsPage = () => {
         showStatus={Boolean(editing) && editing?.record_type !== "expense" && canManage}
         assignedLabel={assignedLabel}
         assignedOk={assignedLabel === "Assigned to this driver"}
-        minOdometer={lastOdometerFor(form.vehicle_id)}
         lateFeeText={
           [
             isDriver && driverBalance
