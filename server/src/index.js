@@ -1454,7 +1454,17 @@ app.post("/api/checkins", requireAuth, async (req, res) => {
       );
     });
     if (duplicate) return res.json(duplicate);
+    let backdated = null;
+    const isDriverUser = req.user.role === "driver" || req.user.role_key === "driver";
+    if (!isDriverUser && req.body.checkin_date) {
+      const when = new Date(req.body.checkin_date);
+      if (Number.isNaN(when.getTime()) || when.getTime() > Date.now() + 60 * 1000) {
+        return res.status(400).json({ error: "Enter a valid check-in date" });
+      }
+      backdated = when.toISOString();
+    }
     const row = await db.insert("checkins", {
+      ...(backdated ? { created_at: backdated } : {}),
       company_id: companyId,
       driver_id: driverId,
       vehicle_id: req.body.vehicle_id,

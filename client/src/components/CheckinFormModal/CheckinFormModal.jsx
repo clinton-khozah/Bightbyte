@@ -27,6 +27,7 @@ const CheckinFormModal = ({
   vehicles = [],
   showDriver,
   showStatus,
+  showDate,
   assignedLabel,
   assignedOk,
   lateFeeText,
@@ -103,6 +104,18 @@ const CheckinFormModal = ({
             </span>
           </div>
         </div>
+        {showDate ? (
+          <label>
+            Check-in date
+            <input
+              type="datetime-local"
+              value={form.checkin_date || ""}
+              max={new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)}
+              onChange={(e) => set({ checkin_date: e.target.value })}
+            />
+            <span className="checkin-form__flag">Leave empty to use the current time.</span>
+          </label>
+        ) : null}
         <label>
           Amount (ZAR)
           <input

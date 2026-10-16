@@ -138,6 +138,7 @@ const emptyForm = {
   note: "",
   proof_url: "",
   status: "submitted",
+  checkin_date: "",
 };
 
 const emptyExpense = {
@@ -389,9 +390,13 @@ const CheckinsPage = () => {
         });
         setSuccess("Check-in was updated.");
       } else {
+        const { checkin_date, ...payload } = form;
+        if (!isDriver && checkin_date) {
+          payload.checkin_date = new Date(checkin_date).toISOString();
+        }
         await api("/api/checkins", {
           method: "POST",
-          body: JSON.stringify(form),
+          body: JSON.stringify(payload),
         });
         const leftover =
           isDriver && driverBalance?.expected > 0
@@ -752,6 +757,7 @@ const CheckinsPage = () => {
         vehicles={vehicles}
         showDriver={!isDriver}
         showStatus={Boolean(editing) && editing?.record_type !== "expense" && canManage}
+        showDate={!editing && !isDriver}
         assignedLabel={assignedLabel}
         assignedOk={assignedLabel === "Assigned to this driver"}
         lateFeeText={
