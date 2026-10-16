@@ -44,11 +44,19 @@ const fileUrl = (req, filename) =>
 
 const companyStatusOf = (row) => String(row?.status || "").trim().toLowerCase();
 
-const isAwaitingCompanyApproval = (company, person) => {
+const loadCompany = async (companyId) => {
+  if (!companyId) return null;
+  const companies = await db.fetchAll("companies");
+  return (
+    companies.find((row) => String(row.id) === String(companyId) && !row.demo) ||
+    companies.find((row) => String(row.id) === String(companyId)) ||
+    null
+  );
+};
+
+const isAwaitingCompanyApproval = (company) => {
   const companyStatus = companyStatusOf(company);
-  if (companyStatus === "active" || companyStatus === "approved") return false;
-  if (companyStatus === "pending" || companyStatus === "submitted") return true;
-  return !company && companyStatusOf(person) === "pending";
+  return companyStatus === "pending" || companyStatus === "submitted";
 };
 
 const ROLE_IDS = { super_admin: "R000", admin: "R001", fleet_manager: "R002", driver: "R003" };
@@ -100,8 +108,8 @@ app.post("/api/auth/login", async (req, res) => {
     } else if (!verifyPassword(password, user.password_hash)) {
       return res.status(401).json({ error: "Wrong password" });
     }
-    const company = user.company_id ? await db.getById("companies", user.company_id) : null;
-    if (isAwaitingCompanyApproval(company, user)) {
+    const company = await loadCompany(user.company_id);
+    if (isAwaitingCompanyApproval(company)) {
       return res.status(403).json({
         error: "This company has been submitted. Wait for a super admin to approve it.",
       });
@@ -141,8 +149,8 @@ app.post("/api/auth/register", async (req, res) => {
 app.get("/api/me", requireAuth, async (req, res) => {
   await evaluateWorkspaceServices(req.user).catch(() => {});
   const full = await db.getUser(req.user.id);
-  const company = full?.company_id ? await db.getById("companies", full.company_id) : null;
-  if (isAwaitingCompanyApproval(company, full)) {
+  const company = await loadCompany(full?.company_id);
+  if (isAwaitingCompanyApproval(company)) {
     return res.status(403).json({
       error: "This company has been submitted. Wait for a super admin to approve it.",
     });
