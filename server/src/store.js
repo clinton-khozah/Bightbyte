@@ -688,13 +688,16 @@ export const db = {
     const needle = String(email || "").trim().toLowerCase();
     if (!needle) return null;
     const same = (value) => String(value || "").trim().toLowerCase() === needle;
-    if (!useSupabase) {
-      return memory.profiles.find((p) => same(p.email));
-    }
-    const { data, error } = await supabase.from("profiles").select("*").ilike("email", needle).limit(8);
+    const fromMemory = () => memory.profiles.find((p) => same(p.email));
+    if (!useSupabase) return fromMemory() || null;
+    const { data, error } = await supabase.from("profiles").select("*").eq("email", needle).limit(1);
     if (error) throw error;
-    const match = (data || []).find((p) => same(p.email));
-    return match || memory.profiles.find((p) => same(p.email)) || null;
+    if (data?.[0] && same(data[0].email)) return data[0];
+    const { data: rows, error: listErr } = await supabase.from("profiles").select("*");
+    if (listErr) throw listErr;
+    const match = (rows || []).find((p) => same(p.email));
+    if (!match) return fromMemory() || null;
+    return (await this.getUser(match.id)) || match;
   },
 
   async getUser(id) {
