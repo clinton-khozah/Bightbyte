@@ -132,6 +132,7 @@ const writeRemote = async (run) => {
 const seedPasswordHash = bcrypt.hashSync("fleet21", 10);
 
 const memory = {
+  brighty_conversations: [],
   companies: [
     {
       id: "co-1",
@@ -662,7 +663,7 @@ const memory = {
 
 const dataFile = path.join(moduleDir(import.meta.url), "..", "data", "local-store.json");
 
-const LOCAL_TABLES = ["companies", "profiles", "vehicles", "supplies", "mechanics", "checkins", "expenses", "checkin_schedules", "reviews", "incidents", "maintenance", "documents", "roles", "notifications", "emails"];
+const LOCAL_TABLES = ["companies", "profiles", "vehicles", "supplies", "mechanics", "checkins", "expenses", "checkin_schedules", "reviews", "incidents", "maintenance", "documents", "roles", "notifications", "emails", "brighty_conversations"];
 
 const persistLocal = () => {
   fs.mkdirSync(path.dirname(dataFile), { recursive: true });
@@ -707,6 +708,7 @@ const persistLocal = () => {
         roles: (memory.roles || []).map((row) => ({ ...row, isSystem: false })),
         notifications: (memory.notifications || []).filter((row) => !row.demo),
         emails: (memory.emails || []).filter((row) => !row.demo),
+        brighty_conversations: (memory.brighty_conversations || []).filter((row) => new Date(row.expires_at).getTime() > Date.now()),
       },
       null,
       2,
@@ -771,6 +773,7 @@ try {
       if (!(memory[table] || []).some((item) => item.id === row.id)) memory[table].push(row);
     }
   }
+  memory.brighty_conversations = (saved.brighty_conversations || []).filter((row) => new Date(row.expires_at).getTime() > Date.now());
   for (const role of saved.roles || []) {
     const idx = memory.roles.findIndex(
       (row) => row.id === role.id || (row.company_id === role.company_id && row.RoleID === role.RoleID),
@@ -801,6 +804,52 @@ const publicUser = (row) => {
 export const db = {
   useSupabase,
   supabase,
+
+  async getBrightyConversation(userId) {
+    if (!useSupabase) return memory.brighty_conversations.find((row) => String(row.user_id) === String(userId)) || null;
+    const { data, error } = await supabase.from("brighty_conversations").select("*").eq("user_id", userId).maybeSingle();
+    if (error) throw error;
+    return data || null;
+  },
+
+  async saveBrightyConversation(userId, messages, expiresAt) {
+    const existing = await this.getBrightyConversation(userId);
+    const row = { id: existing?.id || uuid(), user_id: String(userId), messages, expires_at: expiresAt, updated_at: now() };
+    if (!useSupabase) {
+      const index = memory.brighty_conversations.findIndex((item) => String(item.user_id) === String(userId));
+      if (index < 0) memory.brighty_conversations.push(row);
+      else memory.brighty_conversations[index] = row;
+      persistLocal();
+      return row;
+    }
+    const { data, error } = await supabase.from("brighty_conversations").upsert(row, { onConflict: "user_id" }).select().single();
+    if (error) throw error;
+    return data || row;
+  },
+
+  async deleteBrightyConversation(userId) {
+    if (!useSupabase) {
+      const before = memory.brighty_conversations.length;
+      memory.brighty_conversations = memory.brighty_conversations.filter((row) => String(row.user_id) !== String(userId));
+      persistLocal();
+      return before !== memory.brighty_conversations.length;
+    }
+    const { error } = await supabase.from("brighty_conversations").delete().eq("user_id", userId);
+    if (error) throw error;
+    return true;
+  },
+
+  async purgeExpiredBrightyConversations() {
+    if (!useSupabase) {
+      const before = memory.brighty_conversations.length;
+      memory.brighty_conversations = memory.brighty_conversations.filter((row) => new Date(row.expires_at).getTime() > Date.now());
+      if (before !== memory.brighty_conversations.length) persistLocal();
+      return before - memory.brighty_conversations.length;
+    }
+    const { data, error } = await supabase.from("brighty_conversations").delete().lte("expires_at", now()).select("id");
+    if (error) throw error;
+    return data?.length || 0;
+  },
 
   async hydrateProfile(row) {
     if (!row) return null;

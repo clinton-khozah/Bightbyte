@@ -2,12 +2,13 @@ export const OPERATIONS_NAV = [
   { id: "dashboard", label: "Dashboard", path: "/dashboard", icon: "grid" },
   { id: "vehicles", label: "Vehicles", path: "/vehicles", icon: "truck" },
   { id: "drivers", label: "User Management", path: "/drivers", icon: "users" },
-  { id: "checkins", label: "Check-in", path: "/checkins", icon: "cash", badge: "LIVE", badgeTone: "green" },
+  { id: "checkins", label: "Check-in", path: "/checkins", icon: "cash" },
   { id: "reviews", label: "Car reviews", path: "/reviews", icon: "camera" },
-  { id: "incidents", label: "Incidents", path: "/incidents", icon: "alert", badge: "OPEN", badgeTone: "amber" },
+  { id: "incidents", label: "Incidents", path: "/incidents", icon: "alert" },
   { id: "maintenance", label: "Service", path: "/maintenance", icon: "wrench" },
   { id: "mechanics", label: "Mechanics", path: "/mechanics", icon: "mechanic" },
   { id: "documents", label: "Documents", path: "/documents", icon: "folder" },
+  { id: "brighty-ai", label: "Brighty AI", path: "/brighty-ai", icon: "brighty" },
 ];
 
 export const ADMIN_NAV = [

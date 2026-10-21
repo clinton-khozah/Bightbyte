@@ -20,6 +20,7 @@ import IncidentDetailPage from "./pages/IncidentDetailPage/IncidentDetailPage";
 import MaintenancePage from "./pages/MaintenancePage/MaintenancePage";
 import DocumentsPage from "./pages/DocumentsPage/DocumentsPage";
 import SettingsPage from "./pages/SettingsPage/SettingsPage";
+import BrightyAIPage from "./pages/BrightyAIPage/BrightyAIPage";
 
 const App = () => (
   <Routes>
@@ -43,6 +44,7 @@ const App = () => (
       <Route path="/mechanics" element={<MechanicsPage />} />
       <Route path="/documents" element={<DocumentsPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/brighty-ai" element={<BrightyAIPage />} />
     </Route>
     <Route path="*" element={<Navigate to="/dashboard" replace />} />
   </Routes>

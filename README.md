@@ -22,6 +22,12 @@ Demo login (local mode, no Supabase required):
 - Admin: `admin@fleet21.local` / `fleet21`
 - Driver: `driver@fleet21.local` / `fleet21`
 
+## Brighty AI (local development)
+
+Brighty can connect to a user's ChatGPT plan from the local web app. Start Fleet21 on localhost, open Brighty AI, and choose **Continue with ChatGPT**. The connection uses OpenAI's local Sign in with ChatGPT flow; credentials stay in the ignored `server/data/brighty-chatgpt.json` file and never go to the browser bundle. Questions and the Fleet21 records the signed-in user is allowed to view are sent to OpenAI for responses (`store: false`).
+
+The ChatGPT plan connection is limited to local development in this implementation. BrightByte's hosted app needs a separately approved hosted integration before it can offer the same connection.
+
 ## Supabase
 
 Without these keys the API keeps companies in memory and they disappear when the server restarts.

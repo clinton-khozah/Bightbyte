@@ -46,6 +46,7 @@ export const can = (user, module, action = "view") => {
   if (!user) return false;
   if (user.role === "super_admin" || user.role_key === "super_admin") return true;
   if (user.permissions?.[module]?.[action]) return true;
+  if (module === "brighty-ai") return true;
   if (user.role === "admin" || user.role_key === "admin") return module !== "documents";
   return false;
 };

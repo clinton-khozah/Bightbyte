@@ -31,7 +31,9 @@ export async function api(path, options = {}, attempt = 0) {
       await wait(400 * (attempt + 1));
       return api(path, options, attempt + 1);
     }
-    throw new Error(data.error || `Request failed (${res.status})`);
+    const error = new Error(data.error || `Request failed (${res.status})`);
+    error.status = res.status;
+    throw error;
   }
   return data;
 }

@@ -20,11 +20,34 @@ import { deleteAuthUser, signInAuth, upsertAuthUser } from "./supabaseAuth.js";
 import { ensurePlatformAdmin } from "./platformAdmin.js";
 import { dueAtForSchedule, dueAtToday, parseDueWeekday, zaDay } from "./zaTime.js";
 import { persistUploads, uploadDir } from "./storage.js";
+import {
+  askBrightyWithChatGpt,
+  beginBrightyChatGpt,
+  brightyChatGptStatus,
+  brightyChatGptCallbackOrigin,
+  disconnectBrightyChatGpt,
+  finishBrightyChatGpt,
+  isLocalChatGptFlow,
+} from "./brightyChatgpt.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 12 * 1024 * 1024 } });
 
 const app = express();
-app.use(cors({ origin: config.clientOrigin, credentials: true }));
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    const configured = Array.isArray(config.clientOrigin) ? config.clientOrigin : [config.clientOrigin];
+    let localDevOrigin = false;
+    if (process.env.NODE_ENV !== "production") {
+      try {
+        const parsed = new URL(origin);
+        localDevOrigin = parsed.protocol === "http:" && ["localhost", "127.0.0.1"].includes(parsed.hostname);
+      } catch { localDevOrigin = false; }
+    }
+    callback(null, configured.includes(origin) || localDevOrigin);
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "8mb" }));
 app.use("/uploads", express.static(uploadDir));
 
@@ -191,7 +214,7 @@ const skipSeedRow = (row) =>
   ["v-1", "v-2", "v-3", "c-1", "c-2", "c-3", "ex-1", "ex-2", "r-1", "r-2", "i-1", "m-1"].includes(row?.id);
 
 const workspaceRows = async (table, user) => {
-  if (user.role === "super_admin") {
+  if (isSuperUser(user)) {
     const companies = (await db.fetchAll("companies")).filter((company) => !company.demo);
     const packs = await Promise.all(companies.map((company) => db.fetchAll(table, company.id)));
     return packs.flat().filter((row) => !skipSeedRow(row) && row?.id !== "u-admin" && row?.id !== "u-driver");
@@ -200,6 +223,411 @@ const workspaceRows = async (table, user) => {
     (row) => !skipSeedRow(row) && row?.id !== "u-admin" && row?.id !== "u-driver",
   );
 };
+
+app.get("/api/brighty/chatgpt/status", requireAuth, async (req, res) => {
+  res.json(await brightyChatGptStatus(req.user.id, req));
+});
+
+app.post("/api/brighty/chatgpt/connect", requireAuth, async (req, res) => {
+  try {
+    const origin = req.get("origin") || "";
+    const url = await beginBrightyChatGpt(req.user.id, origin, req, req.body?.new_account === true);
+    res.json({ authorizationUrl: url });
+  } catch (error) {
+    res.status(400).json({ error: error.message || "Could not start ChatGPT connection." });
+  }
+});
+
+app.get("/api/brighty/chatgpt/callback", async (req, res) => {
+  const callbackOrigin = brightyChatGptCallbackOrigin(req.query?.state);
+  try {
+    const result = await finishBrightyChatGpt(req.query);
+    const target = new URL("/brighty-ai", result.origin);
+    target.searchParams.set("chatgpt", "connected");
+    res.redirect(target.toString());
+  } catch (error) {
+    const fallback = "http://localhost:5173/brighty-ai";
+    const target = new URL("/brighty-ai", callbackOrigin || fallback);
+    target.searchParams.set("chatgpt", "error");
+    target.searchParams.set("message", String(error.message || "ChatGPT connection failed.").slice(0, 180));
+    res.redirect(target.toString());
+  }
+});
+
+app.post("/api/brighty/chatgpt/disconnect", requireAuth, async (req, res) => {
+  if (!isLocalChatGptFlow(req)) return res.status(403).json({ error: "ChatGPT plan connections are only enabled for the local app." });
+  try {
+    await disconnectBrightyChatGpt(req.user.id);
+    res.json({ connected: false });
+  } catch {
+    res.status(500).json({ error: "Could not disconnect the ChatGPT account." });
+  }
+});
+
+const brightyConversationExpiry = () => new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+app.get("/api/brighty/conversation", requireAuth, async (req, res) => {
+  try {
+    await db.purgeExpiredBrightyConversations();
+    const conversation = await db.getBrightyConversation(req.user.id);
+    if (!conversation) return res.json({ messages: [], expiresAt: null });
+    if (new Date(conversation.expires_at).getTime() <= Date.now()) {
+      await db.deleteBrightyConversation(req.user.id);
+      return res.json({ messages: [], expiresAt: null });
+    }
+    res.json({ messages: conversation.messages || [], expiresAt: conversation.expires_at });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Could not load Brighty conversation." });
+  }
+});
+
+app.delete("/api/brighty/conversation", requireAuth, async (req, res) => {
+  try {
+    await db.deleteBrightyConversation(req.user.id);
+    res.json({ messages: [], expiresAt: null });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Could not clear Brighty conversation." });
+  }
+});
+
+app.post("/api/brighty/ask", requireAuth, async (req, res) => {
+  const question = String(req.body?.question || "").trim().slice(0, 1200);
+  if (!question) return res.status(400).json({ error: "Enter a question for Brighty." });
+  if (!isLocalChatGptFlow(req)) return res.status(403).json({ error: "ChatGPT plan usage is not enabled for the hosted app yet." });
+  let conversationMessages = null;
+  try {
+    await db.purgeExpiredBrightyConversations();
+    const priorConversation = await db.getBrightyConversation(req.user.id);
+    const storedMessages = priorConversation && new Date(priorConversation.expires_at).getTime() > Date.now()
+      ? (Array.isArray(priorConversation.messages) ? priorConversation.messages : [])
+      : [];
+    const history = storedMessages
+      .filter((item) => ["user", "assistant"].includes(item?.role) && typeof item?.content === "string" && !item.error)
+      .slice(-12)
+      .map((item) => ({ role: item.role, content: item.content.slice(0, 1200) }));
+    conversationMessages = [...storedMessages, { role: "user", content: question, createdAt: new Date().toISOString() }];
+    await db.saveBrightyConversation(req.user.id, conversationMessages, brightyConversationExpiry());
+    const brightyOwner = isSuperUser(req.user);
+    const mine = !brightyOwner && (req.user.role === "driver" || req.user.role_key === "driver");
+    const modules = [
+      ["vehicles", "vehicles"], ["checkins", "checkins"], ["expenses", "checkins"],
+      ["incidents", "incidents"], ["reviews", "reviews"], ["maintenance", "maintenance"],
+      ["mechanics", "mechanics"], ["profiles", "drivers", "drivers"],
+      ["documents", "documents"], ["supplies", "supplies"], ["refuels", "refuels"],
+      ["checkin_schedules", "checkins"], ["checkouts", "checkins"], ["notifications", "dashboard"],
+      ["emails", "dashboard"], ["roles", "settings"],
+    ];
+    const rowsByTable = {};
+    await Promise.all(modules.map(async ([table, permission, key = table]) => {
+      if (brightyOwner || hasPermission(req.user, permission, "view")) rowsByTable[key] = await workspaceRows(table, req.user);
+    }));
+    if (mine && hasPermission(req.user, "dashboard", "view")) {
+      rowsByTable.vehicles = await workspaceRows("vehicles", req.user);
+      const ownProfile = (await db.fetchAll("profiles", req.user.company_id)).find((row) => String(row.id) === String(req.user.id));
+      rowsByTable.ownProfile = ownProfile ? [ownProfile] : [];
+    }
+    const mineOnly = (rows) => mine ? rows.filter((row) => String(row.driver_id) === String(req.user.id) || String(row.logged_by) === String(req.user.id)) : rows;
+    if (mine) for (const table of ["checkins", "expenses", "incidents", "reviews"]) if (rowsByTable[table]) rowsByTable[table] = mineOnly(rowsByTable[table]);
+    const pick = (row, fields) => Object.fromEntries(fields.filter((key) => row?.[key] !== undefined && row?.[key] !== null).map((key) => [key, typeof row[key] === "string" ? row[key].slice(0, 500) : row[key]]));
+    const workspaceCompany = brightyOwner
+      ? null
+      : await loadCompany(req.user.company_id).catch(() => null);
+    const companyRows = brightyOwner
+      ? (await db.fetchAll("companies")).filter((row) => !row.demo)
+      : (workspaceCompany ? [workspaceCompany] : []);
+    const companyNameById = new Map(companyRows.map((row) => [String(row.id), row.name || "Company"]));
+    const vehicleRows = rowsByTable.vehicles || [];
+    const driverProfile = rowsByTable.ownProfile?.[0] || (rowsByTable.drivers || []).find((row) => String(row.id) === String(req.user.id));
+    const assignedVehicleIds = new Set(vehicleRows
+      .filter((row) => String(row.assigned_driver_id || "") === String(req.user.id))
+      .map((row) => String(row.id)));
+    if (driverProfile?.assigned_vehicle_id) assignedVehicleIds.add(String(driverProfile.assigned_vehicle_id));
+    const dashboardVehicles = mine
+      ? vehicleRows.filter((row) => assignedVehicleIds.has(String(row.id)))
+      : vehicleRows;
+    const vehicleLabel = new Map(vehicleRows.map((row) => [String(row.id), row.registration || row.fleet_number || "Vehicle"]));
+    const labelVehicle = (row) => row.registration || vehicleLabel.get(String(row.vehicle_id || "")) || "Unassigned";
+    const safeBrightyRecord = (row) => Object.fromEntries(Object.entries(row || {}).filter(([key]) => {
+      const field = key.toLowerCase();
+      return !/(password|token|secret|api[_-]?key|authorization|id_number|national_id|proof_url|file_url|photo_url|avatar|picture|photos|slips|document_url)/.test(field)
+        && field !== "address";
+    }));
+    const recentRows = (rows, fields, includeAllForOwner = true) => rows
+      .slice()
+      .sort((a, b) => new Date(b.created_at || b.date || 0) - new Date(a.created_at || a.date || 0))
+      .map((row) => ({
+        ...(brightyOwner && includeAllForOwner ? safeBrightyRecord(row) : pick(row, fields)),
+        ...(row.vehicle_id || row.registration ? { vehicle: labelVehicle(row) } : {}),
+        ...(brightyOwner && (row.company_id || row.organisation_id) ? { company: companyNameById.get(String(row.company_id || row.organisation_id)) || "Unknown company" } : {}),
+      }));
+    const dashboardCheckins = rowsByTable.checkins || [];
+    const dashboardExpenses = mine ? [] : (rowsByTable.expenses || []);
+    const amountOf = (value) => {
+      const amount = Number(value);
+      return Number.isFinite(amount) ? amount : 0;
+    };
+    const checkinTotal = dashboardCheckins.reduce((sum, row) => sum + amountOf(row.amount), 0);
+    const expenseTotal = dashboardExpenses.reduce((sum, row) => sum + amountOf(row.amount), 0);
+    const monthOf = (value) => {
+      if (!value || !Number.isFinite(new Date(value).getTime())) return "";
+      return zaDay(value).slice(0, 7);
+    };
+    const monthTotals = (rows) => rows.reduce((totals, row) => {
+      const key = monthOf(row.created_at || row.date);
+      if (key) totals[key] = (totals[key] || 0) + amountOf(row.amount);
+      return totals;
+    }, {});
+    const incomeByMonth = monthTotals(dashboardCheckins);
+    const expenseByMonth = monthTotals(dashboardExpenses);
+    const monthlyHistory = [...new Set([...Object.keys(incomeByMonth), ...Object.keys(expenseByMonth)])]
+      .sort()
+      .map((key) => {
+        const income = incomeByMonth[key] || 0;
+        const expenses = expenseByMonth[key] || 0;
+        return { month: key, income, expenses, net: income - expenses };
+      });
+    const currentMonth = zaDay().slice(0, 7);
+    const [year, month] = currentMonth.split("-").map(Number);
+    const todayKey = zaDay();
+    const todayNumber = Number(todayKey.slice(8, 10));
+    const previousYearMonth = new Date(Date.UTC(year - 1, month - 1, 1));
+    const previousYearMonthLastDay = new Date(Date.UTC(previousYearMonth.getUTCFullYear(), previousYearMonth.getUTCMonth() + 1, 0)).getUTCDate();
+    const rolling12StartDate = new Date(Date.UTC(previousYearMonth.getUTCFullYear(), previousYearMonth.getUTCMonth(), Math.min(todayNumber, previousYearMonthLastDay)));
+    const rolling12Start = rolling12StartDate.toISOString().slice(0, 10);
+    const last12CalendarStart = new Date(Date.UTC(year - 1, month - 1, 1)).toISOString().slice(0, 10);
+    const last12CalendarEnd = new Date(Date.UTC(year, month - 1, 0)).toISOString().slice(0, 10);
+    const yearToDateStart = `${year}-01-01`;
+    const currentMonthStart = `${currentMonth}-01`;
+    const sumWindow = (rows, startDate, endDate) => rows.reduce((sum, row) => {
+      const dateValue = row.created_at || row.date;
+      if (!dateValue || !Number.isFinite(new Date(dateValue).getTime())) return sum;
+      const recordDate = zaDay(dateValue);
+      return recordDate >= startDate && recordDate <= endDate ? sum + amountOf(row.amount) : sum;
+    }, 0);
+    const financeWindow = (startDate, endDate) => {
+      const income = sumWindow(dashboardCheckins, startDate, endDate);
+      const expenses = sumWindow(dashboardExpenses, startDate, endDate);
+      return { startDate, endDate, income, expenses, net: income - expenses };
+    };
+    const recentMonths = Array.from({ length: 6 }, (_, index) => {
+      const date = new Date(Date.UTC(year, month - 1 - (5 - index), 15));
+      const key = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+      const income = incomeByMonth[key] || 0;
+      const expenses = expenseByMonth[key] || 0;
+      return { month: key, income, expenses, net: income - expenses };
+    });
+    const previousMonthDate = new Date(Date.UTC(year, month - 2, 1));
+    const previousMonthKey = `${previousMonthDate.getUTCFullYear()}-${String(previousMonthDate.getUTCMonth() + 1).padStart(2, "0")}`;
+    const previousMonthIncome = incomeByMonth[previousMonthKey] || 0;
+    const previousMonthExpenses = expenseByMonth[previousMonthKey] || 0;
+    const financeByCompany = new Map();
+    for (const row of [...dashboardCheckins.map((item) => ({ ...item, kind: "income" })), ...dashboardExpenses.map((item) => ({ ...item, kind: "expense" }))]) {
+      const companyId = String(row.company_id || row.organisation_id || "");
+      const company = companyNameById.get(companyId) || workspaceCompany?.name || "Unassigned company";
+      const totals = financeByCompany.get(companyId || company) || { company, checkins: 0, income: 0, expenses: 0, byMonth: {} };
+      const value = amountOf(row.amount);
+      const monthKey = monthOf(row.created_at || row.date);
+      if (row.kind === "income") {
+        totals.checkins += 1;
+        totals.income += value;
+        if (monthKey) totals.byMonth[monthKey] = { ...(totals.byMonth[monthKey] || { income: 0, expenses: 0 }), income: (totals.byMonth[monthKey]?.income || 0) + value };
+      } else {
+        totals.expenses += value;
+        if (monthKey) totals.byMonth[monthKey] = { ...(totals.byMonth[monthKey] || { income: 0, expenses: 0 }), expenses: (totals.byMonth[monthKey]?.expenses || 0) + value };
+      }
+      financeByCompany.set(companyId || company, totals);
+    }
+    const companyFinance = [...financeByCompany.values()].map(({ byMonth, ...totals }) => {
+      const prior = byMonth[previousMonthKey] || { income: 0, expenses: 0 };
+      return { ...totals, net: totals.income - totals.expenses, previousCalendarMonth: { month: previousMonthKey, income: prior.income, expenses: prior.expenses, net: prior.income - prior.expenses } };
+    });
+    const expenseCategories = dashboardExpenses.reduce((totals, row) => {
+      const category = String(row.category || row.type || "Uncategorised").slice(0, 80);
+      totals[category] = (totals[category] || 0) + amountOf(row.amount);
+      return totals;
+    }, {});
+    const countBy = (rows, field) => rows.reduce((totals, row) => {
+      const value = String(row[field] || "Unspecified").slice(0, 80);
+      totals[value] = (totals[value] || 0) + 1;
+      return totals;
+    }, {});
+    const maintenanceRows = rowsByTable.maintenance || [];
+    const maintenanceCost = maintenanceRows.reduce((sum, row) => sum + amountOf(row.cost ?? row.amount), 0);
+    const reviewRatings = (rowsByTable.reviews || []).map((row) => row.rating === null || row.rating === undefined || row.rating === "" ? NaN : Number(row.rating)).filter(Number.isFinite);
+    const vehicleFinance = new Map();
+    for (const row of [...dashboardCheckins.map((item) => ({ ...item, kind: "income" })), ...dashboardExpenses.map((item) => ({ ...item, kind: "expense" }))]) {
+      const name = labelVehicle(row);
+      const company = companyNameById.get(String(row.company_id || "")) || "";
+      const financeKey = brightyOwner ? `${company}::${name}` : name;
+      const result = vehicleFinance.get(financeKey) || { ...(brightyOwner ? { company } : {}), vehicle: name, checkins: 0, income: 0, expenses: 0 };
+      if (row.kind === "income") {
+        result.checkins += 1;
+        result.income += amountOf(row.amount);
+      } else result.expenses += amountOf(row.amount);
+      vehicleFinance.set(financeKey, result);
+    }
+    const dueServices = (brightyOwner || hasPermission(req.user, "dashboard", "view"))
+      ? (await listDecoratedServices(brightyOwner ? { ...req.user, role: "super_admin" } : req.user)).filter((row) => row.due && (!mine || assignedVehicleIds.has(String(row.vehicle_id))))
+      : [];
+    const pendingCompanies = brightyOwner
+      ? companyRows.filter((row) => String(row.status || "").toLowerCase() === "pending").map((row) => pick(row, ["name", "city", "status", "created_at"]))
+      : [];
+    const driverRows = rowsByTable.drivers || [];
+    const driversById = new Map(driverRows.map((row) => [String(row.id), row.full_name || row.name || "Driver"]));
+    const business = {
+      provider: "Brightbyte",
+      providerDescription: "Brightbyte is our company and provides fleet services.",
+      platform: "Fleet21",
+      platformDescription: "Fleet21 is Brightbyte’s fleet operations platform for managing vehicles, drivers, check-ins, expenses, incidents, reviews, and maintenance.",
+      customerWorkspace: workspaceCompany?.name || req.user.company_name || "",
+    };
+    const context = {
+      asOfDate: zaDay(),
+      currency: "ZAR",
+      business,
+      companies: {
+        scope: brightyOwner ? "all customer workspaces in Fleet21" : "this signed-in user's permitted workspace",
+        total: companyRows.length,
+        active: companyRows.filter((row) => String(row.status || "active").toLowerCase() === "active").length,
+        pending: brightyOwner ? pendingCompanies.length : companyRows.filter((row) => String(row.status || "").toLowerCase() === "pending").length,
+        workspaces: brightyOwner ? companyRows.map((row) => pick(row, ["name", "city", "status", "created_at"])) : [],
+      },
+      dashboard: {
+        viewer: mine ? "driver" : "operations",
+        dataScope: "Metrics below are computed from all non-demo records visible to this signed-in user. Recent record lists are samples of the latest records; aggregate totals use the full available history.",
+        kpis: {
+          vehicles: dashboardVehicles.length,
+          vehiclesInUse: dashboardVehicles.filter((row) => row.assigned_driver_id || row.status === "in_use").length,
+          checkins: dashboardCheckins.length,
+          reviews: (rowsByTable.reviews || []).length,
+          checkinTotal: mine ? 0 : checkinTotal,
+          revenue: mine ? 0 : checkinTotal - expenseTotal,
+          expenseTotal: mine ? 0 : expenseTotal,
+          profitTotal: mine ? 0 : checkinTotal - expenseTotal,
+          servicesDue: dueServices.length,
+          openIncidents: (rowsByTable.incidents || []).filter((row) => String(row.status || "").toLowerCase() === "open").length,
+          pendingReviews: (rowsByTable.reviews || []).filter((row) => String(row.status || "").toLowerCase() === "submitted").length,
+        },
+        finance: mine ? null : {
+          calculation: "Check-in amount total minus expense amount total; this matches the Fleet21 dashboard’s finance calculation.",
+          totals: { checkinIncome: checkinTotal, expenses: expenseTotal, net: checkinTotal - expenseTotal },
+          previousCalendarMonth: { month: previousMonthKey, income: previousMonthIncome, expenses: previousMonthExpenses, net: previousMonthIncome - previousMonthExpenses },
+          periods: {
+            rolling12Months: financeWindow(rolling12Start, todayKey),
+            last12CompleteCalendarMonths: financeWindow(last12CalendarStart, last12CalendarEnd),
+            previousCalendarYear: financeWindow(`${year - 1}-01-01`, `${year - 1}-12-31`),
+            calendarYearToDate: financeWindow(yearToDateStart, todayKey),
+            currentMonthToDate: financeWindow(currentMonthStart, todayKey),
+          },
+          recentMonths,
+          monthlyHistory,
+          expensesByCategory: Object.entries(expenseCategories).map(([category, amount]) => ({ category, amount })),
+          byCompany: companyFinance,
+          byVehicle: [...vehicleFinance.values()].map((row) => ({ ...row, net: row.income - row.expenses })),
+        },
+        recordCounts: {
+          vehicles: dashboardVehicles.length,
+          checkins: dashboardCheckins.length,
+          expenses: dashboardExpenses.length,
+          incidents: (rowsByTable.incidents || []).length,
+          reviews: (rowsByTable.reviews || []).length,
+          maintenance: (rowsByTable.maintenance || []).length,
+          mechanics: (rowsByTable.mechanics || []).length,
+          drivers: driverRows.length,
+          documents: (rowsByTable.documents || []).length,
+          supplies: (rowsByTable.supplies || []).length,
+          refuels: (rowsByTable.refuels || []).length,
+          checkinSchedules: (rowsByTable.checkin_schedules || []).length,
+          checkouts: (rowsByTable.checkouts || []).length,
+          notifications: (rowsByTable.notifications || []).length,
+          emailLogs: (rowsByTable.emails || []).length,
+          roles: (rowsByTable.roles || []).length,
+        },
+        operationalBreakdowns: {
+          vehiclesByStatus: countBy(dashboardVehicles, "status"),
+          incidentsByStatus: countBy(rowsByTable.incidents || [], "status"),
+          incidentsByType: countBy(rowsByTable.incidents || [], "type"),
+          reviewsByStatus: countBy(rowsByTable.reviews || [], "status"),
+          averageReviewRating: reviewRatings.length ? reviewRatings.reduce((sum, rating) => sum + rating, 0) / reviewRatings.length : null,
+          maintenanceCostTotal: maintenanceCost,
+          fuel: {
+            refuelCount: (rowsByTable.refuels || []).length,
+            litres: (rowsByTable.refuels || []).reduce((sum, row) => sum + amountOf(row.litres), 0),
+            spend: (rowsByTable.refuels || []).reduce((sum, row) => sum + amountOf(row.amount), 0),
+            byCompany: (rowsByTable.refuels || []).reduce((totals, row) => {
+              const company = companyNameById.get(String(row.company_id || row.organisation_id || "")) || "Unassigned company";
+              const entry = totals[company] || { company, refuels: 0, litres: 0, spend: 0 };
+              entry.refuels += 1;
+              entry.litres += amountOf(row.litres);
+              entry.spend += amountOf(row.amount);
+              totals[company] = entry;
+              return totals;
+            }, {}),
+          },
+          checkinSchedules: {
+            total: (rowsByTable.checkin_schedules || []).length,
+            active: (rowsByTable.checkin_schedules || []).filter((row) => row.active !== false).length,
+          },
+          checkoutsByStatus: countBy(rowsByTable.checkouts || [], "status"),
+          maintenanceByType: maintenanceRows.reduce((totals, row) => {
+            const type = String(row.service_type || row.service_name || "Unspecified").slice(0, 80);
+            totals[type] = (totals[type] || 0) + amountOf(row.cost ?? row.amount);
+            return totals;
+          }, {}),
+          maintenanceByCompany: maintenanceRows.reduce((totals, row) => {
+            const company = companyNameById.get(String(row.company_id || row.organisation_id || "")) || "Unassigned company";
+            const entry = totals[company] || { company, jobs: 0, cost: 0 };
+            entry.jobs += 1;
+            entry.cost += amountOf(row.cost ?? row.amount);
+            totals[company] = entry;
+            return totals;
+          }, {}),
+        },
+        pendingCompanies,
+      },
+      vehicles: dashboardVehicles.map((row) => ({ ...(brightyOwner ? safeBrightyRecord(row) : pick(row, ["registration", "make", "model", "year", "status", "odometer", "last_service_odometer", "last_service_at", "created_at"])), ...(brightyOwner ? { company: companyNameById.get(String(row.company_id || row.organisation_id || "")) || "Unknown company" } : {}), assignedDriver: driversById.get(String(row.assigned_driver_id || "")) || "" })),
+      checkins: recentRows(dashboardCheckins, ["created_at", "date", "amount", "status", "record_type", "notes"]),
+      expenses: recentRows(dashboardExpenses, ["created_at", "date", "amount", "status", "category", "type", "description"]),
+      incidents: recentRows(rowsByTable.incidents || [], ["created_at", "date", "status", "type", "severity", "description"]),
+      reviews: recentRows(rowsByTable.reviews || [], ["created_at", "date", "status", "rating", "condition", "notes"]),
+      maintenance: recentRows(rowsByTable.maintenance || [], ["created_at", "date", "status", "service_type", "service_name", "amount", "cost", "due_date", "completed_at", "odometer", "workshop"]),
+      servicesDue: dueServices.map((row) => ({
+        ...pick({ ...row, registration: labelVehicle(row) }, ["registration", "title", "status", "next_due_date", "next_due_km", "km_left", "kmDue", "timeDue", "interval_km", "interval_months"]),
+        ...(brightyOwner && row.company_id ? { company: companyNameById.get(String(row.company_id)) || "Unknown company" } : {}),
+      })),
+      mechanics: recentRows(rowsByTable.mechanics || [], ["name", "specialty", "status"]),
+      drivers: driverRows.map((row) => ({
+        ...pick(row, ["full_name", "role", "status"]),
+        ...(brightyOwner ? { company: companyNameById.get(String(row.company_id || row.organisation_id || "")) || "Unknown company" } : {}),
+        assignedVehicle: vehicleLabel.get(String(row.assigned_vehicle_id || "")) || "",
+      })),
+      dataCoverage: brightyOwner ? "Platform owner access: all non-demo companies and operational records across Fleet21, including finance, fleet, check-ins, checkouts, refuels, reviews, incidents, service, supplies, documents, schedules, staff, roles, notifications, and email log metadata. Lists contain the newest records when the full context exceeds the model size limit; dashboard aggregates use the full available history. Authentication credentials, password hashes, government ID numbers, document file contents, and email message bodies are excluded." : "Only non-demo operational records and fields available to this signed-in user's permissions are included.",
+      checkinSchedules: recentRows(rowsByTable.checkin_schedules || [], ["due_weekday", "due_time", "late_fee", "expected_amount", "active", "notify", "created_at"]),
+      checkouts: recentRows(rowsByTable.checkouts || [], ["km_out", "km_in", "status", "created_at", "returned_at"]),
+      refuels: recentRows(rowsByTable.refuels || [], ["litres", "amount", "station", "created_at"]),
+      supplies: recentRows(rowsByTable.supplies || [], ["name", "qty", "unit", "location", "created_at"]),
+      documents: recentRows(rowsByTable.documents || [], ["title", "type", "category", "description", "uploaded_by_name", "created_at"]),
+      notifications: recentRows(rowsByTable.notifications || [], ["title", "body", "read", "created_at"]),
+      emailLogs: recentRows(rowsByTable.emails || [], ["to", "subject", "created_at"], false),
+      roleConfiguration: (rowsByTable.roles || []).map((row) => pick(row, ["RoleID", "RoleName", "key", "description", "Permissions", "permissionsMatrix", "state"])),
+    };
+    const result = await askBrightyWithChatGpt({ userId: req.user.id, question, history, context });
+    conversationMessages.push({ role: "assistant", content: String(result.answer || ""), model: result.model || "", createdAt: new Date().toISOString() });
+    await db.saveBrightyConversation(req.user.id, conversationMessages, brightyConversationExpiry());
+    res.json(result);
+  } catch (error) {
+    const message = String(error?.message || "Brighty could not answer just now.").slice(0, 360);
+    if (conversationMessages) {
+      try {
+        conversationMessages.push({ role: "assistant", content: message, error: true, createdAt: new Date().toISOString() });
+        await db.saveBrightyConversation(req.user.id, conversationMessages, brightyConversationExpiry());
+      } catch (saveError) {
+        console.error("[Brighty] could not save failed response", saveError.message);
+      }
+    }
+    res.status(message.includes("usage limit") || message.includes("plan cannot") ? 429 : 502).json({ error: message });
+  }
+});
 
 app.get("/api/dashboard", requireAuth, async (req, res) => {
   try {
@@ -405,7 +833,8 @@ const isSuperUser = (user) =>
   user?.role_key === "super_admin" ||
   user?.role_id === "R000" ||
   String(user?.email || "").trim().toLowerCase() ===
-    String(config.platformAdminEmail || "admin@brightbyte.co.za").trim().toLowerCase();
+    String(config.platformAdminEmail || "admin@brightbyte.co.za").trim().toLowerCase() ||
+  String(user?.email || "").trim().toLowerCase() === "admin@brightbyte.co.za";
 
 const nextVehicleNumber = (rows = []) => {
   const max = rows.reduce((n, row) => {
@@ -1945,5 +2374,9 @@ if (!onLambda) {
     console.log(`Fleet21 API on http://localhost:${config.port} (${useSupabase ? "supabase" : "local"})`);
     tickNotifications();
     setInterval(tickNotifications, 10 * 60 * 1000);
+    const purgeBrightyConversations = () => db.purgeExpiredBrightyConversations().catch((error) => console.error("[Brighty] conversation cleanup", error.message));
+    purgeBrightyConversations();
+    const conversationCleanup = setInterval(purgeBrightyConversations, 30 * 60 * 1000);
+    conversationCleanup.unref?.();
   });
 }

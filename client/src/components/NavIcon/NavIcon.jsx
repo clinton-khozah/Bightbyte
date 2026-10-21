@@ -81,6 +81,25 @@ const NavIcon = ({ name }) => {
       </Icon>
     );
   }
+  if (name === "sparkle") {
+    return (
+      <Icon>
+        <path d="M12 3l1.7 5.3L19 10l-5.3 1.7L12 17l-1.7-5.3L5 10l5.3-1.7L12 3z" />
+        <path d="M19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16z" />
+      </Icon>
+    );
+  }
+  if (name === "brighty") {
+    return (
+      <svg className="brighty-symbol" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path className="brighty-symbol__orbit" d="M4.5 14.8c0-4.1 3.1-7.3 7.4-7.3s7.6 3.2 7.6 7.3" />
+        <path className="brighty-symbol__body" d="M5.3 13.6c0-3.8 2.8-6.1 6.7-6.1s6.7 2.3 6.7 6.1v3.2c0 1.2-.9 2.1-2.1 2.1H7.4c-1.2 0-2.1-.9-2.1-2.1v-3.2z" />
+        <path className="brighty-symbol__face" d="M9 13.8v.1m6-.1v.1m-4.5 2c.8.6 1.8.6 2.6 0" />
+        <path className="brighty-symbol__antenna" d="M12 7.5V5.2m-1.1 0h2.2" />
+        <path className="brighty-symbol__spark" d="M20.3 5.2l.5 1.2 1.2.5-1.2.5-.5 1.2-.5-1.2-1.2-.5 1.2-.5.5-1.2z" />
+      </svg>
+    );
+  }
   if (name === "shield") {
     return (
       <Icon>
