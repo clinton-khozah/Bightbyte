@@ -1,11 +1,14 @@
 import { createHash, createPublicKey, randomBytes, randomUUID, verify as verifySignature } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { config } from "./config.js";
+import { moduleDir } from "./moduleDir.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const STORE_PATH = path.join(__dirname, "..", "data", "brighty-chatgpt.json");
+const __dirname = moduleDir(import.meta.url);
+const onLambda = Boolean(process.env.LAMBDA_TASK_ROOT || process.env.NETLIFY);
+const STORE_PATH = onLambda
+  ? path.join("/tmp", "brighty-chatgpt.json")
+  : path.join(__dirname, "..", "data", "brighty-chatgpt.json");
 const AUTH_ENDPOINT = "https://auth.openai.com/api/accounts/authorize";
 const TOKEN_ENDPOINT = "https://auth.openai.com/api/accounts/oauth/token";
 const JWKS_ENDPOINT = "https://auth.openai.com/.well-known/jwks.json";
